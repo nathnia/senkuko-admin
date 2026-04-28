@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+
 ProductPriceModel productPriceModelFromJson(String str) =>
     ProductPriceModel.fromJson(json.decode(str));
 

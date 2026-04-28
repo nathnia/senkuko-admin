@@ -54,6 +54,7 @@ class ProductService {
     required String description,
     required String barcode,
     String? categoryId,
+    bool isActive = true, // ← tambah ini
   }) {
     return http.put(
       Uri.parse("${ApiConstants.baseUrl}/products/$id"),
@@ -64,7 +65,7 @@ class ProductService {
         "description": description,
         "barcode": barcode.isEmpty ? null : barcode,
         "category_id": categoryId,
-        "is_active": true,
+        "is_active": isActive, // ← ganti dari true ke isActive
       }),
     );
   }
@@ -77,7 +78,6 @@ class ProductService {
     );
   }
 
-  // ✅ Tambah param barcode & isBaseUnit
   static Future<http.Response> createVariant({
     required String productId,
     required String unitId,
@@ -103,7 +103,6 @@ class ProductService {
     );
   }
 
-  // ✅ Tambah param barcode & isBaseUnit
   static Future<http.Response> updateVariant({
     required String id,
     required String name,
@@ -259,6 +258,51 @@ class ProductService {
   static Future<http.Response> getPriceLists() {
     return http.get(
       Uri.parse("${ApiConstants.baseUrl}/price-lists"),
+      headers: ApiConstants.headers,
+    );
+  }
+
+  static Future<http.Response> getProductImages(String productId) {
+    return http.get(
+      Uri.parse("${ApiConstants.baseUrl}/products/$productId/images"),
+      headers: ApiConstants.headers,
+    );
+  }
+
+  static Future<http.Response> uploadProductImage({
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+    // required String mimeType,
+  }) async {
+    final uri = Uri.parse("${ApiConstants.baseUrl}/products/$productId/images");
+    final request = http.MultipartRequest('POST', uri);
+
+    ApiConstants.headers.forEach((key, value) {
+      if (key.toLowerCase() != 'content-type') {
+        request.headers[key] = value;
+      }
+    });
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'image',
+        imageBytes,
+        filename: fileName,
+        // contentType: MediaType.parse(mimeType),
+      ),
+    );
+
+    final streamed = await request.send();
+    return http.Response.fromStream(streamed);
+  }
+
+  static Future<http.Response> deleteProductImage(
+    String productId,
+    String imageId,
+  ) async {
+    return http.delete(
+      Uri.parse("${ApiConstants.baseUrl}/products/$productId/images/$imageId"),
       headers: ApiConstants.headers,
     );
   }
