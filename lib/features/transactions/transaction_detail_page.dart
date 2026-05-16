@@ -1,34 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
+import 'package:senkukoadmin/features/transactions/transaction_model.dart';
 
 class TransactionDetailPage extends StatelessWidget {
   const TransactionDetailPage({super.key});
-
-  String _formatDate(String raw) {
-    final date = DateTime.tryParse(raw);
-    if (date == null) return raw;
-    final months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-    ];
-    return '${date.day} ${months[date.month]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
-  String _formatCurrency(String value) {
-    final amount = double.tryParse(value) ?? 0;
-    return 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
-  }
-
-  String _paymentLabel(String method) {
-    switch (method) {
-      case 'cash': return 'Tunai';
-      case 'transfer': return 'Transfer';
-      case 'qris': return 'QRIS';
-      default: return method;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +42,16 @@ class TransactionDetailPage extends StatelessWidget {
         final items = data['items'] as List? ?? [];
         final promotions = data['promotions'] as List? ?? [];
 
+        // parse amount dari detail response — sama seperti model
+        final totalDiscount =
+            double.parse((data['total_discount'] ?? '0').toString());
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Invoice header card
+              // ── Info transaksi ───────────────────────────────────────────
               _card(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,9 +69,7 @@ class TransactionDetailPage extends StatelessWidget {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8FAF3),
                             borderRadius: BorderRadius.circular(6),
@@ -106,31 +86,39 @@ class TransactionDetailPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _infoRow('Tanggal', _formatDate(data['transacted_at'] ?? '')),
-                    _infoRow('Pelanggan', data['customer_name'] ?? 'Pelanggan umum'),
-                    _infoRow('Metode', _paymentLabel(data['payment_method'] ?? '')),
+                    _infoRow(
+                      'Tanggal',
+                      DateFormatter.formatDateTimeRaw(
+                          data['transacted_at'] ?? ''),
+                    ),
+                    _infoRow(
+                      'Pelanggan',
+                      data['customer_name'] ?? 'Pelanggan umum',
+                    ),
+                    _infoRow(
+                      'Metode',
+                      PaymentStyle.of(data['payment_method'] ?? '').label,
+                    ),
                   ],
                 ),
               ),
 
+              // ── Item pembelian ───────────────────────────────────────────
               const SizedBox(height: 12),
-
-              // Items
               _sectionLabel('Item Pembelian'),
               _card(
                 child: Column(
                   children: items.asMap().entries.map((entry) {
-                    final i = entry.key;
                     final item = entry.value as Map<String, dynamic>;
-                    final isLast = i == items.length - 1;
+                    final isLast = entry.key == items.length - 1;
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         border: isLast
                             ? null
                             : const Border(
-                                bottom: BorderSide(color: Color(0xFFF0F0F0)),
-                              ),
+                                bottom:
+                                    BorderSide(color: Color(0xFFF0F0F0))),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,17 +137,16 @@ class TransactionDetailPage extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${item['price_list_name']} • ${_formatCurrency(item['unit_price'] ?? '0')} x ${item['qty']}',
+                                  '${item['price_list_name']} • ${CurrencyFormatter.format(item['unit_price'] ?? '0')} x ${item['qty']}',
                                   style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
+                                      fontSize: 11, color: Colors.grey),
                                 ),
                               ],
                             ),
                           ),
                           Text(
-                            _formatCurrency(item['subtotal'] ?? '0'),
+                            CurrencyFormatter.format(
+                                item['subtotal'] ?? '0'),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -173,7 +160,7 @@ class TransactionDetailPage extends StatelessWidget {
                 ),
               ),
 
-              // Promotions (kalau ada)
+              // ── Promo & diskon ───────────────────────────────────────────
               if (promotions.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _sectionLabel('Promo & Diskon'),
@@ -186,10 +173,11 @@ class TransactionDetailPage extends StatelessWidget {
                         children: [
                           Text(
                             p['promo_name'] ?? p['voucher_code'] ?? '-',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.grey),
                           ),
                           Text(
-                            '- ${_formatCurrency(p['discount_amount']?.toString() ?? '0')}',
+                            '- ${CurrencyFormatter.format(p['discount_amount']?.toString() ?? '0')}',
                             style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFFFF6B6B),
@@ -203,18 +191,21 @@ class TransactionDetailPage extends StatelessWidget {
                 ),
               ],
 
+              // ── Ringkasan pembayaran ──────────────────────────────────────
               const SizedBox(height: 12),
-
-              // Payment summary
               _sectionLabel('Ringkasan Pembayaran'),
               _card(
                 child: Column(
                   children: [
-                    _summaryRow('Subtotal', _formatCurrency(data['subtotal'] ?? '0')),
-                    if (double.tryParse(data['total_discount'] ?? '0') != 0)
+                    _summaryRow(
+                      'Subtotal',
+                      CurrencyFormatter.format(data['subtotal'] ?? '0'),
+                    ),
+                    // pakai double yang sudah diparse — tidak ada tryParse tersebar
+                    if (totalDiscount != 0)
                       _summaryRow(
                         'Diskon',
-                        '- ${_formatCurrency(data['total_discount'] ?? '0')}',
+                        '- ${CurrencyFormatter.format(data['total_discount'] ?? '0')}',
                         valueColor: const Color(0xFFFF6B6B),
                       ),
                     const Padding(
@@ -223,13 +214,19 @@ class TransactionDetailPage extends StatelessWidget {
                     ),
                     _summaryRow(
                       'Total',
-                      _formatCurrency(data['grand_total'] ?? '0'),
+                      CurrencyFormatter.format(data['grand_total'] ?? '0'),
                       isBold: true,
                       valueColor: AppColors.primary,
                     ),
                     const SizedBox(height: 8),
-                    _summaryRow('Dibayar', _formatCurrency(data['paid_amount'] ?? '0')),
-                    _summaryRow('Kembalian', _formatCurrency(data['change_amount'] ?? '0')),
+                    _summaryRow(
+                      'Dibayar',
+                      CurrencyFormatter.format(data['paid_amount'] ?? '0'),
+                    ),
+                    _summaryRow(
+                      'Kembalian',
+                      CurrencyFormatter.format(data['change_amount'] ?? '0'),
+                    ),
                   ],
                 ),
               ),
@@ -242,88 +239,82 @@ class TransactionDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _card({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _sectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey,
-          letterSpacing: 0.3,
+  Widget _card({required Widget child}) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade100),
         ),
-      ),
-    );
-  }
+        child: child,
+      );
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+  Widget _sectionLabel(String label) => Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 8),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+            letterSpacing: 0.3,
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF1A1A2E),
+        ),
+      );
+
+  Widget _infoRow(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 80,
+              child: Text(label,
+                  style:
+                      const TextStyle(fontSize: 12, color: Colors.grey)),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _summaryRow(
     String label,
     String value, {
     bool isBold = false,
     Color? valueColor,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: isBold ? const Color(0xFF1A1A2E) : Colors.grey,
-              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: isBold ? const Color(0xFF1A1A2E) : Colors.grey,
+                fontWeight:
+                    isBold ? FontWeight.w600 : FontWeight.normal,
+              ),
             ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
-              color: valueColor ?? const Color(0xFF1A1A2E),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    isBold ? FontWeight.w600 : FontWeight.w500,
+                color: valueColor ?? const Color(0xFF1A1A2E),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 }

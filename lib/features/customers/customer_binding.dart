@@ -6,7 +6,7 @@ class CustomerBinding extends Bindings {
   void dependencies() {
     Get.lazyPut<CustomerController>(
       () => CustomerController(),
-      fenix: true, // ← controller tetap hidup, tidak di-dispose waktu pindah page
+      fenix: true,
     );
   }
 }

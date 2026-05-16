@@ -9,30 +9,27 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final productC = Get.find<ProductController>();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Obx(
-          () => SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                _header(),
-                const SizedBox(height: 24),
-                _statsRow(productC),
-                const SizedBox(height: 24),
-                _ordersSection(),
-                const SizedBox(height: 24),
-                _menuSection(),
-                const SizedBox(height: 24),
-                _addProductButton(),
-                const SizedBox(height: 32),
-              ],
-            ),
+        child: SingleChildScrollView(
+          // ← hapus Obx di sini, pindah ke dalam
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              _header(),
+              const SizedBox(height: 24),
+              // _statsRow(),
+              const SizedBox(height: 24),
+              _ordersSection(),
+              const SizedBox(height: 24),
+              _menuSection(),
+              const SizedBox(height: 24),
+              _addProductButton(),
+              const SizedBox(height: 32),
+            ],
           ),
         ),
       ),
@@ -89,49 +86,49 @@ class DashboardPage extends StatelessWidget {
   }
 
   // ==================== STATS ROW ====================
-  Widget _statsRow(ProductController productC) {
-    final total = productC.productList.length;
-    final aktif = productC.productList.where((p) => p.isActive == 1).length;
-    final nonAktif = total - aktif;
+  // Widget _statsRow(ProductController productC) {
+  //   final total = productC.productList.length;
+  //   final aktif = productC.productList.where((p) => p.isActive == 1).length;
+  //   final nonAktif = total - aktif;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Ringkasan Produk'),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _statCard(
-                value: total.toString(),
-                label: 'Total',
-                isPrimary: true,
-                onTap: () => Get.toNamed(AppRoutes.product),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _statCard(
-                value: aktif.toString(),
-                label: 'Aktif',
-                isPrimary: false,
-                onTap: () => Get.toNamed(AppRoutes.product),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _statCard(
-                value: nonAktif.toString(),
-                label: 'Non-Aktif',
-                isPrimary: false,
-                onTap: () => Get.toNamed(AppRoutes.product),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       _sectionLabel('Ringkasan Produk'),
+  //       const SizedBox(height: 10),
+  //       Row(
+  //         children: [
+  //           Expanded(
+  //             child: _statCard(
+  //               value: total.toString(),
+  //               label: 'Total',
+  //               isPrimary: true,
+  //               onTap: () => Get.toNamed(AppRoutes.product),
+  //             ),
+  //           ),
+  //           const SizedBox(width: 8),
+  //           Expanded(
+  //             child: _statCard(
+  //               value: aktif.toString(),
+  //               label: 'Aktif',
+  //               isPrimary: false,
+  //               onTap: () => Get.toNamed(AppRoutes.product),
+  //             ),
+  //           ),
+  //           const SizedBox(width: 8),
+  //           Expanded(
+  //             child: _statCard(
+  //               value: nonAktif.toString(),
+  //               label: 'Non-Aktif',
+  //               isPrimary: false,
+  //               onTap: () => Get.toNamed(AppRoutes.product),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _statCard({
     required String value,
@@ -251,9 +248,7 @@ class DashboardPage extends StatelessWidget {
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : const Border(
-                  bottom: BorderSide(color: Color(0xFFF2F2F2)),
-                ),
+              : const Border(bottom: BorderSide(color: Color(0xFFF2F2F2))),
         ),
         child: Row(
           children: [
@@ -290,11 +285,7 @@ class DashboardPage extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: Color(0xFFBDBDBD),
-            ),
+            const Icon(Icons.chevron_right, size: 16, color: Color(0xFFBDBDBD)),
           ],
         ),
       ),
@@ -324,7 +315,7 @@ class DashboardPage extends StatelessWidget {
                 icon: Icons.local_offer_rounded,
                 label: 'Promo',
                 sub: 'Kelola diskon',
-                onTap: () => Get.toNamed(AppRoutes.promo),
+                onTap: () => Get.toNamed(AppRoutes.promotions),
               ),
             ),
           ],

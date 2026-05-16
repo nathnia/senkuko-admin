@@ -1,10 +1,14 @@
+// lib/features/products/pages/add_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
-import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
+import 'package:senkukoadmin/features/products/widgets/app_card.dart';
+import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/features/products/widgets/product_form.dart';
+import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
+import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class AddProductPage extends StatelessWidget {
@@ -13,6 +17,11 @@ class AddProductPage extends StatelessWidget {
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
   late final _forms = ProductFormWidgets(controller);
+
+  Future<bool> _confirmLeave() async {
+    if (!controller.isDirty.value) return true;
+    return UnsavedChangesDialog.show(title: 'Produk belum disimpan');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,54 +34,49 @@ class AddProductPage extends StatelessWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-
-        if (!controller.isDirty.value) {
-          Get.back();
-          return;
-        }
-
-        final shouldPop = await Get.dialog<bool>(
-          AlertDialog(
-            title: const Text('Produk belum disimpan'),
-            content: const Text('Yakin mau keluar? Perubahan akan hilang.'),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: const Text('Tetap di sini'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () => Get.back(result: true),
-                child: const Text(
-                  'Keluar',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        );
-
-        if (shouldPop == true) {
+        if (await _confirmLeave()) {
           controller.resetForAddProduct();
           Get.back();
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        appBar: AppBar(title: const Text("Tambah Produk")),
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: AppBackButton(
+            onTap: () async {
+              if (await _confirmLeave()) {
+                controller.resetForAddProduct();
+                Get.back();
+              }
+            },
+          ),
+          title: const Text(
+            'Tambah Produk',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          centerTitle: true,
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               _forms.productImageGrid('', isAddMode: true),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _forms.productForm(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _forms.variantForm(isEditMode: false),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _variantList(),
               const SizedBox(height: 20),
               _submitButton(),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -82,61 +86,27 @@ class AddProductPage extends StatelessWidget {
 
   Widget _variantList() {
     return Obx(() {
-      if (variantC.variantsTemp.isEmpty) {
-        return const SizedBox.shrink();
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Variant yang ditambahkan:",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...variantC.variantsTemp.asMap().entries.map((entry) {
+      if (variantC.variantsTemp.isEmpty) return const SizedBox.shrink();
+
+      return AppCard(
+        title: 'VARIAN DITAMBAHKAN',
+        child: Column(
+          children: variantC.variantsTemp.asMap().entries.map((entry) {
             final i = entry.key;
             final v = entry.value;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          v["name"],
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text("Stock: ${v["stock_qty"]} • ${v["unit_name"]}"),
-                        if (v["barcode"] != null)
-                          Text("Barcode: ${v["barcode"]}"),
-                        ...(v["prices"] as List).map(
-                          (p) => Text(CurrencyFormatter.format(p["price"])),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () =>
-                        variantC.removeTempVariant(i, isEditMode: false),
-                  ),
-                ],
-              ),
+
+            return VariantItemCard(
+              variant: v,
+              mode: VariantCardMode.add,
+              index: i,
+              onDelete: () => variantC.removeTempVariant(i, isEditMode: false),
             );
-          }),
-        ],
+          }).toList(),
+        ),
       );
     });
   }
 
-  // Di add page
   Widget _submitButton() {
     return Obx(
       () => SizedBox(
@@ -145,20 +115,34 @@ class AddProductPage extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             backgroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
           ),
-          onPressed: controller.isSubmitting.value || !controller.isDirty.value
-              ? null
-              : () async {
-                  final success = await controller.createFullProduct();
-                  if (success) {
-                    Get.until(
-                      (route) => route.settings.name == AppRoutes.product,
-                    );
-                  }
-                },
+          onPressed:
+              controller.isSubmitting.value || !controller.isDirty.value
+                  ? null
+                  : () async {
+                      final success = await controller.createFullProduct();
+                      if (success) {
+                        Get.until((route) =>
+                            route.settings.name == AppRoutes.product);
+                      }
+                    },
           child: controller.isSubmitting.value
-              ? const CircularProgressIndicator(color: Colors.white)
-              : const Text("Simpan Produk", style: TextStyle(fontSize: 16)),
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
+                )
+              : const Text(
+                  'Simpan Produk',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white),
+                ),
         ),
       ),
     );

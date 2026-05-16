@@ -3,8 +3,11 @@ import 'package:get/get_navigation/get_navigation.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/routes/pages.dart';
 import 'package:senkukoadmin/routes/routes.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID'); // ← wajib sebelum runApp
   runApp(const MyApp());
 }
 

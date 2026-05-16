@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/customers/customer_model.dart';
 import 'package:senkukoadmin/features/customers/customer_service.dart';
 
@@ -10,7 +11,22 @@ class CustomerController extends GetxController {
   final nameC = TextEditingController();
   final phoneC = TextEditingController();
   final emailC = TextEditingController();
-  final selectedMemberType = 'regular'.obs;
+  final selectedMemberType = MemberType.regular.obs;
+
+  // ===================== LIST STATE =====================
+  final isLoading = false.obs;
+  final customerList = <CustomerData>[].obs;
+  final selectedCustomer = Rxn<CustomerData>();
+  final searchText = ''.obs;
+
+  // null = semua, active = aktif, inactive = nonaktif
+  final Rxn<CustomerStatus> statusFilter = Rxn(CustomerStatus.active);
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchCustomers();
+  }
 
   @override
   void onClose() {
@@ -20,6 +36,7 @@ class CustomerController extends GetxController {
     super.onClose();
   }
 
+  // ===================== FORM HELPERS =====================
   void markDirty() => isDirty.value = true;
 
   void resetForm() {
@@ -27,7 +44,7 @@ class CustomerController extends GetxController {
     nameC.clear();
     phoneC.clear();
     emailC.clear();
-    selectedMemberType.value = 'regular';
+    selectedMemberType.value = MemberType.regular;
     selectedCustomer.value = null;
   }
 
@@ -38,30 +55,52 @@ class CustomerController extends GetxController {
     selectedMemberType.value = c.memberType;
   }
 
-  final isLoading = false.obs;
-  final customerList = <CustomerData>[].obs;
-  final selectedCustomer = Rxn<CustomerData>();
-  final searchText = ''.obs;
-
-  // ===================== LIFECYCLE =====================
-  @override
-  void onInit() {
-    super.onInit();
-    fetchCustomers();
-  }
-
   // ===================== FILTER =====================
   List<CustomerData> get filteredCustomers {
-    if (searchText.value.isEmpty) return customerList;
-    final lower = searchText.value.toLowerCase();
-    return customerList.where((c) {
-      return c.name.toLowerCase().contains(lower) ||
-          (c.phone?.toLowerCase().contains(lower) ?? false) ||
-          (c.email?.toLowerCase().contains(lower) ?? false);
-    }).toList();
+    var list = customerList.toList();
+
+    if (statusFilter.value != null) {
+      list = list.where((c) => c.status == statusFilter.value).toList();
+    }
+
+    if (searchText.value.isNotEmpty) {
+      final lower = searchText.value.toLowerCase();
+      list = list.where((c) {
+        return c.name.toLowerCase().contains(lower) ||
+            (c.phone?.toLowerCase().contains(lower) ?? false) ||
+            (c.email?.toLowerCase().contains(lower) ?? false);
+      }).toList();
+    }
+
+    return list;
   }
 
   void updateSearch(String value) => searchText.value = value;
+
+  void setStatusFilter(String label) {
+    switch (label) {
+      case 'Aktif':
+        statusFilter.value = CustomerStatus.active;
+        break;
+      case 'Nonaktif':
+        statusFilter.value = CustomerStatus.inactive;
+        break;
+      default: // 'Semua'
+        statusFilter.value = null;
+    }
+  }
+
+  // label untuk chip agar UI tahu mana yang aktif
+  String get statusFilterLabel {
+    switch (statusFilter.value) {
+      case CustomerStatus.active:
+        return 'Aktif';
+      case CustomerStatus.inactive:
+        return 'Nonaktif';
+      default:
+        return 'Semua';
+    }
+  }
 
   // ===================== FETCH =====================
   Future<void> fetchCustomers() async {
@@ -73,7 +112,7 @@ class CustomerController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error fetchCustomers: $e');
-      Get.snackbar('Error', 'Gagal memuat data pelanggan');
+      AppToast.error('Gagal memuat data pelanggan');
     } finally {
       isLoading.value = false;
     }
@@ -94,98 +133,44 @@ class CustomerController extends GetxController {
     }
   }
 
-  // ===================== CREATE =====================
-  Future<bool> createCustomer({
-    required String name,
-    String? phone,
-    String? email,
-    required String memberType,
-  }) async {
-    isLoading.value = true;
-    try {
-      final res = await CustomerService.createCustomer(
-        name: name,
-        phone: phone,
-        email: email,
-        memberType: memberType,
-      );
-      if (res.statusCode == 201) {
-        await fetchCustomers();
-        Get.snackbar(
-          'Sukses',
-          'Pelanggan berhasil ditambahkan',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-        return true;
-      }
-      Get.snackbar('Gagal', 'Gagal menambahkan pelanggan');
-      return false;
-    } catch (e) {
-      debugPrint('Error createCustomer: $e');
-      Get.snackbar('Error', 'Terjadi kesalahan');
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  // ===================== TOGGLE STATUS =====================
+  Future<bool> toggleCustomerStatus(CustomerData customer) async {
+    final newStatus =
+        customer.isActive ? CustomerStatus.inactive : CustomerStatus.active;
+    final label = newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
 
-  // ===================== UPDATE =====================
-  Future<bool> updateCustomer({
-    required String id,
-    required String name,
-    String? phone,
-    String? email,
-    required String memberType,
-  }) async {
-    isLoading.value = true;
-    try {
-      final res = await CustomerService.updateCustomer(
-        id: id,
-        name: name,
-        phone: phone,
-        email: email,
-        memberType: memberType,
-      );
-      if (res.statusCode == 200) {
-        await fetchCustomers();
-        Get.snackbar(
-          'Sukses',
-          'Pelanggan berhasil diupdate',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-        return true;
-      }
-      Get.snackbar('Gagal', 'Gagal mengupdate pelanggan');
-      return false;
-    } catch (e) {
-      debugPrint('Error updateCustomer: $e');
-      Get.snackbar('Error', 'Terjadi kesalahan');
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // ===================== DELETE =====================
-  Future<bool> deleteCustomer(String id, String name) async {
-    final confirmed =
-        await Get.dialog<bool>(
+    final confirmed = await Get.dialog<bool>(
           AlertDialog(
-            title: const Text('Hapus Pelanggan'),
-            content: Text('Yakin ingin menghapus "$name"?'),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            content: Text(
+              'Yakin ingin $label "${customer.name}"?',
+              style: const TextStyle(fontSize: 13),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Get.back(result: false),
                 child: const Text('Batal'),
               ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: newStatus == CustomerStatus.active
+                      ? Colors.green
+                      : Colors.orange,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
                 onPressed: () => Get.back(result: true),
-                child: const Text(
-                  'Hapus',
-                  style: TextStyle(color: Colors.white),
+                child: Text(
+                  newStatus == CustomerStatus.active
+                      ? 'Aktifkan'
+                      : 'Nonaktifkan',
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -198,22 +183,29 @@ class CustomerController extends GetxController {
 
     isLoading.value = true;
     try {
-      final res = await CustomerService.deleteCustomer(id);
+      // .name → convert enum ke string ('active'/'inactive') untuk dikirim ke API
+      final res = await CustomerService.updateCustomerStatus(
+          customer.id, newStatus.name);
       if (res.statusCode == 200) {
-        customerList.removeWhere((c) => c.id == id);
-        Get.snackbar(
-          'Sukses',
-          'Pelanggan berhasil dihapus',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
+        final idx = customerList.indexWhere((c) => c.id == customer.id);
+        if (idx != -1) {
+          final updated =
+              CustomerData.fromJson(jsonDecode(res.body)['data']);
+          customerList[idx] = updated;
+          customerList.refresh();
+        }
+        AppToast.success(
+          newStatus == CustomerStatus.active
+              ? 'Pelanggan diaktifkan'
+              : 'Pelanggan dinonaktifkan',
         );
         return true;
       }
-      Get.snackbar('Gagal', 'Gagal menghapus pelanggan');
+      AppToast.error('Gagal mengubah status');
       return false;
     } catch (e) {
-      debugPrint('Error deleteCustomer: $e');
-      Get.snackbar('Error', 'Terjadi kesalahan');
+      debugPrint('Error toggleStatus: $e');
+      AppToast.error('Terjadi kesalahan');
       return false;
     } finally {
       isLoading.value = false;

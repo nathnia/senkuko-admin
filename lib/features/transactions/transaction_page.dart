@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_filter_chips.dart';
+import 'package:senkukoadmin/constant/app_searchbar.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
+import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/features/transactions/transaction_card.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -15,181 +19,163 @@ class TransactionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Transaksi'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.background,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: AppBackButton(onTap: () => Get.back()),
+        title: const Text(
+          'Transaksi',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: AppSearchBar(
+              hintText: 'Cari invoice atau nama pelanggan...',
+              onChanged: controller.updateSearch,
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Column(
-              children: [
-                // Search
-                TextField(
-                  onChanged: controller.updateSearch,
-                  decoration: InputDecoration(
-                    hintText: 'Cari invoice atau nama pelanggan...',
-                    prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+          Obx(() {
+            final range = controller.selectedDateRange.value;
+            return AppFilterChips(
+              items: controller.quickDateFilters
+                  .map(
+                    (f) => FilterChipItem(
+                      label: f,
+                      icon: f == 'Custom' ? Icons.date_range_outlined : null,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Filter chips
-                Obx(() => SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: controller.filters.map((f) {
-                      final isSelected = controller.selectedFilter.value == f;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () => controller.updateFilter(f),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : Colors.grey.shade300,
-                              ),
-                            ),
-                            child: Text(
-                              f,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isSelected ? Colors.white : Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                )),
-              ],
+                  )
+                  .toList(),
+              selectedLabel: controller.selectedQuickDate.value,
+              selectedLabelOverride:
+                  (controller.selectedQuickDate.value == 'Custom' &&
+                      range != null)
+                  ? '${DateFormatter.formatShort(range.start)} – ${DateFormatter.formatShort(range.end)}'
+                  : null,
+              onChipTap: (label) async {
+                if (label == 'Custom') {
+                  await controller.pickDateRange(context);
+                } else {
+                  controller.updateQuickDate(label);
+                }
+              },
+            );
+          }),
+          Obx(() => _summaryBar(controller)),
+          Expanded(child: _transactionList(controller)),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryBar(TransactionController controller) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: _summaryCard(
+              label: 'Total transaksi',
+              value: '${controller.filteredTransactions.length}',
             ),
           ),
-
-          // Summary bar
-          Obx(() => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Total transaksi',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${controller.filteredTransactions.length}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A2E),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Total pendapatan',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          controller.formattedTotalRevenue,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )),
-
-          // List
+          const SizedBox(width: 10),
           Expanded(
-            child: Obx(() {
-              if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final list = controller.filteredTransactions;
-
-              if (list.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'Tidak ada transaksi ditemukan',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: controller.fetchTransactions,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: list.length,
-                  itemBuilder: (context, index) {
-                    return TransactionCard(
-                      transaction: list[index],
-                      onTap: () => Get.toNamed(
-                        AppRoutes.transactionDetail,
-                        arguments: list[index].id,
-                      ),
-                    );
-                  },
-                ),
-              );
-            }),
+            child: _summaryCard(
+              label: 'Total pendapatan',
+              value: controller.formattedTotalRevenue,
+              valueColor: AppColors.primary,
+              valueFontSize: 14,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _summaryCard({
+    required String label,
+    required String value,
+    Color? valueColor,
+    double valueFontSize = 18,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: valueFontSize,
+              fontWeight: FontWeight.w600,
+              color: valueColor ?? const Color(0xFF1A1A2E),
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _transactionList(TransactionController controller) {
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      final list = controller.filteredTransactions;
+
+      if (list.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Transaksi tidak ditemukan',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: controller.fetchTransactions,
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          itemCount: list.length,
+          itemBuilder: (context, index) => TransactionCard(
+            transaction: list[index],
+            onTap: () => Get.toNamed(
+              AppRoutes.transactionDetail,
+              arguments: list[index].id,
+            ),
+          ),
+        ),
+      );
+    });
   }
 }

@@ -1,17 +1,23 @@
 import 'package:get/get.dart';
-import 'package:senkukoadmin/features/admin/pages/add_promo_page.dart';
 import 'package:senkukoadmin/features/admin/pages/add_voucher_page.dart';
 import 'package:senkukoadmin/features/admin/pages/dashboard_page.dart';
-import 'package:senkukoadmin/features/admin/pages/promo_page.dart';
-import 'package:senkukoadmin/features/admin/pages/voucher_page.dart';
-import 'package:senkukoadmin/features/customers/add_customer_page.dart';
 import 'package:senkukoadmin/features/customers/customer_binding.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
 import 'package:senkukoadmin/features/products/pages/add_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/detail_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/edit_product_page.dart';
+import 'package:senkukoadmin/features/products/pages/edit_variant_page.dart';
 import 'package:senkukoadmin/features/products/product_binding.dart';
 import 'package:senkukoadmin/features/products/pages/product_page.dart';
+import 'package:senkukoadmin/features/promotions/condition_sheet.dart';
+import 'package:senkukoadmin/features/promotions/promotion_detail_page.dart';
+import 'package:senkukoadmin/features/promotions/promotion_form.dart';
+import 'package:senkukoadmin/features/promotions/promotion_page.dart';
+import 'package:senkukoadmin/features/promotions/promotion_binding.dart';
+import 'package:senkukoadmin/features/promotions/promotion_reward_form.dart';
+import 'package:senkukoadmin/features/promotions/voucher_binding.dart';
+import 'package:senkukoadmin/features/promotions/voucher_form_page.dart';
+import 'package:senkukoadmin/features/promotions/voucher_page.dart';
 import 'package:senkukoadmin/features/transactions/transaction_binding.dart';
 import 'package:senkukoadmin/features/transactions/transaction_detail_page.dart';
 import 'package:senkukoadmin/features/transactions/transaction_page.dart';
@@ -22,26 +28,15 @@ import 'package:senkukoadmin/features/auth/splash_page.dart';
 class AppPages {
   static final pages = [
     GetPage(name: AppRoutes.splash, page: () => SplashPage()),
-    GetPage(
-      name: AppRoutes.dashboard,
-      page: () => DashboardPage(),
-      binding: ProductBinding(), // ← tetap di sini buat preload
-    ),
+    GetPage(name: AppRoutes.dashboard, page: () => DashboardPage()),
     GetPage(
       name: AppRoutes.product,
       page: () => ProductPage(),
-      // ← hapus binding, udah di-register di dashboard
+      binding: ProductBinding(),
     ),
-    GetPage(
-      name: AppRoutes.addProduct,
-      page: () => AddProductPage(),
-      // ← hapus binding
-    ),
-    GetPage(
-      name: AppRoutes.editProduct,
-      page: () => EditProductPage(),
-      // ← hapus binding
-    ),
+    GetPage(name: AppRoutes.addProduct, page: () => AddProductPage()),
+    GetPage(name: AppRoutes.editProduct, page: () => EditProductPage()),
+    GetPage(name: AppRoutes.editProductVariant, page: () => EditVariantPage()),
     GetPage(
       name: AppRoutes.detailProduct,
       page: () => DetailProductPage(),
@@ -53,11 +48,6 @@ class AppPages {
       binding: CustomerBinding(), // ← register sekali di sini
     ),
     GetPage(
-      name: AppRoutes.customerForm,
-      page: () => AddCustomerPage(),
-      binding: CustomerBinding(), // ← tambah ini
-    ),
-    GetPage(
       name: AppRoutes.transaction,
       page: () => TransactionPage(),
       binding: TransactionBinding(), // ← tambah ini
@@ -66,9 +56,39 @@ class AppPages {
       name: AppRoutes.transactionDetail,
       page: () => TransactionDetailPage(),
     ),
-    GetPage(name: AppRoutes.promo, page: () => PromoPage()),
-    GetPage(name: AppRoutes.voucher, page: () => VoucherPage()),
-    GetPage(name: AppRoutes.addPromo, page: () => AddPromoPage()),
+    GetPage(
+      name: AppRoutes.promotions,
+      page: () => const PromotionPage(),
+      binding: PromotionBinding(), 
+    ),
+    GetPage(
+      name: AppRoutes.promotionDetail,
+      page: () => const PromotionDetailPage(),
+    ),
+    GetPage(
+      name: AppRoutes.promotionForm,
+      page: () => const PromotionFormPage(),
+    ),
+    GetPage(
+      name: AppRoutes.promotionConditionForm,
+      page: () => const PromotionConditionFormPage(),
+    ),
+    GetPage(
+      name: AppRoutes.promotionRewardForm,
+      page: () => const PromotionRewardFormPage(),
+    ),
+    // GetPage(name: AppRoutes.voucher, page: () => VoucherPage()),
+    GetPage(name: AppRoutes.addPromo, page: () => PromotionFormPage()),
     GetPage(name: AppRoutes.addVoucher, page: () => AddVoucherPage()),
+    GetPage(
+  name: AppRoutes.vouchers,
+  page: () => const VoucherPage(),
+  binding: VoucherBinding(),
+),
+GetPage(
+  name: AppRoutes.voucherForm,
+  page: () => const VoucherFormPage(),
+  binding: VoucherBinding(),
+),
   ];
 }

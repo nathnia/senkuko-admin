@@ -1,40 +1,62 @@
-import 'dart:async';
+// lib/features/products/controllers/product_image_controller.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_image_model.dart';
 import 'package:senkukoadmin/features/products/product_service.dart';
 
 class ProductImageController extends GetxController {
   final isUploadingImage = false.obs;
   final pendingImages = <XFile>[].obs;
+  final pendingEditImages = <XFile>[].obs;
   final allProductImages = <String, List<ProductImageData>>{}.obs;
+
+  // ── Carousel state — taruh di sini biar StatelessWidget page tidak pegang state
+  final carouselIndex = 0.obs;
+  final carouselController = PageController();
 
   static const int maxImages = 5;
 
-  // ===================== FETCH =====================
-  Future<void> fetchProductImages(String productId) async {
-    final res = await ProductService.getProductImages(productId);
-    if (res.statusCode != 200) return;
-
-    final jsonData = json.decode(res.body);
-    final List raw = jsonData['data'] ?? [];
-
-    allProductImages[productId] = raw
-        .map((e) => ProductImageData.fromJson(e as Map<String, dynamic>))
-        .toList();
-
-    // ← tambah ini sementara
-    debugPrint("Images for $productId:");
-    for (var img in allProductImages[productId]!) {
-      debugPrint("  id: '${img.id}' | publicId: '${img.publicId}'");
-    }
-
-    allProductImages.refresh();
+  // ===================== LIFECYCLE =====================
+  @override
+  void onClose() {
+    carouselController.dispose();
+    super.onClose();
   }
 
-  // Helper getter:
+  // ===================== HELPERS =====================
+
+  bool _isNetworkError(response) =>
+      response.statusCode == 408 || response.statusCode == 503;
+
+  String _parseMessage(String body) {
+    try {
+      return json.decode(body)['message'] ?? 'Terjadi kesalahan';
+    } catch (_) {
+      return 'Terjadi kesalahan';
+    }
+  }
+
+  // ===================== FETCH =====================
+  Future<void> fetchProductImages(String productId) async {
+    try {
+      final res = await ProductService.getProductImages(productId);
+      if (res.statusCode != 200) return;
+
+      final jsonData = json.decode(res.body);
+      final List raw = jsonData['data'] ?? [];
+
+      allProductImages[productId] = raw
+          .map((e) => ProductImageData.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      allProductImages.refresh();
+    } catch (_) {}
+  }
+
   List<ProductImageData> getImagesForProduct(String productId) {
     return allProductImages[productId] ?? [];
   }
@@ -42,50 +64,31 @@ class ProductImageController extends GetxController {
   // ===================== DELETE IMAGE =====================
   Future<void> deleteProductImage(
     String productId,
-    String publicId,
+    String imageId,
     int index,
   ) async {
-    if (publicId.isEmpty) {
+    if (imageId.isEmpty) {
       _removeImageLocally(productId, index);
       return;
     }
+
     isUploadingImage.value = true;
     try {
-      final res = await ProductService.deleteProductImage(productId, publicId)
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw TimeoutException("timeout"),
-          );
+      final res = await ProductService.deleteProductImage(productId, imageId);
+
+      if (_isNetworkError(res)) {
+        AppToast.error(_parseMessage(res.body));
+        return;
+      }
+
       if (res.statusCode == 200 || res.statusCode == 204) {
         _removeImageLocally(productId, index);
-        Get.snackbar(
-          "Sukses",
-          "Gambar berhasil dihapus",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        AppToast.success('Gambar berhasil dihapus');
       } else {
-        Get.snackbar(
-          "Gagal",
-          "Gagal menghapus gambar (${res.statusCode})",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        AppToast.error('Gagal menghapus gambar (${res.statusCode})');
       }
-    } on TimeoutException {
-      Get.snackbar(
-        "Timeout",
-        "Request terlalu lama, coba lagi",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString(),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppToast.error('Terjadi kesalahan saat menghapus gambar');
     } finally {
       isUploadingImage.value = false;
     }
@@ -95,15 +98,13 @@ class ProductImageController extends GetxController {
     final current = allProductImages[productId] ?? [];
     if (index < 0 || index >= current.length) return;
 
-    // ✅ SEDERHANAKAN - Hapus langsung tanpa mapping ulang
     final updated = List<ProductImageData>.from(current);
     updated.removeAt(index);
 
     if (updated.isEmpty) {
       allProductImages.remove(productId);
     } else {
-      // ✅ Set gambar pertama sebagai primary (jika diperlukan)
-      if (updated[0].isPrimary == false) {
+      if (!updated[0].isPrimary) {
         updated[0] = updated[0].copyWith(isPrimary: true);
       }
       allProductImages[productId] = updated;
@@ -112,132 +113,178 @@ class ProductImageController extends GetxController {
     allProductImages.refresh();
   }
 
-  String _parseErrorMessage(String body) {
-    try {
-      return json.decode(body)['message'] ?? 'Terjadi kesalahan';
-    } catch (_) {
-      return 'Terjadi kesalahan';
-    }
-  }
-
-  Future<void> pickAndUploadImage(String productId) async {
-    if (getImagesForProduct(productId).length >= maxImages) {
-      Get.snackbar('Batas Tercapai', 'Maksimal $maxImages gambar per produk');
+  // ===================== PICK FOR EDIT =====================
+  Future<void> pickImageForEditProduct({
+    ImageSource source = ImageSource.gallery,
+    required String productId,
+  }) async {
+    final existingCount = getImagesForProduct(productId).length;
+    if (existingCount + pendingEditImages.length >= maxImages) {
+      AppToast.warning('Maksimal $maxImages gambar per produk');
       return;
     }
 
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
-
-    if (pickedFile == null) return;
-
-    final ext = pickedFile.name.split('.').last.toLowerCase();
-    if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-      Get.snackbar('Format Tidak Valid', 'Gunakan JPEG, PNG, atau WEBP');
-      return;
-    }
-
-    isUploadingImage.value = true;
-
     try {
-      final bytes = await pickedFile.readAsBytes();
-
-      final res = await ProductService.uploadProductImage(
-        productId: productId,
-        imageBytes: bytes,
-        fileName: pickedFile.name,
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
       );
+      if (pickedFile == null) return;
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final decoded = json.decode(res.body);
-
-        String imageUrl =
-            decoded['image_url']?.toString() ??
-            decoded['data']?['image_url']?.toString() ??
-            '';
-
-        if (imageUrl.isEmpty) {
-          Get.snackbar('Gagal', 'URL gambar tidak ditemukan');
-          return;
-        }
-
-        final current = allProductImages[productId] ?? [];
-        allProductImages[productId] = [
-          ...current,
-          ProductImageData(
-            id: '',
-            productId: productId,
-            imageUrl: imageUrl,
-            publicId: decoded['public_id']?.toString() ?? '',
-            isPrimary: current.isEmpty,
-            createdAt: DateTime.now(),
-          ),
-        ];
-
-        allProductImages.refresh();
-
-        Get.snackbar(
-          'Sukses',
-          'Gambar berhasil diupload (${getImagesForProduct(productId).length}/$maxImages)',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      } else {
-        Get.snackbar('Gagal Upload', _parseErrorMessage(res.body));
+      final ext = pickedFile.name.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+        AppToast.warning('Gunakan JPEG, PNG, atau WEBP');
+        return;
       }
+
+      pendingEditImages.add(pickedFile);
+      Get.find<ProductController>().isDirty.value = true;
     } catch (e) {
-      Get.snackbar('Error', 'Gagal upload gambar');
-    } finally {
-      isUploadingImage.value = false;
+      AppToast.error('Gagal memilih gambar');
     }
   }
 
-  // 1. Untuk ADD product - simpan dulu ke local, belum upload
-  Future<void> pickImageForNewProduct() async {
-    if (pendingImages.length >= maxImages) {
-      Get.snackbar('Batas Tercapai', 'Maksimal $maxImages gambar per produk');
-      return;
-    }
+  // ===================== UPLOAD PENDING EDIT =====================
+  Future<void> uploadPendingEditImages(String productId) async {
+    if (pendingEditImages.isEmpty) return;
 
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    int failCount = 0;
 
-    if (pickedFile == null) return;
-
-    final ext = pickedFile.name.split('.').last.toLowerCase();
-    if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-      Get.snackbar('Format Tidak Valid', 'Gunakan JPEG, PNG, atau WEBP');
-      return;
-    }
-
-    pendingImages.add(pickedFile);
-  }
-
-  Future<void> uploadPendingImages(String productId) async {
-    for (var image in pendingImages) {
-      isUploadingImage.value = true;
+    for (var image in List<XFile>.from(pendingEditImages)) {
       try {
         final bytes = await image.readAsBytes();
-        await ProductService.uploadProductImage(
+        final res = await ProductService.uploadProductImage(
           productId: productId,
           imageBytes: bytes,
           fileName: image.name,
         );
+
+        if (_isNetworkError(res)) {
+          AppToast.error(_parseMessage(res.body));
+          break;
+        } else if (res.statusCode != 200 && res.statusCode != 201) {
+          failCount++;
+        }
       } catch (e) {
-        debugPrint('ERROR upload pending image: $e');
+        failCount++;
       }
     }
+
+    pendingEditImages.clear();
+    isUploadingImage.value = false;
+
+    if (failCount > 0) {
+      AppToast.warning('$failCount gambar gagal diupload');
+    }
+  }
+
+  void removePendingEditImage(int index) {
+    if (index < 0 || index >= pendingEditImages.length) return;
+    pendingEditImages.removeAt(index);
+  }
+
+  // ===================== PENDING AS IMAGE DATA =====================
+  List<ProductImageData> getPendingAsImageData() {
+    return pendingImages.asMap().entries.map((entry) {
+      return ProductImageData(
+        id: '',
+        productId: '',
+        imageUrl: entry.value.path,
+        publicId: '',
+        isPrimary: entry.key == 0,
+        createdAt: DateTime.now(),
+      );
+    }).toList();
+  }
+
+  List<ProductImageData> getPendingEditAsImageData() {
+    return pendingEditImages.asMap().entries.map((entry) {
+      return ProductImageData(
+        id: '',
+        productId: '',
+        imageUrl: entry.value.path,
+        publicId: '',
+        isPrimary: false,
+        createdAt: DateTime.now(),
+      );
+    }).toList();
+  }
+
+  void removePendingImage(int index) {
+    if (index < 0 || index >= pendingImages.length) return;
+    pendingImages.removeAt(index);
+  }
+
+  // ===================== PICK FOR NEW PRODUCT =====================
+  Future<void> pickImageForNewProduct({
+    ImageSource source = ImageSource.gallery,
+  }) async {
+    if (pendingImages.length >= maxImages) {
+      AppToast.warning('Maksimal $maxImages gambar per produk');
+      return;
+    }
+
+    try {
+      final picker = ImagePicker();
+
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      final ext = pickedFile.name.split('.').last.toLowerCase();
+
+      if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+        AppToast.warning('Gunakan JPEG, PNG, atau WEBP');
+        return;
+      }
+
+      pendingImages.add(pickedFile);
+      Get.find<ProductController>().isDirty.value = true;
+    } catch (e) {
+      AppToast.error('Gagal memilih gambar');
+    }
+  }
+
+  // ===================== UPLOAD PENDING (add mode) =====================
+  Future<void> uploadPendingImages(String productId) async {
+    if (pendingImages.isEmpty) return;
+
+    int failCount = 0;
+
+    for (var image in List<XFile>.from(pendingImages)) {
+      try {
+        final bytes = await image.readAsBytes();
+        final res = await ProductService.uploadProductImage(
+          productId: productId,
+          imageBytes: bytes,
+          fileName: image.name,
+        );
+
+        if (res.statusCode == 200 || res.statusCode == 201) {
+        } else if (_isNetworkError(res)) {
+          AppToast.error(_parseMessage(res.body));
+          break;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+    }
+
     pendingImages.clear();
     isUploadingImage.value = false;
+
+    if (failCount > 0) {
+      AppToast.warning('$failCount gambar gagal diupload');
+    }
   }
 }

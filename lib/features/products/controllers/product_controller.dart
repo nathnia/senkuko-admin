@@ -1,7 +1,9 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/models/category_model.dart';
@@ -17,44 +19,50 @@ class ProductController extends GetxController {
   final isLoading = false.obs;
   final isLoadingDetail = false.obs;
   final isSubmitting = false.obs;
-  final isEditMode = false.obs;
   final editingProductId = ''.obs;
   final isDirty = false.obs;
 
   // ===================== DATA =====================
   final productList = <ProductData>[].obs;
   final categoryList = <CategoryData>[].obs;
-
   final selectedProduct = Rxn<ProductData>();
 
   // ===================== PRODUCT PAGE STATE =====================
-
-  // Method untuk update search
-  void updateSearch(String value) {
-    searchText.value = value;
-  }
-
-  // Method untuk ganti tab
-  void changeTab(String tab) {
-    selectedTab.value = tab;
-  }
-
   final searchText = ''.obs;
   final selectedTab = 'Semua'.obs;
-  final List<String> tabs = ['Semua', 'Aktif', 'Non-Aktif'];
 
-  List<ProductData> get filteredProducts {
-    return productList.where((p) {
-      final matchSearch = p.name.toLowerCase().contains(
-        searchText.value.toLowerCase(),
-      );
-      final matchTab =
-          selectedTab.value == 'Semua' ||
-          (selectedTab.value == 'Aktif' && p.isActive == 1) ||
-          (selectedTab.value == 'Non-Aktif' && p.isActive == 0);
-      return matchSearch && matchTab;
-    }).toList();
+  final filteredProducts = <ProductData>[].obs;
+
+  void _applyFilter() {
+    filteredProducts.assignAll(
+      productList.where((p) {
+        final matchSearch = p.name.toLowerCase().contains(
+              searchText.value.toLowerCase(),
+            );
+        final matchTab =
+            selectedTab.value == 'Semua' || p.categoryName == selectedTab.value;
+        return matchSearch && matchTab;
+      }).toList(),
+    );
   }
+
+  void updateSearch(String value) {
+    searchText.value = value;
+    _applyFilter();
+  }
+
+  void changeTab(String tab) {
+    selectedTab.value = tab;
+    _applyFilter();
+  }
+
+  void resetPageState() {
+    searchText.value = '';
+    selectedTab.value = 'Semua';
+    _applyFilter();
+  }
+
+  List<String> get tabs => ['Semua', ...categoryList.map((c) => c.name)];
 
   // ===================== PRODUCT FORM =====================
   final nameC = TextEditingController();
@@ -85,7 +93,7 @@ class ProductController extends GetxController {
     try {
       await Future.wait([fetchProducts(), fetchCategories()]);
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat data awal');
+      AppToast.error('Gagal memuat data awal');
     } finally {
       isLoading.value = false;
     }
@@ -97,9 +105,17 @@ class ProductController extends GetxController {
     if (res.statusCode == 200) {
       productList.assignAll(productModelFromJson(res.body).data);
 
+      final needFetch = productList
+          .where((p) => imageC.getImagesForProduct(p.id).isEmpty)
+          .toList();
+
       await Future.wait(
-        productList.map((p) => imageC.fetchProductImages(p.id)),
+        needFetch.map((p) => imageC.fetchProductImages(p.id)),
       );
+
+      _applyFilter(); 
+    } else if (ApiHelper.isNetworkError(res)) {
+      AppToast.error(ApiHelper.parseError(res.body));
     }
   }
 
@@ -118,14 +134,11 @@ class ProductController extends GetxController {
   // ===================== FORM RESET =====================
   void resetForAddProduct() {
     isDirty.value = false;
-    isEditMode.value = false;
     editingProductId.value = '';
     selectedProduct.value = null;
 
     _clearProductForm();
-
     variantC.clearVariantForm();
-
     variantC.variantsTemp.clear();
     variantC.editVariantsTemp.clear();
     variantC.productVariants.clear();
@@ -170,47 +183,14 @@ class ProductController extends GetxController {
         }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat detail produk');
+      AppToast.error('Gagal memuat detail produk');
     } finally {
       isLoadingDetail.value = false;
     }
   }
 
-
-// ===================== TOGGLE ACTIVE =====================
-Future<void> toggleProductActive(ProductData product) async {
-  final isActive = product.isActive == 1;
-  final newStatus = !isActive;
-
-  try {
-    final res = await ProductService.updateProduct(
-      id: product.id,
-      name: product.name,
-      skuCode: product.skuCode,
-      description: product.description ?? '',
-      barcode: product.barcode ?? '',
-      categoryId: product.categoryId,
-      isActive: newStatus,
-    );
-
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      await fetchProducts();
-      Get.snackbar(
-        'Berhasil',
-        '"${product.name}" ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}',
-        backgroundColor: newStatus ? Colors.green : Colors.orange,
-        colorText: Colors.white,
-      );
-    } else {
-      Get.snackbar('Gagal', 'Gagal mengubah status produk');
-    }
-  } catch (e) {
-    Get.snackbar('Error', 'Terjadi kesalahan');
-  }
-}
   // ===================== LOAD EDIT DATA =====================
   Future<void> loadEditData(String productId) async {
-    // Reset dulu
     isDirty.value = false;
     selectedProduct.value = null;
     nameC.clear();
@@ -219,24 +199,21 @@ Future<void> toggleProductActive(ProductData product) async {
     barcodeC.clear();
     selectedCategoryId.value = '';
     variantC.editVariantsTemp.clear();
+    imageC.pendingEditImages.clear();
 
-    isEditMode.value = true;
     editingProductId.value = productId;
     isLoadingDetail.value = true;
 
     try {
-      // ← Semua fetch jalan BERSAMAAN
-      debugPrint('⏱ loadEditData start');
       await Future.wait([
         if (variantC.priceListMaster.isEmpty) variantC.fetchPriceLists(),
         if (variantC.unitList.isEmpty) variantC.fetchUnits(),
         loadProductDetail(productId),
         imageC.fetchProductImages(productId),
       ]);
-      debugPrint('⏱ Future.wait done');
-      // ← Ini tetap setelah loadProductDetail selesai
+
       await variantC.loadEditVariants();
-      debugPrint('⏱ loadEditVariants done');
+
       final p = selectedProduct.value;
       if (p != null) {
         nameC.text = p.name;
@@ -248,7 +225,7 @@ Future<void> toggleProductActive(ProductData product) async {
 
       variantC.initPriceControllers();
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat data produk');
+      AppToast.error('Gagal memuat data produk');
     } finally {
       isLoadingDetail.value = false;
     }
@@ -257,11 +234,11 @@ Future<void> toggleProductActive(ProductData product) async {
   // ===================== CREATE PRODUCT =====================
   Future<bool> createFullProduct() async {
     if (nameC.text.trim().isEmpty || skuC.text.trim().isEmpty) {
-      Get.snackbar('Validasi', 'Nama dan SKU Code harus diisi');
+      AppToast.warning('Nama dan SKU Code harus diisi');
       return false;
     }
     if (variantC.variantsTemp.isEmpty) {
-      Get.snackbar('Validasi', 'Minimal tambahkan 1 variant');
+      AppToast.warning('Minimal tambahkan 1 variant');
       return false;
     }
 
@@ -277,8 +254,13 @@ Future<void> toggleProductActive(ProductData product) async {
             : selectedCategoryId.value,
       );
 
+      if (ApiHelper.isNetworkError(productRes)) {
+        AppToast.error(ApiHelper.parseError(productRes.body));
+        return false;
+      }
+
       if (productRes.statusCode != 201) {
-        Get.snackbar('Gagal', 'Gagal membuat produk');
+        AppToast.error('Gagal membuat produk');
         return false;
       }
 
@@ -286,27 +268,27 @@ Future<void> toggleProductActive(ProductData product) async {
           json.decode(productRes.body)['data']['id']?.toString() ?? '';
 
       for (var v in variantC.variantsTemp) {
-        await variantC.createVariantWithPrices(
-          productId: newProductId,
-          variantData: v,
-        );
+        try {
+          await variantC.createVariantWithPrices(
+            productId: newProductId,
+            variantData: v,
+          );
+        } catch (e) {
+          debugPrint('Variant create failed: $e');
+        }
       }
 
-      // Upload semua gambar yang dipending
       await imageC.uploadPendingImages(newProductId);
 
-      await Future.wait([fetchProducts(), variantC.fetchPrices()]);
-      resetForAddProduct();
+      await variantC.fetchAllVariants();
+      await variantC.fetchPrices();
+      await fetchProducts(); 
 
-      Get.snackbar(
-        'Sukses',
-        'Produk berhasil ditambahkan',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      resetForAddProduct();
+      AppToast.success('Produk berhasil ditambahkan');
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan saat menyimpan');
+      AppToast.error('Terjadi kesalahan saat menyimpan');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -316,14 +298,13 @@ Future<void> toggleProductActive(ProductData product) async {
   // ===================== UPDATE PRODUCT =====================
   Future<void> updateFullProduct() async {
     if (editingProductId.value.isEmpty) {
-      Get.snackbar('Error', 'Product ID tidak ditemukan');
+      AppToast.error('Product ID tidak ditemukan');
       return;
     }
 
     isSubmitting.value = true;
 
     try {
-      // 1. Update produk utama
       final productRes = await ProductService.updateProduct(
         id: editingProductId.value,
         name: nameC.text.trim(),
@@ -335,17 +316,20 @@ Future<void> toggleProductActive(ProductData product) async {
             : selectedCategoryId.value,
       );
 
-      if (productRes.statusCode < 200 || productRes.statusCode >= 300) {
-        Get.snackbar('Error', 'Gagal update informasi produk');
+      if (ApiHelper.isNetworkError(productRes)) {
+        AppToast.error(ApiHelper.parseError(productRes.body));
         return;
       }
 
-      // 2. Update setiap variant
+      if (productRes.statusCode < 200 || productRes.statusCode >= 300) {
+        AppToast.error('Gagal update informasi produk');
+        return;
+      }
+
       for (var v in variantC.editVariantsTemp) {
         final variantId = v['id']?.toString() ?? '';
 
         if (variantId.isEmpty) {
-          // Variant baru ditambahkan saat edit
           await variantC.createVariantWithPrices(
             productId: editingProductId.value,
             variantData: v,
@@ -356,17 +340,14 @@ Future<void> toggleProductActive(ProductData product) async {
         await variantC.updateExistingVariant(v);
       }
 
-      Get.snackbar(
-        'Sukses',
-        'Produk berhasil diupdate',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      await imageC.uploadPendingEditImages(editingProductId.value);
+      await imageC.fetchProductImages(editingProductId.value);
 
-      await Future.wait([fetchProducts(), variantC.fetchPrices()]);
-      Get.back();
+      await variantC.fetchAllVariants();
+      await variantC.fetchPrices();
+      await fetchProducts(); 
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan saat menyimpan perubahan');
+      AppToast.error('Terjadi kesalahan saat menyimpan perubahan');
     } finally {
       isSubmitting.value = false;
     }
@@ -388,20 +369,14 @@ Future<void> toggleProductActive(ProductData product) async {
       final res = await ProductService.deleteProduct(productId);
 
       if (res.statusCode == 200 || res.statusCode == 204) {
-        Get.snackbar(
-          'Sukses',
-          'Produk "$productName" berhasil dihapus',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-        await fetchProducts();
+        AppToast.success('Produk "$productName" berhasil dihapus');
+        await fetchProducts(); 
         Get.back();
       } else {
-        final msg = _parseErrorMessage(res.body);
-        Get.snackbar('Gagal', msg);
+        AppToast.error(ApiHelper.parseError(res.body));
       }
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan saat menghapus produk');
+      AppToast.error('Terjadi kesalahan saat menghapus produk');
     } finally {
       isSubmitting.value = false;
     }
@@ -415,7 +390,7 @@ Future<void> toggleProductActive(ProductData product) async {
         return json.decode(res.body)['data']['id'];
       }
     } catch (e) {
-      Get.snackbar('Error', 'Gagal tambah category');
+      AppToast.error('Gagal tambah category');
     }
     return null;
   }
@@ -426,39 +401,13 @@ Future<void> toggleProductActive(ProductData product) async {
       if (res.statusCode == 200) {
         categoryList.removeWhere((c) => c.id == id);
         if (selectedCategoryId.value == id) selectedCategoryId.value = '';
-        Get.snackbar('Sukses', 'Category berhasil dihapus');
+        AppToast.success('Category berhasil dihapus');
       } else {
-        Get.snackbar('Gagal', _parseErrorMessage(res.body));
+        AppToast.error(ApiHelper.parseError(res.body));
       }
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan');
+      AppToast.error('Terjadi kesalahan');
     }
-  }
-
-  // Tambah di product_controller.dart
-  String getMainPriceForProduct(ProductData product) {
-    final prices = variantC.priceList;
-    if (prices.isEmpty) return '0';
-    final candidate = prices.firstWhereOrNull((price) {
-      final variantName = price.productVariantName.toLowerCase();
-      final productName = product.name.toLowerCase();
-      return variantName.contains(productName) ||
-          productName.contains(variantName.split(' ').first);
-    });
-    return candidate?.price ?? '0';
-  }
-
-  int getAdditionalPriceCountForProduct(ProductData product) {
-    final prices = variantC.priceList;
-    if (prices.isEmpty) return 0;
-    if (getMainPriceForProduct(product) == '0') return 0;
-    final count = prices.where((price) {
-      final variantName = price.productVariantName.toLowerCase();
-      final productName = product.name.toLowerCase();
-      return variantName.contains(productName) ||
-          productName.contains(variantName.split(' ').first);
-    }).length;
-    return count > 1 ? count - 1 : 0;
   }
 
   // ===================== PRIVATE UTILITIES =====================
@@ -466,36 +415,34 @@ Future<void> toggleProductActive(ProductData product) async {
     required String title,
     required String content,
   }) async {
-    final confirmed = false.obs;
-    await Get.dialog(
-      AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              confirmed.value = true;
-              Get.back();
-            },
-            child: const Text(
-              'Ya, Hapus',
-              style: TextStyle(color: Colors.white),
-            ),
+    return await Get.dialog<bool>(
+          AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Text(title,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w600)),
+            content: Text(content,
+                style: const TextStyle(fontSize: 13)),
+            actions: [
+              TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: const Text('Batal')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Get.back(result: true),
+                child: const Text('Ya, Hapus',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-    return confirmed.value;
+          barrierDismissible: false,
+        ) ??
+        false;
   }
 
-  String _parseErrorMessage(String body) {
-    try {
-      return json.decode(body)['message'] ?? 'Terjadi kesalahan';
-    } catch (_) {
-      return 'Terjadi kesalahan';
-    }
-  }
 }

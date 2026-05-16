@@ -5,7 +5,6 @@ import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_model.dart';
-import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class ProductCard extends StatelessWidget {
@@ -15,176 +14,276 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<ProductController>();
     final variantC = Get.find<ProductVariantController>();
     final imageC = Get.find<ProductImageController>();
 
-    // Hitung jumlah varian & total stok dari priceList
-    final relatedPrices = variantC.priceList.where((p) {
-      final variantName = p.productVariantName.toLowerCase();
-      final productName = product.name.toLowerCase();
-      return variantName.contains(productName) ||
-          productName.contains(variantName.split(' ').first);
-    });
+    return Obx(() {
+      final summary = variantC.getSummaryForProduct(product.id);
+      final variants = variantC.allVariants
+          .where((v) => v.productId == product.id)
+          .toList();
 
-    final variantIds = relatedPrices.map((p) => p.productVariantId).toSet();
-    final variantCount = variantIds.length;
-
-    return GestureDetector(
-      onTap: () => Get.toNamed(AppRoutes.detailProduct, arguments: product.id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100, width: 0.5),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Gambar ──
-            Obx(() {
-              final images = imageC.getImagesForProduct(product.id);
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: images.isEmpty
-                    ? Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey.shade100,
-                        child: Icon(Icons.image_outlined, color: Colors.grey.shade400, size: 24),
-                      )
-                    : Image.network(
-                        images.first.imageUrl,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80,
-                          height: 80,
-                          color: Colors.grey.shade100,
-                          child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 24),
-                        ),
-                      ),
-              );
-            }),
-
-            const SizedBox(width: 12),
-
-            // ── Info ──
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      return Opacity(
+        opacity: summary.isOutOfStock ? 0.45 : 1.0,
+        child: GestureDetector(
+          onTap: () =>
+              Get.toNamed(AppRoutes.detailProduct, arguments: product.id),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade100, width: 0.5),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Nama
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
+                  // ── Gambar — stretch ikutin tinggi konten ──
+                  _ProductImage(productId: product.id, imageC: imageC),
+                  const SizedBox(width: 12),
 
-                  // Kategori · varian
-                  Row(
-                    children: [
-                      Icon(Icons.category_outlined, size: 11, color: Colors.grey.shade400),
-                      const SizedBox(width: 3),
-                      Flexible(
-                        child: Text(
-                          product.categoryName,
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (variantCount > 0) ...[
-                        Text('  ·  ', style: TextStyle(color: Colors.grey.shade300, fontSize: 12)),
-                        Icon(Icons.layers_outlined, size: 11, color: Colors.grey.shade400),
-                        const SizedBox(width: 3),
-                        Text(
-                          '$variantCount varian',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Harga
-                  Obx(() {
-                    final price = controller.getMainPriceForProduct(product);
-                    final additional = controller.getAdditionalPriceCountForProduct(product);
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                  // ── Info ──
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          CurrencyFormatter.format(price),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
+                        // Nama + edit button
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    product.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => Get.toNamed(
+                                    AppRoutes.editProduct,
+                                    arguments: product.id,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 8),
+                                    child: Icon(
+                                      Icons.edit_outlined,
+                                      size: 16,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              product.categoryName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            // Harga
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  CurrencyFormatter.format(summary.mainPrice),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                if (summary.additionalPriceCount > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '+${summary.additionalPriceCount} harga lain',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
                         ),
-                        if (additional > 0) ...[
-                          const SizedBox(width: 6),
+
+                        // Badge varian + stok — di bawah, nempel ke gambar
+                        if (variants.isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 1),
-                            child: Text(
-                              '+$additional lainnya',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                _Badge(
+                                  icon: Icons.layers_outlined,
+                                  label: '${variants.length} varian',
+                                  type: _BadgeType.neutral,
+                                ),
+                                _StockBadge(stock: summary.totalStock),
+                              ],
                             ),
                           ),
-                        ],
                       ],
-                    );
-                  }),
+                    ),
+                  ),
                 ],
               ),
             ),
-
-            // ── Menu ──
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') {
-                  Get.toNamed(AppRoutes.editProduct, arguments: product.id);
-                } else if (value == 'delete') {
-                  controller.deleteProduct(product.id, product.name);
-                }
-              },
-              icon: Icon(Icons.more_vert_rounded, size: 18, color: Colors.grey.shade400),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 2,
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit_rounded, size: 16, color: Colors.grey.shade700),
-                      const SizedBox(width: 10),
-                      const Text('Edit', style: TextStyle(fontSize: 13)),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade400),
-                      const SizedBox(width: 10),
-                      Text('Hapus', style: TextStyle(fontSize: 13, color: Colors.red.shade400)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
+      );
+    });
+  }
+}
+
+// ── Internal widgets ──────────────────────────────────────────────────────────
+
+class _ProductImage extends StatelessWidget {
+  final String productId;
+  final ProductImageController imageC;
+
+  const _ProductImage({required this.productId, required this.imageC});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final images = imageC.getImagesForProduct(productId);
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: images.isEmpty
+            ? Container(
+                width: 90,
+                color: Colors.grey.shade100,
+                child: Icon(
+                  Icons.image_outlined,
+                  color: Colors.grey.shade400,
+                  size: 22,
+                ),
+              )
+            : Image.network(
+                images.first.imageUrl,
+                width: 90,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 80,
+                  color: Colors.grey.shade100,
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.grey.shade400,
+                    size: 22,
+                  ),
+                ),
+              ),
+      );
+    });
+  }
+}
+
+// ── Badge types ───────────────────────────────────────────────────────────────
+
+enum _BadgeType { neutral, success, warning, danger }
+
+class _Badge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final _BadgeType type;
+
+  const _Badge({
+    required this.icon,
+    required this.label,
+    required this.type,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+
+    switch (type) {
+      case _BadgeType.success:
+        bg = AppColors.successBg;
+        fg = AppColors.success;
+        break;
+      case _BadgeType.warning:
+        bg = AppColors.warningBg;
+        fg = AppColors.warning;
+        break;
+      case _BadgeType.danger:
+        bg = AppColors.dangerBg;
+        fg = AppColors.danger;
+        break;
+      case _BadgeType.neutral:
+        bg = Colors.grey.shade100;
+        fg = Colors.grey.shade600;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: fg),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: fg,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StockBadge extends StatelessWidget {
+  final int stock;
+
+  const _StockBadge({required this.stock});
+
+  @override
+  Widget build(BuildContext context) {
+    if (stock == 0) {
+      return const _Badge(
+        icon: Icons.error_outline_rounded,
+        label: 'Stok habis',
+        type: _BadgeType.danger,
+      );
+    }
+    if (stock <= 10) {
+      return _Badge(
+        icon: Icons.warning_amber_rounded,
+        label: '$stock stok',
+        type: _BadgeType.warning,
+      );
+    }
+    return _Badge(
+      icon: Icons.inventory_2_outlined,
+      label: '$stock stok',
+      type: _BadgeType.success,
     );
   }
 }

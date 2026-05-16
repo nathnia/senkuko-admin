@@ -1,16 +1,33 @@
+// lib/features/products/controllers/product_variant_controller.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/models/product_price_model.dart';
 import 'package:senkukoadmin/features/products/models/product_pricelist_model.dart';
 import 'package:senkukoadmin/features/products/models/product_variant_model.dart';
 import 'package:senkukoadmin/features/products/models/unit_model.dart';
 import 'package:senkukoadmin/features/products/product_service.dart';
 
-class ProductVariantController extends GetxController {
-  // ===================== STATE =====================
-  final isLoadingVariants = false.obs;
+// ── Product summary — dipakai ProductCard ────────────────────────────────────
 
+class ProductSummary {
+  final int totalStock;
+  final bool isOutOfStock;
+  final String mainPrice;
+  final int additionalPriceCount;
+
+  const ProductSummary({
+    required this.totalStock,
+    required this.isOutOfStock,
+    required this.mainPrice,
+    required this.additionalPriceCount,
+  });
+}
+
+class ProductVariantController extends GetxController {
   // ===================== DATA =====================
   final unitList = <UnitData>[].obs;
   final priceList = <PriceData>[].obs;
@@ -18,6 +35,7 @@ class ProductVariantController extends GetxController {
   final productVariants = <VariantData>[].obs;
   final editVariantsTemp = <Map<String, dynamic>>[].obs;
   final variantsTemp = <Map<String, dynamic>>[].obs;
+  final allVariants = <VariantData>[].obs;
 
   // ===================== ADD VARIANT FORM =====================
   final variantNameC = TextEditingController();
@@ -26,16 +44,10 @@ class ProductVariantController extends GetxController {
   final selectedUnitId = ''.obs;
   final Map<String, TextEditingController> priceControllers = {};
 
-  // ===================== EDIT VARIANT DIALOG STATE =====================
-  // Semua state ini di-observe oleh EditVariantDialog (view)
-  // Tidak ada StatefulBuilder, tidak ada Get.dialog di sini
+  // ===================== EDIT VARIANT STATE =====================
   final dialogUnitId = ''.obs;
-
-  // key: price_list_id → {enabled: bool, price: String}
   final dialogPrices = <String, Map<String, dynamic>>{}.obs;
-  // key: price_list_id → {enabled: bool}
   final formPrices = <String, Map<String, dynamic>>{}.obs;
-
   final dialogNameC = TextEditingController();
   final dialogStockC = TextEditingController();
   final dialogBarcodeC = TextEditingController();
@@ -50,34 +62,29 @@ class ProductVariantController extends GetxController {
 
   @override
   void onClose() {
-    // Add variant form
     variantNameC.dispose();
     variantStockC.dispose();
     variantBarcodeC.dispose();
-    for (var c in priceControllers.values) {
-      c.dispose();
-    }
-
-    // Edit dialog
     dialogNameC.dispose();
     dialogStockC.dispose();
     dialogBarcodeC.dispose();
-    for (var c in dialogPriceC.values) {
+    for (var c in [...priceControllers.values, ...dialogPriceC.values]) {
       c.dispose();
     }
-
     super.onClose();
   }
 
   // ===================== INIT =====================
   Future<void> _loadInitialData() async {
-    isLoadingVariants.value = true;
     try {
-      await Future.wait([fetchUnits(), fetchPrices(), fetchPriceLists()]);
+      await Future.wait([
+        fetchUnits(),
+        fetchPrices(),
+        fetchPriceLists(),
+        fetchAllVariants(),
+      ]);
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat data variant');
-    } finally {
-      isLoadingVariants.value = false;
+      AppToast.error('Gagal memuat data variant');
     }
   }
 
@@ -108,50 +115,61 @@ class ProductVariantController extends GetxController {
     }
   }
 
-  Future<void> loadEditVariants() async {
-    editVariantsTemp.clear();
-
-    for (var v in productVariants) {
-      // ← Tidak perlu fetch! Pakai data yang sudah ada
-      final prices = priceList
-          .where((p) => p.productVariantId == v.id)
-          .map(
-            (p) => {
-              'id': p.id,
-              'price_list_id': p.priceListId,
-              'price': p.price,
-            },
-          )
-          .toList();
-
-      editVariantsTemp.add({
-        'id': v.id,
-        'name': v.name,
-        'stock_qty': v.stockQty,
-        'barcode': v.barcode ?? '',
-        'unit_id': resolveUnitId(v),
-        'unit_name': v.unitName ?? '',
-        'is_base_unit': v.isBaseUnit == 1,
-        'conversion_factor':
-            double.tryParse(v.conversionFactor.toString()) ?? 1.0,
-        'prices': prices,
-      });
+  Future<void> fetchAllVariants() async {
+    final res = await ProductService.getAllVariants();
+    if (res.statusCode == 200) {
+      final jsonData = json.decode(res.body);
+      allVariants.assignAll(
+        (jsonData['data'] as List? ?? [])
+            .map((e) => VariantData.fromJson(e))
+            .toList(),
+      );
     }
+  }
 
-    editVariantsTemp.refresh();
+  Future<void> loadEditVariants() async {
+    editVariantsTemp.assignAll(
+      productVariants.map((v) {
+        final prices = priceList
+            .where((p) => p.productVariantId == v.id)
+            .map(
+              (p) => {
+                'id': p.id,
+                'price_list_id': p.priceListId,
+                'price': p.price,
+              },
+            )
+            .toList();
+
+        return {
+          'id': v.id,
+          'name': v.name,
+          'stock_qty': v.stockQty,
+          'barcode': v.barcode ?? '',
+          'unit_id': resolveUnitId(v),
+          'unit_name': v.unitName ?? '',
+          'is_base_unit': v.isBaseUnit == 1,
+          'prices': prices,
+        };
+      }).toList(),
+    );
+
     initPriceControllers();
   }
 
-  void resetVariants() {
-    variantsTemp.clear();
-    editVariantsTemp.clear();
-    productVariants.clear();
-    clearVariantForm();
+  // ===================== PRICE LIST SORTED =====================
+  // 'normal' selalu paling atas, sisanya urutan asli dari API
+  List<PricelistData> get sortedPriceListMaster {
+    return [...priceListMaster]..sort((a, b) {
+      if (a.code.toLowerCase() == 'normal') return -1;
+      if (b.code.toLowerCase() == 'normal') return 1;
+      return 0;
+    });
   }
 
   // ===================== ADD VARIANT FORM =====================
   void initPriceControllers() {
-    for (var p in priceListMaster) {
+    for (var p in sortedPriceListMaster) {
       priceControllers.putIfAbsent(p.id, () => TextEditingController());
       formPrices.putIfAbsent(p.id, () => {'enabled': false});
     }
@@ -176,7 +194,7 @@ class ProductVariantController extends GetxController {
     if (variantNameC.text.isEmpty ||
         stock == null ||
         selectedUnitId.value.isEmpty) {
-      Get.snackbar('Error', 'Lengkapi data variant');
+      AppToast.error('Lengkapi data variant');
       return;
     }
 
@@ -185,7 +203,7 @@ class ProductVariantController extends GetxController {
 
     priceControllers.forEach((id, c) {
       final enabled = formPrices[id]?['enabled'] as bool? ?? false;
-      final price = double.tryParse(c.text.replaceAll('.', '')); // strip titik
+      final price = double.tryParse(c.text.replaceAll('.', ''));
       if (enabled && price != null && price > 0) {
         prices.add({'price_list_id': id, 'price': price});
       }
@@ -219,35 +237,38 @@ class ProductVariantController extends GetxController {
     if (index >= 0 && index < list.length) list.removeAt(index);
   }
 
-  // ===================== EDIT VARIANT DIALOG STATE =====================
-  // Dipanggil dari view SEBELUM Get.dialog(EditVariantDialog())
-  void prepareEditVariantDialog(int index) {
+  // ===================== EDIT VARIANT =====================
+  void prepareEditVariant(int index) {
     if (index < 0 || index >= editVariantsTemp.length) return;
 
     final v = editVariantsTemp[index];
-
     dialogNameC.text = v['name']?.toString() ?? '';
     dialogStockC.text = v['stock_qty']?.toString() ?? '0';
     dialogBarcodeC.text = v['barcode']?.toString() ?? '';
     dialogUnitId.value = v['unit_id']?.toString() ?? '';
 
-    // Dispose & rebuild dialog price controllers
     for (var c in dialogPriceC.values) {
       c.dispose();
     }
     dialogPriceC.clear();
     dialogPrices.clear();
 
-    for (var pl in priceListMaster) {
+    for (var pl in sortedPriceListMaster) {
       final existing = (v['prices'] as List?)?.firstWhereOrNull(
         (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
       );
+
       dialogPrices[pl.id] = {
         'enabled': existing != null,
         'price': existing?['price']?.toString() ?? '',
       };
+
       dialogPriceC[pl.id] = TextEditingController(
-        text: existing?['price']?.toString() ?? '',
+        text: existing != null
+            ? CurrencyFormatter.format(
+                existing['price']?.toString() ?? '0',
+              ).replaceAll('Rp', '').replaceAll(' ', '').trim()
+            : '',
       );
     }
     dialogPrices.refresh();
@@ -259,6 +280,7 @@ class ProductVariantController extends GetxController {
 
     final current = prices[priceListId];
     if (current == null) return;
+
     final nowEnabled = !(current['enabled'] as bool);
     prices[priceListId] = {
       'enabled': nowEnabled,
@@ -268,41 +290,32 @@ class ProductVariantController extends GetxController {
     prices.refresh();
   }
 
-  // // Dipanggil dari view saat toggle checkbox/icon harga
-  // void toggleDialogPrice(String priceListId) {
-  //   final current = dialogPrices[priceListId];
-  //   if (current == null) return;
-  //   final nowEnabled = !(current['enabled'] as bool);
-  //   dialogPrices[priceListId] = {
-  //     'enabled': nowEnabled,
-  //     'price': current['price'],
-  //   };
-  //   if (!nowEnabled) dialogPriceC[priceListId]?.clear();
-  //   dialogPrices.refresh();
-  // }
-
-  // Dipanggil dari view saat user tekan Simpan di dialog
-  void saveEditVariantDialog(int index) {
+  void saveEditVariant(int index) {
     if (index < 0 || index >= editVariantsTemp.length) return;
 
-    final newPrices = <Map<String, dynamic>>[];
-    for (var pl in priceListMaster) {
-      final entry = dialogPrices[pl.id];
-      final enabled = entry?['enabled'] as bool? ?? false;
-      final val = (dialogPriceC[pl.id]?.text.trim() ?? '').replaceAll('.', '');
-      if (!enabled || val.isEmpty) continue;
+    final newPrices = sortedPriceListMaster.fold<List<Map<String, dynamic>>>(
+      [],
+      (list, pl) {
+        final entry = dialogPrices[pl.id];
+        final enabled = entry?['enabled'] as bool? ?? false;
+        final val = (dialogPriceC[pl.id]?.text.trim() ?? '').replaceAll(
+          '.',
+          '',
+        );
+        if (!enabled || val.isEmpty) return list;
 
-      final oldPrice = (editVariantsTemp[index]['prices'] as List?)
-          ?.firstWhereOrNull(
-            (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
-          );
+        final oldPrice = (editVariantsTemp[index]['prices'] as List?)
+            ?.firstWhereOrNull(
+              (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
+            );
 
-      newPrices.add({
-        'id': oldPrice?['id'] ?? '',
-        'price_list_id': pl.id,
-        'price': val,
-      });
-    }
+        return list..add({
+          'id': oldPrice?['id'] ?? '',
+          'price_list_id': pl.id,
+          'price': val,
+        });
+      },
+    );
 
     editVariantsTemp[index] = {
       ...editVariantsTemp[index],
@@ -320,12 +333,7 @@ class ProductVariantController extends GetxController {
 
     editVariantsTemp.refresh();
     Get.back();
-    Get.snackbar(
-      'Tersimpan',
-      'Klik Simpan Perubahan untuk menyimpan ke server',
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-    );
+    AppToast.info('Varian diubah. Tekan Simpan.');
   }
 
   // ===================== CRUD =====================
@@ -342,23 +350,25 @@ class ProductVariantController extends GetxController {
       isBaseUnit: variantData['is_base_unit'] as bool? ?? false,
     );
 
-    if (res.statusCode != 201) {
-      return;
-    }
+    if (res.statusCode != 201) return;
 
     final newVariantId = json.decode(res.body)['data']['id']?.toString() ?? '';
 
-    for (var p in (variantData['prices'] as List? ?? [])) {
-      final plId = p['price_list_id']?.toString() ?? '';
-      final price = double.tryParse(p['price']?.toString() ?? '0') ?? 0;
-      if (plId.isNotEmpty && price > 0) {
-        await ProductService.createPrice(
-          variantId: newVariantId,
-          priceListId: plId,
-          price: price,
-        );
-      }
-    }
+    await Future.wait(
+      (variantData['prices'] as List? ?? [])
+          .where((p) {
+            final plId = p['price_list_id']?.toString() ?? '';
+            final price = double.tryParse(p['price']?.toString() ?? '0') ?? 0;
+            return plId.isNotEmpty && price > 0;
+          })
+          .map(
+            (p) => ProductService.createPrice(
+              variantId: newVariantId,
+              priceListId: p['price_list_id'].toString(),
+              price: double.parse(p['price'].toString()),
+            ),
+          ),
+    );
   }
 
   Future<void> updateExistingVariant(Map<String, dynamic> v) async {
@@ -367,9 +377,7 @@ class ProductVariantController extends GetxController {
     final barcode = v['barcode']?.toString().trim() ?? '';
     final isBaseUnit = v['is_base_unit'] as bool? ?? false;
 
-    if (unitId.isEmpty) {
-      return;
-    }
+    if (unitId.isEmpty) return;
 
     final res = await ProductService.updateVariant(
       id: variantId,
@@ -380,9 +388,7 @@ class ProductVariantController extends GetxController {
       isBaseUnit: isBaseUnit,
     );
 
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      return;
-    }
+    if (res.statusCode < 200 || res.statusCode >= 300) return;
 
     await _syncPrices(
       variantId: variantId,
@@ -447,7 +453,6 @@ class ProductVariantController extends GetxController {
         final existingId = existing['id']?.toString() ?? '';
         final oldValue =
             double.tryParse(existing['price']?.toString() ?? '0') ?? 0;
-
         if (existingId.isNotEmpty && oldValue != newValue) {
           await ProductService.updatePrice(
             priceId: existingId,
@@ -456,69 +461,87 @@ class ProductVariantController extends GetxController {
           );
         }
       } else {
-        final createRes = await ProductService.createPrice(
+        await ProductService.createPrice(
           variantId: variantId,
           priceListId: plId,
           price: newValue,
         );
-        debugPrint(
-          createRes.statusCode == 201
-              ? '   ✅ Create harga baru $plId: $newValue'
-              : '   ❌ Gagal create harga $plId: ${createRes.body}',
-        );
       }
     }
 
+    if (existingPrices.length <= 1) return;
     for (var ep in existingPrices) {
       final plId = ep['price_list_id']?.toString() ?? '';
       final priceId = ep['id']?.toString() ?? '';
       if (newPriceListIds.contains(plId) || priceId.isEmpty) continue;
-      if (existingPrices.length == 1) {
-        continue;
-      }
-      final deleteRes = await ProductService.deletePrice(priceId);
-      debugPrint(
-        deleteRes.statusCode == 200
-            ? '   🗑 Hapus harga $plId ($priceId)'
-            : '   ❌ Gagal hapus $priceId: ${deleteRes.body}',
-      );
+      await ProductService.deletePrice(priceId);
     }
   }
 
-  // void toggleFormPrice(String priceListId) {
-  //   final current = formPrices[priceListId];
-  //   if (current == null) return;
-  //   final nowEnabled = !(current['enabled'] as bool);
-  //   formPrices[priceListId] = {'enabled': nowEnabled};
-  //   if (!nowEnabled) priceControllers[priceListId]?.clear();
-  //   formPrices.refresh();
-  // }
+  // ===================== PRODUCT SUMMARY =====================
+  ProductSummary getSummaryForProduct(String productId) {
+    final variants = allVariants
+        .where((v) => v.productId == productId)
+        .toList();
+
+    final totalStock = variants.fold<int>(0, (s, v) => s + v.stockQty);
+    final isOutOfStock = variants.isNotEmpty && totalStock == 0;
+
+    final variantIds = variants.map((v) => v.id).toSet();
+    final productPrices = priceList
+        .where((p) => variantIds.contains(p.productVariantId))
+        .toList();
+
+    final normalPriceListId = priceListMaster
+        .firstWhereOrNull((pl) => pl.code.toLowerCase() == 'normal')
+        ?.id;
+
+    final mainPrice = productPrices.isEmpty
+        ? '0'
+        : ((normalPriceListId != null
+                      ? productPrices.firstWhereOrNull(
+                          (p) => p.priceListId == normalPriceListId,
+                        )
+                      : null) ??
+                  productPrices.first)
+              .price;
+
+    final additionalPriceCount = productPrices.length > 1
+        ? productPrices.length - 1
+        : 0;
+
+    return ProductSummary(
+      totalStock: totalStock,
+      isOutOfStock: isOutOfStock,
+      mainPrice: mainPrice,
+      additionalPriceCount: additionalPriceCount,
+    );
+  }
 
   // ===================== PRICE DISPLAY HELPERS =====================
-  List<PriceData> getPricesByVariant(String variantId) {
-    return priceList.where((e) => e.productVariantId == variantId).toList();
-  }
+  List<PriceData> getPricesByVariant(String variantId) =>
+      priceList.where((e) => e.productVariantId == variantId).toList();
 
   // ===================== UNIT HELPERS =====================
   Future<String?> createUnit(String name, String symbol) async {
     if (name.isEmpty || symbol.isEmpty) {
-      Get.snackbar('Error', 'Nama & symbol wajib');
+      AppToast.error('Nama & symbol wajib');
       return null;
     }
     if (unitList.any((u) => u.symbol == symbol)) {
-      Get.snackbar('Error', 'Symbol sudah ada');
+      AppToast.error('Symbol sudah ada');
       return null;
     }
     try {
       final res = await ProductService.createUnit(name: name, symbol: symbol);
       if (res.statusCode == 201) {
         await fetchUnits();
-        Get.snackbar('Sukses', 'Unit ditambahkan');
+        AppToast.success('Unit ditambahkan');
         return json.decode(res.body)['data']['id'];
       }
-      Get.snackbar('Error', 'Gagal tambah unit');
+      AppToast.error('Gagal tambah unit');
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan');
+      AppToast.error('Terjadi kesalahan');
     }
     return null;
   }
@@ -527,13 +550,13 @@ class ProductVariantController extends GetxController {
     try {
       final res = await ProductService.deleteUnit(id);
       if (res.statusCode == 200) {
-        Get.snackbar('Sukses', 'Unit berhasil dihapus');
+        AppToast.success('Unit berhasil dihapus');
         await fetchUnits();
       } else {
-        Get.snackbar('Gagal', _parseErrorMessage(res.body));
+        AppToast.error(ApiHelper.parseError(res.body));
       }
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan');
+      AppToast.error('Terjadi kesalahan');
     }
   }
 
@@ -547,15 +570,61 @@ class ProductVariantController extends GetxController {
       );
       if (match != null) return match.id;
     }
-    if (unitList.isNotEmpty) return unitList.first.id;
-    return '';
+    return unitList.isNotEmpty ? unitList.first.id : '';
   }
 
-  String _parseErrorMessage(String body) {
-    try {
-      return json.decode(body)['message'] ?? 'Terjadi kesalahan';
-    } catch (_) {
-      return 'Terjadi kesalahan';
-    }
+  // ===================== DETAIL HELPERS =====================
+  List<Map<String, dynamic>> get detailVariantMaps {
+    return productVariants.map((v) {
+      final prices = getPricesByVariant(
+        v.id,
+      ).map((p) => {'price_list_id': p.priceListId, 'price': p.price}).toList();
+
+      return {
+        'id': v.id,
+        'name': v.name,
+        'stock_qty': v.stockQty,
+        'unit_name': v.unitSymbol ?? v.unitName ?? '',
+        'barcode': v.barcode ?? '',
+        'prices': prices,
+      };
+    }).toList();
+  }
+
+  // Di dalam class ProductVariantController
+
+  /// Helper untuk mendapatkan daftar harga yang sudah rapi + nama price list
+  List<Map<String, dynamic>> getFormattedPrices(Map<String, dynamic> variant) {
+    final prices = variant['prices'] as List? ?? [];
+
+    return prices.map((p) {
+      final priceListId = p['price_list_id']?.toString() ?? '';
+
+      final priceList = sortedPriceListMaster.firstWhereOrNull(
+        (pl) => pl.id == priceListId,
+      );
+
+      return {
+        'price_list_id': priceListId,
+        'price_list_name': priceList?.name ?? 'Unknown',
+        'price': p['price']?.toString() ?? '0',
+        'price_raw': p['price'], // kalau butuh number
+      };
+    }).toList();
+  }
+
+  /// Optional: Kalau mau urutkan sesuai sortedPriceListMaster
+  List<Map<String, dynamic>> getFormattedPricesSorted(
+    Map<String, dynamic> variant,
+  ) {
+    final rawPrices = getFormattedPrices(variant);
+
+    // Buat map untuk lookup cepat
+    final priceMap = {for (var p in rawPrices) p['price_list_id']: p};
+
+    return sortedPriceListMaster
+        .where((pl) => priceMap.containsKey(pl.id))
+        .map((pl) => priceMap[pl.id]!)
+        .toList();
   }
 }

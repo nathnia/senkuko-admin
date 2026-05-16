@@ -5,31 +5,29 @@ import 'package:senkukoadmin/features/customers/customer_model.dart';
 
 class CustomerCard extends StatelessWidget {
   final CustomerData customer;
-  final VoidCallback? onTap;
-  final VoidCallback? onDelete;
+  final VoidCallback? onToggleStatus;
 
   const CustomerCard({
     super.key,
     required this.customer,
-    this.onTap,
-    this.onDelete,
+    this.onToggleStatus,
   });
 
-  _MemberStyle _memberStyle(String type) {
+  _MemberStyle _memberStyle(MemberType type) {
     switch (type) {
-      case 'vip':
+      case MemberType.vip:
         return _MemberStyle(
           color: AppColors.secondary,
           label: 'VIP',
           icon: Icons.workspace_premium_rounded,
         );
-      case 'member':
+      case MemberType.member:
         return _MemberStyle(
           color: AppColors.primary,
           label: 'MEMBER',
           icon: Icons.card_membership_rounded,
         );
-      default:
+      case MemberType.regular:
         return _MemberStyle(
           color: const Color(0xFF9E9E9E),
           label: 'REGULAR',
@@ -41,120 +39,116 @@ class CustomerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = _memberStyle(customer.memberType);
+    // ← pakai getter isActive, tidak compare string lagi
+    final isActive = customer.isActive;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.grey.shade100, width: 1),
-      ),
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            // AVATAR
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: style.color.withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                customer.name.isNotEmpty
-                    ? customer.name[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: style.color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
+    return Opacity(
+      opacity: isActive ? 1.0 : 0.5,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade100, width: 1),
+        ),
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              // AVATAR
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: style.color.withAlpha(isActive ? 20 : 10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  customer.name.isNotEmpty
+                      ? customer.name[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    color: style.color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                  ),
                 ),
               ),
-            ),
-      
-            const SizedBox(width: 10),
-      
-            // INFO
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+
+              const SizedBox(width: 10),
+
+              // INFO
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            customer.name,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        _Badge(style: style),
+                      ],
+                    ),
+
+                    const SizedBox(height: 3),
+                    _SubInfo(customer: customer),
+                    const SizedBox(height: 2),
+
+                    Text(
+                      // ← totalSpend sudah double, langsung format
+                      CurrencyFormatter.format(customer.totalSpend),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: style.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // TOGGLE
+              Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Name + Badge inline
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          customer.name,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      _Badge(style: style),
-                    ],
+                  Transform.scale(
+                    scale: 0.8,
+                    child: Switch.adaptive(
+                      value: isActive,
+                      onChanged: (_) => onToggleStatus?.call(),
+                      activeColor: Colors.white,
+                      activeTrackColor: Colors.green.shade400,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: Colors.grey.shade300,
+                    ),
                   ),
-      
-                  const SizedBox(height: 3),
-      
-                  // Phone / email in one line, separated by dot
-                  _SubInfo(customer: customer),
-      
-                  const SizedBox(height: 2),
-      
-                  // Total belanja
                   Text(
-                   CurrencyFormatter.format(customer.totalSpend),
+                    isActive ? 'Aktif' : 'Nonaktif',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: style.color,
+                      color: isActive
+                          ? Colors.green.shade500
+                          : Colors.grey.shade400,
                     ),
                   ),
                 ],
               ),
-            ),
-      
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') onTap?.call();
-                if (value == 'delete') onDelete?.call();
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 16),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 16, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Hapus', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
-                ),
-              ],
-              icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -165,11 +159,8 @@ class _MemberStyle {
   final Color color;
   final String label;
   final IconData icon;
-  const _MemberStyle({
-    required this.color,
-    required this.label,
-    required this.icon,
-  });
+  const _MemberStyle(
+      {required this.color, required this.label, required this.icon});
 }
 
 class _Badge extends StatelessWidget {

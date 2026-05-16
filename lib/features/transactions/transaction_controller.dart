@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_model.dart';
 import 'package:senkukoadmin/features/transactions/transaction_service.dart';
 
@@ -9,10 +12,17 @@ class TransactionController extends GetxController {
   final isLoadingDetail = false.obs;
   final transactionList = <TransactionData>[].obs;
   final selectedTransaction = Rxn<Map<String, dynamic>>();
-  final searchText = ''.obs;
-  final selectedFilter = 'Semua'.obs;
 
-  final List<String> filters = ['Semua', 'Tunai', 'Transfer', 'QRIS'];
+  final searchText = ''.obs;
+  final selectedDateRange = Rxn<DateTimeRange>();
+  final selectedQuickDate = 'Semua'.obs;
+
+  final List<String> quickDateFilters = [
+    'Semua',
+    '7 Hari',
+    '30 Hari',
+    'Custom',
+  ];
 
   @override
   void onInit() {
@@ -21,25 +31,97 @@ class TransactionController extends GetxController {
   }
 
   // ===================== FILTER =====================
+
   List<TransactionData> get filteredTransactions {
+    final now = DateTime.now();
     return transactionList.where((t) {
       final matchSearch =
-          t.invoiceNumber.toLowerCase().contains(searchText.value.toLowerCase()) ||
-          (t.customerName?.toLowerCase().contains(searchText.value.toLowerCase()) ?? false);
+          t.invoiceNumber.toLowerCase().contains(
+            searchText.value.toLowerCase(),
+          ) ||
+          (t.customerName?.toLowerCase().contains(
+                searchText.value.toLowerCase(),
+              ) ??
+              false);
 
-      final matchFilter = selectedFilter.value == 'Semua' ||
-          (selectedFilter.value == 'Tunai' && t.paymentMethod == 'cash') ||
-          (selectedFilter.value == 'Transfer' && t.paymentMethod == 'transfer') ||
-          (selectedFilter.value == 'QRIS' && t.paymentMethod == 'qris');
+      bool matchDate = true;
+      if (selectedQuickDate.value == '7 Hari') {
+        matchDate = t.transactedAt.isAfter(
+          now.subtract(const Duration(days: 7)),
+        );
+      } else if (selectedQuickDate.value == '30 Hari') {
+        matchDate = t.transactedAt.isAfter(
+          now.subtract(const Duration(days: 30)),
+        );
+      } else if (selectedQuickDate.value == 'Custom') {
+        final range = selectedDateRange.value;
+        if (range != null) {
+          final end = DateTime(
+            range.end.year,
+            range.end.month,
+            range.end.day,
+            23,
+            59,
+            59,
+          );
+          matchDate =
+              t.transactedAt.isAfter(range.start) &&
+              t.transactedAt.isBefore(end);
+        }
+      }
 
-      return matchSearch && matchFilter;
+      return matchSearch && matchDate;
     }).toList();
   }
 
   void updateSearch(String value) => searchText.value = value;
-  void updateFilter(String value) => selectedFilter.value = value;
+
+  void updateQuickDate(String value) {
+    selectedQuickDate.value = value;
+    if (value != 'Custom') selectedDateRange.value = null;
+  }
+
+  Future<void> pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      initialDateRange:
+          selectedDateRange.value ??
+          DateTimeRange(
+              start: now.subtract(const Duration(days: 7)), end: now),
+      builder: (context, child) => Theme(
+        data: ThemeData(
+          colorScheme: ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+            primaryContainer: AppColors.primary.withAlpha(40),
+            onPrimaryContainer: AppColors.primary,
+            surface: AppColors.background,
+            onSurface: const Color.fromARGB(255, 26, 46, 28),
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
+          dialogTheme: DialogThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null) {
+      selectedDateRange.value = picked;
+      selectedQuickDate.value = 'Custom';
+    }
+  }
 
   // ===================== FETCH =====================
+
   Future<void> fetchTransactions() async {
     isLoading.value = true;
     try {
@@ -49,7 +131,7 @@ class TransactionController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error fetchTransactions: $e');
-      Get.snackbar('Error', 'Gagal memuat data transaksi');
+      AppToast.error('Gagal memuat data transaksi');
     } finally {
       isLoading.value = false;
     }
@@ -61,26 +143,21 @@ class TransactionController extends GetxController {
     try {
       final res = await TransactionService.getTransactionById(id);
       if (res.statusCode == 200) {
-        final jsonData = json.decode(res.body);
-        selectedTransaction.value = jsonData['data'];
+        selectedTransaction.value = json.decode(res.body)['data'];
       }
     } catch (e) {
       debugPrint('Error fetchTransactionById: $e');
-      Get.snackbar('Error', 'Gagal memuat detail transaksi');
+      AppToast.error('Gagal memuat detail transaksi');
     } finally {
       isLoadingDetail.value = false;
     }
   }
 
   // ===================== SUMMARY =====================
-  double get totalRevenue {
-    return transactionList.fold(
-      0,
-      (sum, t) => sum + (double.tryParse(t.grandTotal) ?? 0),
-    );
-  }
 
-  String get formattedTotalRevenue {
-    return 'Rp ${totalRevenue.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
-  }
+  // grandTotal sudah double — tidak perlu tryParse lagi
+  double get totalRevenue =>
+      filteredTransactions.fold(0, (sum, t) => sum + t.grandTotal);
+
+  String get formattedTotalRevenue => CurrencyFormatter.format(totalRevenue);
 }

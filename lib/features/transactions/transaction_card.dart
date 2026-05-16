@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_model.dart';
 
 class TransactionCard extends StatelessWidget {
@@ -12,42 +13,10 @@ class TransactionCard extends StatelessWidget {
     required this.onTap,
   });
 
-  Color _methodColor(String method) {
-    switch (method) {
-      case 'cash':
-        return const Color(0xFF2DC98E);
-      case 'transfer':
-        return const Color(0xFF4F7EFF);
-      case 'qris':
-        return const Color(0xFF9B6DFF);
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _methodBg(String method) {
-    switch (method) {
-      case 'cash':
-        return const Color(0xFFE8FAF3);
-      case 'transfer':
-        return const Color(0xFFEEF3FF);
-      case 'qris':
-        return const Color(0xFFF3EEFF);
-      default:
-        return Colors.grey.shade100;
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-    ];
-    return '${date.day} ${months[date.month]} ${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
+    final style = transaction.paymentStyle;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -60,27 +29,19 @@ class TransactionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Icon
+            // ICON
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: _methodBg(transaction.paymentMethod),
+                color: style.background,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                transaction.paymentMethod == 'cash'
-                    ? Icons.payments_outlined
-                    : transaction.paymentMethod == 'transfer'
-                        ? Icons.account_balance_outlined
-                        : Icons.qr_code_outlined,
-                color: _methodColor(transaction.paymentMethod),
-                size: 18,
-              ),
+              child: Icon(style.icon, color: style.color, size: 18),
             ),
             const SizedBox(width: 12),
 
-            // Info
+            // INFO
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,14 +66,14 @@ class TransactionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    _formatDate(transaction.transactedAt),
+                    DateFormatter.formatDateTime(transaction.transactedAt),
                     style: const TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                 ],
               ),
             ),
 
-            // Amount + method
+            // AMOUNT + BADGE
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -126,23 +87,23 @@ class TransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _methodBg(transaction.paymentMethod),
+                    color: style.background,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    transaction.paymentMethodLabel,
+                    style.label, 
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: _methodColor(transaction.paymentMethod),
+                      color: style.color,
                     ),
                   ),
                 ),
               ],
             ),
-
             const SizedBox(width: 6),
             Icon(Icons.chevron_right, size: 16, color: Colors.grey.shade400),
           ],
