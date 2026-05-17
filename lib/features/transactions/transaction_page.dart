@@ -163,7 +163,9 @@ class TransactionPage extends StatelessWidget {
 
       return RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: controller.fetchTransactions,
+        onRefresh: () async {
+          await controller.fetchTransactions();
+        },
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           itemCount: list.length,

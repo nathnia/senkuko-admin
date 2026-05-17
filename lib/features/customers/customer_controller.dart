@@ -112,7 +112,6 @@ class CustomerController extends GetxController {
         customerList.assignAll(customerModelFromJson(res.body).data);
       }
     } catch (e) {
-      debugPrint('Error fetchCustomers: $e');
       AppToast.error('Gagal memuat data pelanggan');
     } finally {
       isLoading.value = false;
@@ -154,7 +153,6 @@ class CustomerController extends GetxController {
           ? Colors.green
           : Colors.orange,
     );
-    false;
 
     if (!confirmed) return false;
 

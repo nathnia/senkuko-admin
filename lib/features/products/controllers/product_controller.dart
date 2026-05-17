@@ -101,19 +101,37 @@ class ProductController extends GetxController {
 
   // ===================== FETCH =====================
   Future<void> fetchProducts() async {
-    final res = await ProductService.getProducts();
-    if (res.statusCode == 200) {
-      productList.assignAll(productModelFromJson(res.body).data);
+    isLoading.value = true; // ← Tambahkan ini
 
-      final needFetch = productList
-          .where((p) => imageC.getImagesForProduct(p.id).isEmpty)
-          .toList();
+    try {
+      final res = await ProductService.getProducts();
 
-      await Future.wait(needFetch.map((p) => imageC.fetchProductImages(p.id)));
+      if (res.statusCode == 200) {
+        final newProducts = productModelFromJson(res.body).data;
 
-      _applyFilter();
-    } else if (ApiHelper.isNetworkError(res)) {
-      AppToast.error(ApiHelper.parseError(res.body));
+        productList.assignAll(newProducts);
+
+        // Fetch images untuk produk yang belum ada gambarnya
+        final needFetch = productList
+            .where((p) => imageC.getImagesForProduct(p.id).isEmpty)
+            .toList();
+
+        if (needFetch.isNotEmpty) {
+          await Future.wait(
+            needFetch.map((p) => imageC.fetchProductImages(p.id)),
+          );
+        }
+
+        _applyFilter();
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error('Gagal memuat daftar produk');
+      }
+    } catch (e) {
+      AppToast.error('Terjadi kesalahan saat memuat produk');
+    } finally {
+      isLoading.value = false;
     }
   }
 

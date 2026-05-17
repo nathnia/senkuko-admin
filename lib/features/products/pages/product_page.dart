@@ -86,7 +86,10 @@ class ProductPage extends StatelessWidget {
 
               return RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () => controller.fetchProducts(),
+                onRefresh: () async {
+                  await controller
+                      .fetchProducts(); 
+                },
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                   itemCount: list.length,

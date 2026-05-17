@@ -48,7 +48,6 @@ class CustomerPage extends StatelessWidget {
                     FilterChipItem(label: 'Nonaktif'),
                     FilterChipItem(label: 'Semua'),
                   ],
-                  // ← ambil dari controller, bukan hardcode string
                   selectedLabel: controller.statusFilterLabel,
                   onChipTap: controller.setStatusFilter,
                 ),
@@ -62,7 +61,9 @@ class CustomerPage extends StatelessWidget {
         if (controller.isLoading.value && controller.customerList.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
+
         final list = controller.filteredCustomers;
+
         if (list.isEmpty) {
           return const Center(
             child: Text(
@@ -71,16 +72,24 @@ class CustomerPage extends StatelessWidget {
             ),
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: list.length,
-          itemBuilder: (context, index) {
-            final customer = list[index];
-            return CustomerCard(
-              customer: customer,
-              onToggleStatus: () => controller.toggleCustomerStatus(customer),
-            );
+
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            await controller.fetchCustomers();
           },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(), // Penting!
+            padding: const EdgeInsets.all(12),
+            itemCount: list.length,
+            itemBuilder: (context, index) {
+              final customer = list[index];
+              return CustomerCard(
+                customer: customer,
+                onToggleStatus: () => controller.toggleCustomerStatus(customer),
+              );
+            },
+          ),
         );
       }),
     );

@@ -130,7 +130,6 @@ class TransactionController extends GetxController {
         transactionList.assignAll(transactionModelFromJson(res.body).data);
       }
     } catch (e) {
-      debugPrint('Error fetchTransactions: $e');
       AppToast.error('Gagal memuat data transaksi');
     } finally {
       isLoading.value = false;
@@ -146,7 +145,6 @@ class TransactionController extends GetxController {
         selectedTransaction.value = json.decode(res.body)['data'];
       }
     } catch (e) {
-      debugPrint('Error fetchTransactionById: $e');
       AppToast.error('Gagal memuat detail transaksi');
     } finally {
       isLoadingDetail.value = false;
