@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/features/promotions/voucher_model.dart';
 import 'package:senkukoadmin/features/promotions/voucher_service.dart';
 
@@ -152,29 +153,12 @@ class VoucherController extends GetxController {
     }
   }
 
-  void confirmDelete(String id, String code) {
-    Get.dialog(
-      AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Hapus Voucher',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        content: Text('Yakin ingin menghapus voucher "$code"?'),
-        actions: [
-          TextButton(onPressed: Get.back, child: const Text('Batal')),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              deleteVoucher(id);
-            },
-            child: const Text('Hapus',
-                style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+  void confirmDelete(String id, String code) async {
+    final confirm = await AppDialog.confirm(
+      title: 'Hapus Voucher',
+      content: 'Yakin ingin menghapus voucher "$code"?',
     );
+    if (confirm) deleteVoucher(id);
   }
 
   String _errorMessage(String body) {

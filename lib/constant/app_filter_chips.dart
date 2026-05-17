@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 
-/// A single chip item used inside [AppFilterChips].
 class FilterChipItem {
   final String label;
   final IconData? icon;
@@ -9,36 +8,11 @@ class FilterChipItem {
   const FilterChipItem({required this.label, this.icon});
 }
 
-/// A reusable horizontal scrollable filter chip row.
-///
-/// Handles its own "active" highlight. Pass the currently selected label
-/// via [selectedLabel] and react to taps with [onChipTap].
-///
-/// Usage:
-/// ```dart
-/// AppFilterChips(
-///   items: [
-///     FilterChipItem(label: 'Semua'),
-///     FilterChipItem(label: 'Hari ini'),
-///     FilterChipItem(label: 'Custom', icon: Icons.date_range_outlined),
-///   ],
-///   selectedLabel: controller.selectedQuickDate.value,
-///   onChipTap: (label) async {
-///     if (label == 'Custom') {
-///       await controller.pickDateRange(context);
-///     } else {
-///       controller.updateQuickDate(label);
-///     }
-///   },
-/// )
-/// ```
+
 class AppFilterChips extends StatelessWidget {
   final List<FilterChipItem> items;
   final String selectedLabel;
   final void Function(String label) onChipTap;
-
-  /// Optional: override the displayed label for the selected chip.
-  /// Useful for "Custom" date range that shows the selected range instead.
   final String? selectedLabelOverride;
 
   const AppFilterChips({

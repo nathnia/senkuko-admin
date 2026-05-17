@@ -37,8 +37,8 @@ class ProductController extends GetxController {
     filteredProducts.assignAll(
       productList.where((p) {
         final matchSearch = p.name.toLowerCase().contains(
-              searchText.value.toLowerCase(),
-            );
+          searchText.value.toLowerCase(),
+        );
         final matchTab =
             selectedTab.value == 'Semua' || p.categoryName == selectedTab.value;
         return matchSearch && matchTab;
@@ -109,11 +109,9 @@ class ProductController extends GetxController {
           .where((p) => imageC.getImagesForProduct(p.id).isEmpty)
           .toList();
 
-      await Future.wait(
-        needFetch.map((p) => imageC.fetchProductImages(p.id)),
-      );
+      await Future.wait(needFetch.map((p) => imageC.fetchProductImages(p.id)));
 
-      _applyFilter(); 
+      _applyFilter();
     } else if (ApiHelper.isNetworkError(res)) {
       AppToast.error(ApiHelper.parseError(res.body));
     }
@@ -282,7 +280,7 @@ class ProductController extends GetxController {
 
       await variantC.fetchAllVariants();
       await variantC.fetchPrices();
-      await fetchProducts(); 
+      await fetchProducts();
 
       resetForAddProduct();
       AppToast.success('Produk berhasil ditambahkan');
@@ -345,38 +343,9 @@ class ProductController extends GetxController {
 
       await variantC.fetchAllVariants();
       await variantC.fetchPrices();
-      await fetchProducts(); 
+      await fetchProducts();
     } catch (e) {
       AppToast.error('Terjadi kesalahan saat menyimpan perubahan');
-    } finally {
-      isSubmitting.value = false;
-    }
-  }
-
-  // ===================== DELETE PRODUCT =====================
-  Future<void> deleteProduct(String productId, String productName) async {
-    if (productId.isEmpty) return;
-
-    final confirmed = await _showConfirmDialog(
-      title: 'Hapus Produk',
-      content:
-          'Yakin ingin menghapus "$productName"?\n\nSemua variant dan harga akan ikut terhapus.',
-    );
-    if (!confirmed) return;
-
-    isSubmitting.value = true;
-    try {
-      final res = await ProductService.deleteProduct(productId);
-
-      if (res.statusCode == 200 || res.statusCode == 204) {
-        AppToast.success('Produk "$productName" berhasil dihapus');
-        await fetchProducts(); 
-        Get.back();
-      } else {
-        AppToast.error(ApiHelper.parseError(res.body));
-      }
-    } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menghapus produk');
     } finally {
       isSubmitting.value = false;
     }
@@ -409,40 +378,4 @@ class ProductController extends GetxController {
       AppToast.error('Terjadi kesalahan');
     }
   }
-
-  // ===================== PRIVATE UTILITIES =====================
-  Future<bool> _showConfirmDialog({
-    required String title,
-    required String content,
-  }) async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: Text(title,
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600)),
-            content: Text(content,
-                style: const TextStyle(fontSize: 13)),
-            actions: [
-              TextButton(
-                  onPressed: () => Get.back(result: false),
-                  child: const Text('Batal')),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => Get.back(result: true),
-                child: const Text('Ya, Hapus',
-                    style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-          barrierDismissible: false,
-        ) ??
-        false;
-  }
-
 }

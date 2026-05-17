@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
@@ -144,19 +145,12 @@ class ProductVariantForm {
     );
   }
 
-  void _confirmDeleteUnit(String id) {
-    Get.defaultDialog(
+  void _confirmDeleteUnit(String id) async {
+    final confirm = await AppDialog.confirm(
       title: 'Hapus Unit',
-      middleText: 'Yakin mau hapus unit ini?',
-      textConfirm: 'Hapus',
-      textCancel: 'Batal',
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      onConfirm: () async {
-        Get.back();
-        await variantC.deleteUnit(id);
-      },
+      content: 'Yakin mau hapus unit ini?',
     );
+    if (confirm) await variantC.deleteUnit(id);
   }
 
   // ================= PRICE MATRIX =================

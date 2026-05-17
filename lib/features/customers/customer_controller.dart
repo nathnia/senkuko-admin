@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/customers/customer_model.dart';
 import 'package:senkukoadmin/features/customers/customer_service.dart';
@@ -135,49 +136,25 @@ class CustomerController extends GetxController {
 
   // ===================== TOGGLE STATUS =====================
   Future<bool> toggleCustomerStatus(CustomerData customer) async {
-    final newStatus =
-        customer.isActive ? CustomerStatus.inactive : CustomerStatus.active;
-    final label = newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
+    final newStatus = customer.isActive
+        ? CustomerStatus.inactive
+        : CustomerStatus.active;
+    final label = newStatus == CustomerStatus.inactive
+        ? 'nonaktifkan'
+        : 'aktifkan';
 
-    final confirmed = await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: Text(
-              '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
-              style:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            content: Text(
-              'Yakin ingin $label "${customer.name}"?',
-              style: const TextStyle(fontSize: 13),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: newStatus == CustomerStatus.active
-                      ? Colors.green
-                      : Colors.orange,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => Get.back(result: true),
-                child: Text(
-                  newStatus == CustomerStatus.active
-                      ? 'Aktifkan'
-                      : 'Nonaktifkan',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          barrierDismissible: false,
-        ) ??
-        false;
+    final confirmed = await AppDialog.confirm(
+      title:
+          '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
+      content: 'Yakin ingin $label "${customer.name}"?',
+      confirmLabel: newStatus == CustomerStatus.active
+          ? 'Aktifkan'
+          : 'Nonaktifkan',
+      confirmColor: newStatus == CustomerStatus.active
+          ? Colors.green
+          : Colors.orange,
+    );
+    false;
 
     if (!confirmed) return false;
 
@@ -185,12 +162,13 @@ class CustomerController extends GetxController {
     try {
       // .name → convert enum ke string ('active'/'inactive') untuk dikirim ke API
       final res = await CustomerService.updateCustomerStatus(
-          customer.id, newStatus.name);
+        customer.id,
+        newStatus.name,
+      );
       if (res.statusCode == 200) {
         final idx = customerList.indexWhere((c) => c.id == customer.id);
         if (idx != -1) {
-          final updated =
-              CustomerData.fromJson(jsonDecode(res.body)['data']);
+          final updated = CustomerData.fromJson(jsonDecode(res.body)['data']);
           customerList[idx] = updated;
           customerList.refresh();
         }

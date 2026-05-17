@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/models/product_price_model.dart';
@@ -247,50 +248,17 @@ class ProductVariantController extends GetxController {
 
     final variantId = list[index]['id']?.toString() ?? '';
 
-    // Variant baru (belum tersimpan di server) → hapus lokal saja
     if (variantId.isEmpty) {
       list.removeAt(index);
       return;
     }
 
-    // Variant existing → konfirmasi dulu, lalu hit API
-    final confirm =
-        await Get.dialog<bool>(
-          barrierDismissible: false,
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            title: const Text(
-              'Hapus Varian',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            content: const Text(
-              'Varian ini akan dihapus permanen dari server. Lanjutkan?',
-              style: TextStyle(fontSize: 13),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () => Get.back(result: true),
-                child: const Text(
-                  'Hapus',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final confirm = await AppDialog.confirm(
+      title: 'Hapus Varian',
+      content: 'Varian ini akan dihapus permanen dari server. Lanjutkan?',
+      confirmLabel: 'Hapus',
+    );
+    false;
 
     if (!confirm) return;
 

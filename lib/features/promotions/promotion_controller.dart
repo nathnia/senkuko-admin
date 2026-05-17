@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/promotions/promotion_service.dart';
 
@@ -250,31 +251,13 @@ class PromotionController extends GetxController {
 
   // ── Dialogs ───────────────────────────────────────────────────────────────
 
-  void confirmDelete(String id, String name) {
-    Get.dialog(
-      AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Hapus Promosi',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        content: Text('Yakin ingin menghapus promosi "$name"?'),
-        actions: [
-          TextButton(onPressed: Get.back, child: const Text('Batal')),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              deletePromotion(id);
-            },
-            child: const Text('Hapus',
-                style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
+ void confirmDelete(String id, String name) async {
+  final confirm = await AppDialog.confirm(
+    title: 'Hapus Promosi',
+    content: 'Yakin ingin menghapus promosi "$name"?',
+  );
+  if (confirm) deletePromotion(id);
+}
   // ── Helper ────────────────────────────────────────────────────────────────
 
   String _errorMessage(String body) {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
 
@@ -44,16 +45,20 @@ class ProductInfoForm {
           ),
           child: Row(
             children: [
-              Icon(Icons.category_outlined,
-                  size: 16, color: Colors.grey.shade500),
+              Icon(
+                Icons.category_outlined,
+                size: 16,
+                color: Colors.grey.shade500,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   selected?.name ?? 'Pilih Kategori',
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        selected != null ? Colors.black87 : Colors.grey.shade500,
+                    color: selected != null
+                        ? Colors.black87
+                        : Colors.grey.shade500,
                   ),
                 ),
               ),
@@ -123,8 +128,9 @@ class ProductInfoForm {
               label: 'Tambah',
               onPressed: () async {
                 if (newCategoryC.text.trim().isEmpty) return;
-                final newId =
-                    await controller.createCategory(newCategoryC.text.trim());
+                final newId = await controller.createCategory(
+                  newCategoryC.text.trim(),
+                );
                 if (newId != null) {
                   await controller.fetchCategories();
                   controller.selectedCategoryId.value = newId;
@@ -138,19 +144,12 @@ class ProductInfoForm {
     );
   }
 
-  void _confirmDeleteCategory(String id) {
-    Get.defaultDialog(
+  void _confirmDeleteCategory(String id) async {
+    final confirm = await AppDialog.confirm(
       title: 'Hapus Kategori',
-      middleText: 'Yakin mau hapus kategori ini?',
-      textConfirm: 'Hapus',
-      textCancel: 'Batal',
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      onConfirm: () async {
-        Get.back();
-        await controller.deleteCategory(id);
-      },
+      content: 'Yakin mau hapus kategori ini?',
     );
+    if (confirm) await controller.deleteCategory(id);
   }
 
   // ================= PRIVATE HELPERS =================
@@ -164,10 +163,10 @@ class ProductInfoForm {
       child: TextField(
         controller: c,
         onChanged: (_) => controller.isDirty.value = true,
-        keyboardType:
-            isNumberOnly ? TextInputType.number : TextInputType.text,
-        inputFormatters:
-            isNumberOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
+        keyboardType: isNumberOnly ? TextInputType.number : TextInputType.text,
+        inputFormatters: isNumberOnly
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : null,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
@@ -177,8 +176,10 @@ class ProductInfoForm {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -202,8 +203,11 @@ class ProductInfoForm {
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(Icons.delete_outline_rounded,
-          size: 15, color: Colors.red.shade400),
+      child: Icon(
+        Icons.delete_outline_rounded,
+        size: 15,
+        color: Colors.red.shade400,
+      ),
     );
   }
 
@@ -216,15 +220,19 @@ class ProductInfoForm {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 12),
           elevation: 0,
         ),
         onPressed: onPressed,
         child: Text(
           label,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

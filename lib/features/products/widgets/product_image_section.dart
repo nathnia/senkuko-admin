@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_image_model.dart';
@@ -79,47 +80,12 @@ class ProductImageSection {
                           imageC.removePendingEditImage(index - existingCount);
                           return;
                         }
-                        // existing dari DB → langsung hit API, no save needed
-                        final confirm =
-                            await Get.dialog<bool>(
-                              barrierDismissible: false,
-                              AlertDialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                title: const Text(
-                                  'Hapus Gambar',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                content: const Text(
-                                  'Yakin ingin menghapus gambar ini?',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Get.back(result: false),
-                                    child: const Text('Batal'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    onPressed: () => Get.back(result: true),
-                                    child: const Text(
-                                      'Hapus',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ) ??
-                            false;
+                        final confirm = await AppDialog.confirm(
+                          title: 'Hapus Gambar',
+                          content: 'Yakin ingin menghapus gambar ini?',
+                          confirmLabel: 'Hapus',
+                        );
+                        false;
                         if (confirm) {
                           controller.isDirty.value = true;
                           imageC.deleteProductImage(productId, image.id, index);
@@ -233,9 +199,7 @@ class ProductImageSection {
                 ),
               ),
             ),
-          // FIX 1: Wrap dengan Obx agar reaktif terhadap isUploadingImage
-          // FIX 2: Disable onTap saat uploading
-          // FIX 3: Tambahkan icon close di dalam container
+
           Positioned(
             top: 4,
             right: 4,
