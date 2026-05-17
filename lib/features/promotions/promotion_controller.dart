@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/promotions/promotion_service.dart';
@@ -18,10 +19,72 @@ class PromotionController extends GetxController {
   final searchText = ''.obs;
   final selectedFilter = 'Semua'.obs;
 
+  // ── Form state (dipakai oleh PromotionFormPage) ───────────────────────────
+
+  final formKey = GlobalKey<FormState>();
+
+  final nameCtrl = TextEditingController();
+  final codeCtrl = TextEditingController();
+  final descCtrl = TextEditingController();
+  final usageLimitCtrl = TextEditingController();
+
+  final formType = 'discount_percent'.obs;
+  final formIsActive = true.obs;
+  final formStackable = false.obs;
+  final formValidFrom = Rxn<DateTime>();
+  final formValidTo = Rxn<DateTime>();
+
+  /// Panggil ini sebelum buka halaman form.
+  /// [data] = null artinya mode Create; isi data artinya mode Edit.
+  void initForm([Map<String, dynamic>? data]) {
+    nameCtrl.text = data?['name'] ?? '';
+    codeCtrl.text = data?['code'] ?? '';
+    descCtrl.text = data?['description'] ?? '';
+    usageLimitCtrl.text = data?['usage_limit']?.toString() ?? '0';
+
+    formType.value = (data?['type'] as String?) ?? 'discount_percent';
+    formIsActive.value =
+        data?['is_active'] == 1 || data?['is_active'] == true ? true : true;
+    formStackable.value =
+        data?['stackable'] == 1 || data?['stackable'] == true;
+
+    formValidFrom.value =
+        data != null ? DateTime.tryParse(data['valid_from'] ?? '') : DateTime.now();
+    formValidTo.value = data != null
+        ? DateTime.tryParse(data['valid_to'] ?? '')
+        : DateTime.now().add(const Duration(days: 30));
+  }
+
+  void submitForm(String? editId) {
+    if (!formKey.currentState!.validate()) return;
+    if (formValidFrom.value == null || formValidTo.value == null) return;
+
+    final payload = {
+      'name': nameCtrl.text.trim(),
+      'code': codeCtrl.text.trim().toUpperCase(),
+      'type': formType.value,
+      'description': descCtrl.text.trim(),
+      'valid_from': formValidFrom.value!.toIso8601String(),
+      'valid_to': formValidTo.value!.toIso8601String(),
+      'usage_limit': int.tryParse(usageLimitCtrl.text) ?? 0,
+      'is_active': formIsActive.value,
+      'stackable': formStackable.value,
+    };
+
+    if (editId != null) {
+      updatePromotion(editId, payload);
+    } else {
+      createPromotion(payload);
+    }
+  }
+
   @override
-  void onInit() {
-    super.onInit();
-    fetchPromotions();
+  void onClose() {
+    nameCtrl.dispose();
+    codeCtrl.dispose();
+    descCtrl.dispose();
+    usageLimitCtrl.dispose();
+    super.onClose();
   }
 
   // ── Filters ───────────────────────────────────────────────────────────────
@@ -57,6 +120,12 @@ class PromotionController extends GetxController {
   void updateFilter(String value) => selectedFilter.value = value;
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchPromotions();
+  }
 
   Future<void> fetchPromotions() async {
     isLoading.value = true;
@@ -100,8 +169,7 @@ class PromotionController extends GetxController {
         await fetchPromotions();
         Get.back();
       } else {
-        final msg = _errorMessage(res.body);
-        Fluttertoast.showToast(msg: msg);
+        Fluttertoast.showToast(msg: _errorMessage(res.body));
       }
     } catch (e) {
       debugPrint('Error createPromotion: $e');
@@ -177,8 +245,7 @@ class PromotionController extends GetxController {
       String promotionId, Map<String, dynamic> payload) async {
     isSubmitting.value = true;
     try {
-      final res =
-          await PromotionService.addCondition(promotionId, payload);
+      final res = await PromotionService.addCondition(promotionId, payload);
       if (res.statusCode == 200 || res.statusCode == 201) {
         Fluttertoast.showToast(msg: 'Syarat berhasil ditambahkan');
         await fetchPromotionById(promotionId);
@@ -251,13 +318,129 @@ class PromotionController extends GetxController {
 
   // ── Dialogs ───────────────────────────────────────────────────────────────
 
- void confirmDelete(String id, String name) async {
-  final confirm = await AppDialog.confirm(
-    title: 'Hapus Promosi',
-    content: 'Yakin ingin menghapus promosi "$name"?',
-  );
-  if (confirm) deletePromotion(id);
-}
+  void confirmDelete(String id, String name) async {
+    final confirm = await AppDialog.confirm(
+      title: 'Hapus Promosi',
+      content: 'Yakin ingin menghapus promosi "$name"?',
+    );
+    if (confirm) deletePromotion(id);
+  }
+
+  // ── Detail page — computed getters ────────────────────────────────────────
+
+  List<Map<String, dynamic>> get detailConditions =>
+      (selectedPromotion.value?['conditions'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+
+  List<Map<String, dynamic>> get detailRewards =>
+      (selectedPromotion.value?['rewards'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+
+  String get detailValidPeriod {
+    final data = selectedPromotion.value;
+    if (data == null) return '';
+    final df = DateFormat('dd MMM yyyy', 'id_ID');
+    return '${df.format(DateTime.parse(data['valid_from']))} – '
+        '${df.format(DateTime.parse(data['valid_to']))}';
+  }
+
+  String get detailUsageDisplay {
+    final data = selectedPromotion.value;
+    if (data == null) return '';
+    return data['usage_limit'] == 0
+        ? 'Unlimited'
+        : '${data['usage_count']}/${data['usage_limit']}x';
+  }
+
+  String get detailStackableLabel {
+    final data = selectedPromotion.value;
+    if (data == null) return '';
+    return (data['stackable'] == 1 || data['stackable'] == true)
+        ? 'Ya'
+        : 'Tidak';
+  }
+
+  String get detailStatusLabel {
+    final data = selectedPromotion.value;
+    if (data == null) return '';
+    return (data['is_active'] == 1 || data['is_active'] == true)
+        ? 'Aktif'
+        : 'Tidak Aktif';
+  }
+
+  // ── Label helpers ─────────────────────────────────────────────────────────
+
+  String promotionTypeLabel(String type) {
+    switch (type) {
+      case 'discount_percent':
+        return 'Diskon %';
+      case 'discount_fixed':
+        return 'Diskon Nominal';
+      case 'free_item':
+        return 'Gratis Item';
+      default:
+        return type;
+    }
+  }
+
+  String conditionTypeLabel(String type) {
+    switch (type) {
+      case 'min_transaction_amount':
+        return 'Min. Total Belanja';
+      case 'min_qty':
+        return 'Min. Qty Item';
+      case 'specific_product':
+        return 'Produk Tertentu';
+      case 'specific_category':
+        return 'Kategori Tertentu';
+      case 'member_type':
+        return 'Tipe Member';
+      default:
+        return type;
+    }
+  }
+
+  String rewardTypeLabel(String type) {
+    switch (type) {
+      case 'discount_percent':
+        return 'Diskon %';
+      case 'discount_fixed':
+        return 'Diskon Nominal';
+      case 'free_item':
+        return 'Gratis Item';
+      default:
+        return type;
+    }
+  }
+
+  String discountModeLabel(String mode) {
+    switch (mode) {
+      case 'per_transaction':
+        return 'Per Transaksi';
+      case 'per_item':
+        return 'Per Item';
+      default:
+        return mode;
+    }
+  }
+
+  String rewardSubtitle(Map<String, dynamic> r) {
+    if (r['reward_type'] == 'free_item') {
+      var text = 'Qty: ${r['free_qty']}';
+      if ((r['free_variant_id'] ?? '').toString().isNotEmpty) {
+        text += ' • Variant: ${r['free_variant_id']}';
+      }
+      return text;
+    }
+
+    var text =
+        '${r['discount_value']} • ${discountModeLabel(r['discount_mode'] ?? '')}';
+    final maxDisc =
+        double.tryParse(r['max_discount_amount']?.toString() ?? '0') ?? 0;
+    if (maxDisc > 0) text += ' • maks Rp$maxDisc';
+    return text;
+  }
+
   // ── Helper ────────────────────────────────────────────────────────────────
 
   String _errorMessage(String body) {

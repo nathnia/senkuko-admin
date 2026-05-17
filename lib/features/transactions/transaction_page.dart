@@ -37,7 +37,7 @@ class TransactionPage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: AppSearchBar(
-              hintText: 'Cari invoice atau nama pelanggan...',
+              hintText: 'Cari invoice...',
               onChanged: controller.updateSearch,
             ),
           ),

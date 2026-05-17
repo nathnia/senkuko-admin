@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
-import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/customers/customer_model.dart';
 
 class CustomerCard extends StatelessWidget {
@@ -19,19 +18,16 @@ class CustomerCard extends StatelessWidget {
         return _MemberStyle(
           color: AppColors.secondary,
           label: 'VIP',
-          icon: Icons.workspace_premium_rounded,
         );
       case MemberType.member:
         return _MemberStyle(
           color: AppColors.primary,
           label: 'MEMBER',
-          icon: Icons.card_membership_rounded,
         );
       case MemberType.regular:
         return _MemberStyle(
           color: const Color(0xFF9E9E9E),
           label: 'REGULAR',
-          icon: Icons.person_rounded,
         );
     }
   }
@@ -39,21 +35,20 @@ class CustomerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = _memberStyle(customer.memberType);
-    // ← pakai getter isActive, tidak compare string lagi
     final isActive = customer.isActive;
 
     return Opacity(
-      opacity: isActive ? 1.0 : 0.5,
+      opacity: isActive ? 1.0 : 0.45,
       child: Card(
         margin: const EdgeInsets.only(bottom: 8),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey.shade100, width: 1),
+          side: BorderSide(color: Colors.grey.shade100, width: 0.5),
         ),
         color: Colors.white,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
           child: Row(
             children: [
               // AVATAR
@@ -61,7 +56,7 @@ class CustomerCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: style.color.withAlpha(isActive ? 20 : 10),
+                  color: style.color.withAlpha(20),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
@@ -71,15 +66,15 @@ class CustomerCard extends StatelessWidget {
                       : '?',
                   style: TextStyle(
                     color: style.color,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: 17,
                   ),
                 ),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(width: 11),
 
-              // INFO
+              // INFO — nama + badge + kontak saja, no spending
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +87,7 @@ class CustomerCard extends StatelessWidget {
                             customer.name,
                             style: const TextStyle(
                               fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               height: 1.2,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -102,50 +97,18 @@ class CustomerCard extends StatelessWidget {
                         _Badge(style: style),
                       ],
                     ),
-
                     const SizedBox(height: 3),
                     _SubInfo(customer: customer),
-                    const SizedBox(height: 2),
-
-                    Text(
-                      // ← totalSpend sudah double, langsung format
-                      CurrencyFormatter.format(customer.totalSpend),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: style.color,
-                      ),
-                    ),
                   ],
                 ),
               ),
 
-              // TOGGLE
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Transform.scale(
-                    scale: 0.8,
-                    child: Switch.adaptive(
-                      value: isActive,
-                      onChanged: (_) => onToggleStatus?.call(),
-                      activeColor: Colors.white,
-                      activeTrackColor: Colors.green.shade400,
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: Colors.grey.shade300,
-                    ),
-                  ),
-                  Text(
-                    isActive ? 'Aktif' : 'Nonaktif',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: isActive
-                          ? Colors.green.shade500
-                          : Colors.grey.shade400,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 10),
+
+              // STATUS PILL — menggantikan Switch
+              _StatusPill(
+                isActive: isActive,
+                onTap: onToggleStatus,
               ),
             ],
           ),
@@ -155,13 +118,66 @@ class CustomerCard extends StatelessWidget {
   }
 }
 
+// ─── Status Pill ────────────────────────────────────────────────────────────
+
+class _StatusPill extends StatelessWidget {
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  const _StatusPill({required this.isActive, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isActive ? AppColors.primary   : AppColors.danger;
+    final textColor   = isActive ? AppColors.primary   : AppColors.danger;
+    final dotColor    = isActive ? AppColors.primary   : AppColors.danger;
+    final label       = isActive ? 'Aktif' : 'Disuspend';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor.withAlpha(60), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Member Style ────────────────────────────────────────────────────────────
+
 class _MemberStyle {
   final Color color;
   final String label;
-  final IconData icon;
   const _MemberStyle(
-      {required this.color, required this.label, required this.icon});
+      {required this.color, required this.label});
 }
+
+// ─── Badge ───────────────────────────────────────────────────────────────────
 
 class _Badge extends StatelessWidget {
   final _MemberStyle style;
@@ -178,14 +194,12 @@ class _Badge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(style.icon, size: 9, color: style.color),
-          const SizedBox(width: 3),
           Text(
             style.label,
             style: TextStyle(
               color: style.color,
               fontSize: 9,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
             ),
           ),
@@ -194,6 +208,8 @@ class _Badge extends StatelessWidget {
     );
   }
 }
+
+// ─── Sub Info ────────────────────────────────────────────────────────────────
 
 class _SubInfo extends StatelessWidget {
   final CustomerData customer;

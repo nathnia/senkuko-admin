@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
-import 'package:senkukoadmin/routes/routes.dart';
 
 class PromotionDetailPage extends StatelessWidget {
   const PromotionDetailPage({super.key});
@@ -25,7 +23,7 @@ class PromotionDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: const Padding(
           padding: EdgeInsets.only(left: 16),
@@ -41,17 +39,6 @@ class PromotionDetailPage extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.edit_outlined,
-              size: 20,
-              color: Colors.black54,
-            ),
-            onPressed: () =>
-                Get.toNamed(AppRoutes.promotionForm, arguments: id),
-          ),
-        ],
       ),
       body: Obx(() {
         if (controller.isLoadingDetail.value) {
@@ -63,9 +50,8 @@ class PromotionDetailPage extends StatelessWidget {
           return const Center(child: Text('Data tidak ditemukan'));
         }
 
-        final conditions = data['conditions'] as List? ?? [];
-        final rewards = data['rewards'] as List? ?? [];
-        final df = DateFormat('dd MMM yyyy', 'id_ID');
+        final conditions = controller.detailConditions;
+        final rewards = controller.detailRewards;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -79,31 +65,16 @@ class PromotionDetailPage extends StatelessWidget {
                   children: [
                     _infoRow('Nama', data['name'] ?? ''),
                     _infoRow('Kode', data['code'] ?? '', mono: true),
-                    _infoRow('Tipe', _typeLabel(data['type'] ?? '')),
-                    if ((data['description'] ?? '').isNotEmpty)
-                      _infoRow('Deskripsi', data['description']),
                     _infoRow(
-                      'Berlaku',
-                      '${df.format(DateTime.parse(data['valid_from']))} – ${df.format(DateTime.parse(data['valid_to']))}',
+                      'Tipe',
+                      controller.promotionTypeLabel(data['type'] ?? ''),
                     ),
-                    _infoRow(
-                      'Batas Pakai',
-                      data['usage_limit'] == 0
-                          ? 'Unlimited'
-                          : '${data['usage_count']}/${data['usage_limit']}x',
-                    ),
-                    _infoRow(
-                      'Stackable',
-                      (data['stackable'] == 1 || data['stackable'] == true)
-                          ? 'Ya'
-                          : 'Tidak',
-                    ),
-                    _infoRow(
-                      'Status',
-                      (data['is_active'] == 1 || data['is_active'] == true)
-                          ? 'Aktif'
-                          : 'Tidak Aktif',
-                    ),
+                    if ((data['description'] ?? '').toString().isNotEmpty)
+                      _infoRow('Deskripsi', data['description'].toString()),
+                    _infoRow('Berlaku', controller.detailValidPeriod),
+                    _infoRow('Batas Pakai', controller.detailUsageDisplay),
+                    _infoRow('Stackable', controller.detailStackableLabel),
+                    _infoRow('Status', controller.detailStatusLabel),
                   ],
                 ),
               ),
@@ -111,35 +82,7 @@ class PromotionDetailPage extends StatelessWidget {
               const SizedBox(height: 12),
 
               // ── Conditions ────────────────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(child: _sectionLabel('Syarat')),
-                  GestureDetector(
-                    onTap: () => Get.toNamed(
-                      AppRoutes.promotionConditionForm,
-                      arguments: id,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.add_circle_outline_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Tambah',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              _sectionLabel('Syarat (${conditions.length})'),
               _card(
                 child: conditions.isEmpty
                     ? _emptyState(
@@ -148,13 +91,10 @@ class PromotionDetailPage extends StatelessWidget {
                       )
                     : Column(
                         children: conditions.asMap().entries.map((entry) {
-                          final c = entry.value as Map<String, dynamic>;
-                          final isLast = entry.key == conditions.length - 1;
                           return _conditionTile(
-                            c,
-                            isLast,
-                            onDelete: () =>
-                                controller.deleteCondition(id, c['id']),
+                            controller,
+                            entry.value,
+                            isLast: entry.key == conditions.length - 1,
                           );
                         }).toList(),
                       ),
@@ -163,35 +103,7 @@ class PromotionDetailPage extends StatelessWidget {
               const SizedBox(height: 12),
 
               // ── Rewards ───────────────────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(child: _sectionLabel('Reward')),
-                  GestureDetector(
-                    onTap: () => Get.toNamed(
-                      AppRoutes.promotionRewardForm,
-                      arguments: id,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.add_circle_outline_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Tambah',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              _sectionLabel('Reward (${rewards.length})'),
               _card(
                 child: rewards.isEmpty
                     ? _emptyState(
@@ -201,69 +113,15 @@ class PromotionDetailPage extends StatelessWidget {
                       )
                     : Column(
                         children: rewards.asMap().entries.map((entry) {
-                          final r = entry.value as Map<String, dynamic>;
-                          final isLast = entry.key == rewards.length - 1;
                           return _rewardTile(
-                            r,
-                            isLast,
-                            onDelete: () =>
-                                controller.deleteReward(id, r['id']),
+                            controller,
+                            entry.value,
+                            isLast: entry.key == rewards.length - 1,
                           );
                         }).toList(),
                       ),
               ),
 
-              // Lihat Voucher dari promotion ini
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => Get.toNamed(
-                    AppRoutes.vouchers,
-                    arguments: id, // promotionId
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  icon: const Icon(
-                    Icons.confirmation_number_outlined,
-                    size: 18,
-                  ),
-                  label: const Text(
-                    'Lihat & Kelola Voucher',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              const SizedBox(height: 24),
-
-              // ── Danger zone ───────────────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      controller.confirmDelete(id, data['name'] ?? ''),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: const Text(
-                    'Hapus Promosi',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -275,9 +133,9 @@ class PromotionDetailPage extends StatelessWidget {
   // ── Tiles ──────────────────────────────────────────────────────────────────
 
   Widget _conditionTile(
-    Map<String, dynamic> c,
-    bool isLast, {
-    required VoidCallback onDelete,
+    PromotionController controller,
+    Map<String, dynamic> c, {
+    required bool isLast,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -292,10 +150,10 @@ class PromotionDetailPage extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: Colors.blue.withAlpha(20),
+              color: AppColors.primary.withAlpha(15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.rule_rounded, size: 16, color: Colors.blue),
+            child: Icon(Icons.rule_rounded, size: 16, color: AppColors.primary),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -303,7 +161,7 @@ class PromotionDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _conditionTypeLabel(c['condition_type'] ?? ''),
+                  controller.conditionTypeLabel(c['condition_type'] ?? ''),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -313,15 +171,12 @@ class PromotionDetailPage extends StatelessWidget {
                   '${c['operator']} ${c['value']}',
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
+                if ((c['target_id'] ?? '').toString().isNotEmpty)
+                  Text(
+                    'Target: ${c['target_id']}',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
               ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: Colors.red.shade400,
             ),
           ),
         ],
@@ -330,21 +185,10 @@ class PromotionDetailPage extends StatelessWidget {
   }
 
   Widget _rewardTile(
-    Map<String, dynamic> r,
-    bool isLast, {
-    required VoidCallback onDelete,
+    PromotionController controller,
+    Map<String, dynamic> r, {
+    required bool isLast,
   }) {
-    String subtitle = '';
-    if (r['reward_type'] == 'free_item') {
-      subtitle = 'Qty: ${r['free_qty']}';
-    } else {
-      subtitle =
-          '${r['discount_value']} • ${_discountModeLabel(r['discount_mode'] ?? '')}';
-      final maxDisc =
-          double.tryParse(r['max_discount_amount']?.toString() ?? '0') ?? 0;
-      if (maxDisc > 0) subtitle += ' • maks Rp$maxDisc';
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
@@ -373,25 +217,17 @@ class PromotionDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _rewardTypeLabel(r['reward_type'] ?? ''),
+                  controller.rewardTypeLabel(r['reward_type'] ?? ''),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
-                  subtitle,
+                  controller.rewardSubtitle(r),
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: Colors.red.shade400,
             ),
           ),
         ],
@@ -419,7 +255,7 @@ class PromotionDetailPage extends StatelessWidget {
       style: const TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: Colors.grey,
+        color: Colors.black54,
         letterSpacing: 0.3,
       ),
     ),
@@ -493,60 +329,4 @@ class PromotionDetailPage extends StatelessWidget {
       ],
     ),
   );
-
-  // ── Label helpers ──────────────────────────────────────────────────────────
-
-  String _typeLabel(String type) {
-    switch (type) {
-      case 'discount_percent':
-        return 'Diskon %';
-      case 'discount_fixed':
-        return 'Diskon Nominal';
-      case 'free_item':
-        return 'Gratis Item';
-      default:
-        return type;
-    }
-  }
-
-  String _conditionTypeLabel(String type) {
-    switch (type) {
-      case 'min_transaction_amount':
-        return 'Min. Total Belanja';
-      case 'min_qty':
-        return 'Min. Qty Item';
-      case 'specific_product':
-        return 'Produk Tertentu';
-      case 'specific_category':
-        return 'Kategori Tertentu';
-      case 'member_type':
-        return 'Tipe Member';
-      default:
-        return type;
-    }
-  }
-
-  String _rewardTypeLabel(String type) {
-    switch (type) {
-      case 'discount_percent':
-        return 'Diskon %';
-      case 'discount_fixed':
-        return 'Diskon Nominal';
-      case 'free_item':
-        return 'Gratis Item';
-      default:
-        return type;
-    }
-  }
-
-  String _discountModeLabel(String mode) {
-    switch (mode) {
-      case 'per_transaction':
-        return 'Per Transaksi';
-      case 'per_item':
-        return 'Per Item';
-      default:
-        return mode;
-    }
-  }
 }

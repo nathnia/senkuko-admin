@@ -4,7 +4,6 @@ import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 
-
 class PromotionFormPage extends StatelessWidget {
   const PromotionFormPage({super.key});
 
@@ -14,81 +13,7 @@ class PromotionFormPage extends StatelessWidget {
     final String? editId = Get.arguments as String?;
     final isEdit = editId != null;
 
-    final data = isEdit ? controller.selectedPromotion.value : null;
-
-    final nameCtrl =
-        TextEditingController(text: data?['name'] ?? '');
-    final codeCtrl =
-        TextEditingController(text: data?['code'] ?? '');
-    final descCtrl =
-        TextEditingController(text: data?['description'] ?? '');
-    final usageLimitCtrl =
-        TextEditingController(text: data?['usage_limit']?.toString() ?? '0');
-
-    final type = (data?['type'] ?? 'discount_percent').obs;
-    final isActive =
-        ((data?['is_active'] == 1 || data?['is_active'] == true) ? true : true)
-            .obs;
-    final stackable =
-        (data?['stackable'] == 1 || data?['stackable'] == true).obs;
-
-    final validFrom = Rxn<DateTime>(
-        data != null ? DateTime.parse(data['valid_from']) : DateTime.now());
-    final validTo = Rxn<DateTime>(
-        data != null
-            ? DateTime.parse(data['valid_to'])
-            : DateTime.now().add(const Duration(days: 30)));
-
-    final formKey = GlobalKey<FormState>();
-
-    Future<void> pickDate(bool isFrom) async {
-      final picked = await showDatePicker(
-        context: context,
-        initialDate:
-            isFrom ? (validFrom.value ?? DateTime.now()) : (validTo.value ?? DateTime.now()),
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2035),
-        builder: (context, child) => Theme(
-          data: ThemeData(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-            ),
-          ),
-          child: child!,
-        ),
-      );
-      if (picked != null) {
-        if (isFrom) {
-          validFrom.value = picked;
-        } else {
-          validTo.value = picked;
-        }
-      }
-    }
-
-    void submit() {
-      if (!formKey.currentState!.validate()) return;
-      if (validFrom.value == null || validTo.value == null) return;
-
-      final payload = {
-        'name': nameCtrl.text.trim(),
-        'code': codeCtrl.text.trim().toUpperCase(),
-        'type': type.value,
-        'description': descCtrl.text.trim(),
-        'valid_from': validFrom.value!.toIso8601String(),
-        'valid_to': validTo.value!.toIso8601String(),
-        'usage_limit': int.tryParse(usageLimitCtrl.text) ?? 0,
-        'is_active': isActive.value,
-        'stackable': stackable.value,
-      };
-
-      if (isEdit) {
-        controller.updatePromotion(editId, payload);
-      } else {
-        controller.createPromotion(payload);
-      }
-    }
+    controller.initForm(isEdit ? controller.selectedPromotion.value : null);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -111,7 +36,7 @@ class PromotionFormPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: Form(
-        key: formKey,
+        key: controller.formKey,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -123,7 +48,7 @@ class PromotionFormPage extends StatelessWidget {
                   children: [
                     _field(
                       label: 'Nama Promosi',
-                      controller: nameCtrl,
+                      ctrl: controller.nameCtrl,
                       hint: 'Diskon Akhir Tahun',
                       validator: (v) =>
                           v == null || v.isEmpty ? 'Wajib diisi' : null,
@@ -131,7 +56,7 @@ class PromotionFormPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     _field(
                       label: 'Kode Promo',
-                      controller: codeCtrl,
+                      ctrl: controller.codeCtrl,
                       hint: 'DISKON10',
                       textCapitalization: TextCapitalization.characters,
                       validator: (v) =>
@@ -140,26 +65,31 @@ class PromotionFormPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     _fieldLabel('Tipe Promosi'),
                     const SizedBox(height: 6),
-                    Obx(() => DropdownButtonFormField<String>(
-                          value: type.value,
-                          decoration: _inputDecoration(),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'discount_percent',
-                                child: Text('Diskon %')),
-                            DropdownMenuItem(
-                                value: 'discount_fixed',
-                                child: Text('Diskon Nominal')),
-                            DropdownMenuItem(
-                                value: 'free_item',
-                                child: Text('Gratis Item')),
-                          ],
-                          onChanged: (v) => type.value = v!,
-                        )),
+                    Obx(
+                      () => DropdownButtonFormField<String>(
+                        value: controller.formType.value,
+                        decoration: _inputDecoration(),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'discount_percent',
+                            child: Text('Diskon %'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'discount_fixed',
+                            child: Text('Diskon Nominal'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'free_item',
+                            child: Text('Gratis Item'),
+                          ),
+                        ],
+                        onChanged: (v) => controller.formType.value = v!,
+                      ),
+                    ),
                     const SizedBox(height: 14),
                     _field(
                       label: 'Deskripsi (opsional)',
-                      controller: descCtrl,
+                      ctrl: controller.descCtrl,
                       hint: 'Deskripsi singkat',
                       maxLines: 2,
                     ),
@@ -174,7 +104,7 @@ class PromotionFormPage extends StatelessWidget {
                   children: [
                     _field(
                       label: 'Batas Pemakaian (0 = unlimited)',
-                      controller: usageLimitCtrl,
+                      ctrl: controller.usageLimitCtrl,
                       hint: '0',
                       keyboardType: TextInputType.number,
                     ),
@@ -182,19 +112,33 @@ class PromotionFormPage extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Obx(() => _datePicker(
-                                label: 'Berlaku Dari',
-                                date: validFrom.value,
-                                onTap: () => pickDate(true),
-                              )),
+                          child: Obx(
+                            () => _datePicker(
+                              context: context,
+                              label: 'Berlaku Dari',
+                              date: controller.formValidFrom.value,
+                              onTap: () => _pickDate(
+                                context,
+                                controller,
+                                isFrom: true,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Obx(() => _datePicker(
-                                label: 'Berlaku Hingga',
-                                date: validTo.value,
-                                onTap: () => pickDate(false),
-                              )),
+                          child: Obx(
+                            () => _datePicker(
+                              context: context,
+                              label: 'Berlaku Hingga',
+                              date: controller.formValidTo.value,
+                              onTap: () => _pickDate(
+                                context,
+                                controller,
+                                isFrom: false,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -207,50 +151,61 @@ class PromotionFormPage extends StatelessWidget {
               _card(
                 child: Column(
                   children: [
-                    Obx(() => _toggleTile(
-                          label: 'Aktif',
-                          subtitle: 'Promo dapat digunakan',
-                          value: isActive.value,
-                          onChanged: (v) => isActive.value = v,
-                        )),
+                    Obx(
+                      () => _toggleTile(
+                        label: 'Aktif',
+                        subtitle: 'Promo dapat digunakan',
+                        value: controller.formIsActive.value,
+                        onChanged: (v) => controller.formIsActive.value = v,
+                      ),
+                    ),
                     const Divider(height: 1, color: Color(0xFFF0F0F0)),
-                    Obx(() => _toggleTile(
-                          label: 'Stackable',
-                          subtitle: 'Bisa digabung dengan promo lain',
-                          value: stackable.value,
-                          onChanged: (v) => stackable.value = v,
-                        )),
+                    Obx(
+                      () => _toggleTile(
+                        label: 'Stackable',
+                        subtitle: 'Bisa digabung dengan promo lain',
+                        value: controller.formStackable.value,
+                        onChanged: (v) => controller.formStackable.value = v,
+                      ),
+                    ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 24),
-              Obx(() => SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: controller.isSubmitting.value ? null : submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+              Obx(
+                () => SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: controller.isSubmitting.value
+                        ? null
+                        : () => controller.submitForm(editId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: controller.isSubmitting.value
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
-                            )
-                          : Text(
-                              isEdit ? 'Simpan Perubahan' : 'Buat Promosi',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
                     ),
-                  )),
+                    child: controller.isSubmitting.value
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            isEdit ? 'Simpan Perubahan' : 'Buat Promosi',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -259,7 +214,43 @@ class PromotionFormPage extends StatelessWidget {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── Date picker ────────────────────────────────────────────────────────────
+
+  static Future<void> _pickDate(
+    BuildContext context,
+    PromotionController controller, {
+    required bool isFrom,
+  }) async {
+    final initial = isFrom
+        ? (controller.formValidFrom.value ?? DateTime.now())
+        : (controller.formValidTo.value ?? DateTime.now());
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      builder: (context, child) => Theme(
+        data: ThemeData(
+          colorScheme: ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null) {
+      if (isFrom) {
+        controller.formValidFrom.value = picked;
+      } else {
+        controller.formValidTo.value = picked;
+      }
+    }
+  }
+
+  // ── UI helpers ─────────────────────────────────────────────────────────────
 
   Widget _card({required Widget child}) => Container(
         width: double.infinity,
@@ -292,7 +283,7 @@ class PromotionFormPage extends StatelessWidget {
 
   Widget _field({
     required String label,
-    required TextEditingController controller,
+    required TextEditingController ctrl,
     String? hint,
     TextInputType? keyboardType,
     int maxLines = 1,
@@ -305,7 +296,7 @@ class PromotionFormPage extends StatelessWidget {
           _fieldLabel(label),
           const SizedBox(height: 6),
           TextFormField(
-            controller: controller,
+            controller: ctrl,
             keyboardType: keyboardType,
             maxLines: maxLines,
             textCapitalization: textCapitalization,
@@ -317,6 +308,7 @@ class PromotionFormPage extends StatelessWidget {
       );
 
   Widget _datePicker({
+    required BuildContext context,
     required String label,
     required DateTime? date,
     required VoidCallback onTap,
@@ -338,8 +330,11 @@ class PromotionFormPage extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.calendar_today_outlined,
-                      size: 13, color: Colors.grey.shade500),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 13,
+                    color: Colors.grey.shade500,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     date != null
@@ -373,12 +368,15 @@ class PromotionFormPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w500)),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.grey)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                 ],
               ),
             ),

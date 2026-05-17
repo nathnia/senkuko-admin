@@ -15,12 +15,13 @@ class TransactionController extends GetxController {
 
   final searchText = ''.obs;
   final selectedDateRange = Rxn<DateTimeRange>();
-  final selectedQuickDate = 'Semua'.obs;
+  final selectedQuickDate = 'Hari Ini'.obs;
 
   final List<String> quickDateFilters = [
-    'Semua',
+    'Hari Ini',
     '7 Hari',
     '30 Hari',
+    'Semua',
     'Custom',
   ];
 
@@ -31,9 +32,9 @@ class TransactionController extends GetxController {
   }
 
   // ===================== FILTER =====================
-
   List<TransactionData> get filteredTransactions {
     final now = DateTime.now();
+
     return transactionList.where((t) {
       final matchSearch =
           t.invoiceNumber.toLowerCase().contains(
@@ -45,7 +46,13 @@ class TransactionController extends GetxController {
               false);
 
       bool matchDate = true;
-      if (selectedQuickDate.value == '7 Hari') {
+
+      if (selectedQuickDate.value == 'Hari Ini') {
+        matchDate =
+            t.transactedAt.year == now.year &&
+            t.transactedAt.month == now.month &&
+            t.transactedAt.day == now.day;
+      } else if (selectedQuickDate.value == '7 Hari') {
         matchDate = t.transactedAt.isAfter(
           now.subtract(const Duration(days: 7)),
         );
@@ -69,7 +76,6 @@ class TransactionController extends GetxController {
               t.transactedAt.isBefore(end);
         }
       }
-
       return matchSearch && matchDate;
     }).toList();
   }
@@ -78,7 +84,9 @@ class TransactionController extends GetxController {
 
   void updateQuickDate(String value) {
     selectedQuickDate.value = value;
-    if (value != 'Custom') selectedDateRange.value = null;
+    if (value != 'Custom') {
+      selectedDateRange.value = null;
+    }
   }
 
   Future<void> pickDateRange(BuildContext context) async {
@@ -89,8 +97,7 @@ class TransactionController extends GetxController {
       lastDate: now,
       initialDateRange:
           selectedDateRange.value ??
-          DateTimeRange(
-              start: now.subtract(const Duration(days: 7)), end: now),
+          DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now),
       builder: (context, child) => Theme(
         data: ThemeData(
           colorScheme: ColorScheme.light(

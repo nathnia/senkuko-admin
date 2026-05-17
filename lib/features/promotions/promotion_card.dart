@@ -20,7 +20,7 @@ class PromotionCard extends StatelessWidget {
   Color get _statusColor {
     if (!promotion.isActive) return Colors.grey;
     if (promotion.isExpired) return Colors.orange;
-    return const Color(0xFF2DC98E);
+    return AppColors.primary;
   }
 
   String get _statusLabel {
@@ -194,7 +194,7 @@ class PromotionCard extends StatelessWidget {
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: _statusColor.withAlpha(20),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _statusLabel,

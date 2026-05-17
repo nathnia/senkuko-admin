@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
@@ -17,9 +18,13 @@ class PromotionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
-        scrolledUnderElevation: 0,
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 16),
+          child: AppBackButton(),
+        ),
+        leadingWidth: 40,
         title: const Text(
           'Promosi',
           style: TextStyle(
@@ -29,13 +34,6 @@ class PromotionPage extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded,
-                size: 20, color: Colors.black54),
-            onPressed: controller.fetchPromotions,
-          ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: Padding(
@@ -49,16 +47,18 @@ class PromotionPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Obx(() => AppFilterChips(
-                items: const [
-                  FilterChipItem(label: 'Semua'),
-                  FilterChipItem(label: 'Aktif'),
-                  FilterChipItem(label: 'Tidak Aktif'),
-                  FilterChipItem(label: 'Kedaluwarsa'),
-                ],
-                selectedLabel: controller.selectedFilter.value,
-                onChipTap: controller.updateFilter,
-              )),
+          Obx(
+            () => AppFilterChips(
+              items: const [
+                FilterChipItem(label: 'Semua'),
+                FilterChipItem(label: 'Aktif'),
+                FilterChipItem(label: 'Tidak Aktif'),
+                FilterChipItem(label: 'Kedaluwarsa'),
+              ],
+              selectedLabel: controller.selectedFilter.value,
+              onChipTap: controller.updateFilter,
+            ),
+          ),
           Expanded(child: _promotionList(controller)),
         ],
       ),
@@ -87,8 +87,11 @@ class PromotionPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.local_offer_outlined,
-                  size: 48, color: Colors.grey.shade300),
+              Icon(
+                Icons.local_offer_outlined,
+                size: 48,
+                color: Colors.grey.shade300,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Belum ada promosi',
@@ -113,10 +116,8 @@ class PromotionPage extends StatelessWidget {
             final promo = list[index];
             return PromotionCard(
               promotion: promo,
-              onTap: () => Get.toNamed(
-                AppRoutes.promotionDetail,
-                arguments: promo.id,
-              ),
+              onTap: () =>
+                  Get.toNamed(AppRoutes.promotionDetail, arguments: promo.id),
               onToggleActive: () => controller.toggleActive(promo),
               onDelete: () => controller.confirmDelete(promo.id, promo.name),
             );
