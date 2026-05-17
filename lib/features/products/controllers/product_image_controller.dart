@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_image_model.dart';
@@ -29,16 +30,16 @@ class ProductImageController extends GetxController {
 
   // ===================== HELPERS =====================
 
-  bool _isNetworkError(response) =>
-      response.statusCode == 408 || response.statusCode == 503;
+  // bool _isNetworkError(response) =>
+  //     response.statusCode == 408 || response.statusCode == 503;
 
-  String _parseMessage(String body) {
-    try {
-      return json.decode(body)['message'] ?? 'Terjadi kesalahan';
-    } catch (_) {
-      return 'Terjadi kesalahan';
-    }
-  }
+  // String _parseMessage(String body) {
+  //   try {
+  //     return json.decode(body)['message'] ?? 'Terjadi kesalahan';
+  //   } catch (_) {
+  //     return 'Terjadi kesalahan';
+  //   }
+  // }
 
   // ===================== FETCH =====================
   Future<void> fetchProductImages(String productId) async {
@@ -76,8 +77,8 @@ class ProductImageController extends GetxController {
     try {
       final res = await ProductService.deleteProductImage(productId, imageId);
 
-      if (_isNetworkError(res)) {
-        AppToast.error(_parseMessage(res.body));
+      if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
         return;
       }
 
@@ -162,8 +163,8 @@ class ProductImageController extends GetxController {
           fileName: image.name,
         );
 
-        if (_isNetworkError(res)) {
-          AppToast.error(_parseMessage(res.body));
+        if (ApiHelper.isNetworkError(res)) {
+          AppToast.error(ApiHelper.parseError(res.body));
           break;
         } else if (res.statusCode != 200 && res.statusCode != 201) {
           failCount++;
@@ -269,8 +270,8 @@ class ProductImageController extends GetxController {
         );
 
         if (res.statusCode == 200 || res.statusCode == 201) {
-        } else if (_isNetworkError(res)) {
-          AppToast.error(_parseMessage(res.body));
+        } else if (ApiHelper.isNetworkError(res)) {
+          AppToast.error(ApiHelper.parseError(res.body));
           break;
         } else {
           failCount++;

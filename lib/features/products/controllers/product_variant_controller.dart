@@ -1,9 +1,7 @@
-// lib/features/products/controllers/product_variant_controller.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
-import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/models/product_price_model.dart';
 import 'package:senkukoadmin/features/products/models/product_pricelist_model.dart';
@@ -12,22 +10,26 @@ import 'package:senkukoadmin/features/products/models/unit_model.dart';
 import 'package:senkukoadmin/features/products/product_service.dart';
 
 // ── Product summary — dipakai ProductCard ────────────────────────────────────
-
 class ProductSummary {
   final int totalStock;
   final bool isOutOfStock;
   final String mainPrice;
   final int additionalPriceCount;
+  final int variantCount;
 
   const ProductSummary({
     required this.totalStock,
     required this.isOutOfStock,
     required this.mainPrice,
     required this.additionalPriceCount,
+    required this.variantCount,
   });
 }
 
 class ProductVariantController extends GetxController {
+  // ===================== STATE =====================
+  final isLoadingVariants = false.obs;
+
   // ===================== DATA =====================
   final unitList = <UnitData>[].obs;
   final priceList = <PriceData>[].obs;
@@ -76,6 +78,7 @@ class ProductVariantController extends GetxController {
 
   // ===================== INIT =====================
   Future<void> _loadInitialData() async {
+    isLoadingVariants.value = true;
     try {
       await Future.wait([
         fetchUnits(),
@@ -85,6 +88,8 @@ class ProductVariantController extends GetxController {
       ]);
     } catch (e) {
       AppToast.error('Gagal memuat data variant');
+    } finally {
+      isLoadingVariants.value = false;
     }
   }
 
@@ -149,6 +154,8 @@ class ProductVariantController extends GetxController {
           'unit_id': resolveUnitId(v),
           'unit_name': v.unitName ?? '',
           'is_base_unit': v.isBaseUnit == 1,
+          'conversion_factor':
+              double.tryParse(v.conversionFactor.toString()) ?? 1.0,
           'prices': prices,
         };
       }).toList(),
@@ -157,19 +164,16 @@ class ProductVariantController extends GetxController {
     initPriceControllers();
   }
 
-  // ===================== PRICE LIST SORTED =====================
-  // 'normal' selalu paling atas, sisanya urutan asli dari API
-  List<PricelistData> get sortedPriceListMaster {
-    return [...priceListMaster]..sort((a, b) {
-      if (a.code.toLowerCase() == 'normal') return -1;
-      if (b.code.toLowerCase() == 'normal') return 1;
-      return 0;
-    });
+  void resetVariants() {
+    variantsTemp.clear();
+    editVariantsTemp.clear();
+    productVariants.clear();
+    clearVariantForm();
   }
 
   // ===================== ADD VARIANT FORM =====================
   void initPriceControllers() {
-    for (var p in sortedPriceListMaster) {
+    for (var p in priceListMaster) {
       priceControllers.putIfAbsent(p.id, () => TextEditingController());
       formPrices.putIfAbsent(p.id, () => {'enabled': false});
     }
@@ -237,6 +241,68 @@ class ProductVariantController extends GetxController {
     if (index >= 0 && index < list.length) list.removeAt(index);
   }
 
+  Future<void> deleteVariant(int index, {required bool isEditMode}) async {
+    final list = isEditMode ? editVariantsTemp : variantsTemp;
+    if (index < 0 || index >= list.length) return;
+
+    final variantId = list[index]['id']?.toString() ?? '';
+
+    // Variant baru (belum tersimpan di server) → hapus lokal saja
+    if (variantId.isEmpty) {
+      list.removeAt(index);
+      return;
+    }
+
+    // Variant existing → konfirmasi dulu, lalu hit API
+    final confirm =
+        await Get.dialog<bool>(
+          barrierDismissible: false,
+          AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            title: const Text(
+              'Hapus Varian',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            content: const Text(
+              'Varian ini akan dihapus permanen dari server. Lanjutkan?',
+              style: TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(result: false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Get.back(result: true),
+                child: const Text(
+                  'Hapus',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    final res = await ProductService.deleteVariant(variantId);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      list.removeAt(index);
+      AppToast.success('Varian berhasil dihapus');
+    } else {
+      AppToast.error('Gagal menghapus varian');
+    }
+  }
+
   // ===================== EDIT VARIANT =====================
   void prepareEditVariant(int index) {
     if (index < 0 || index >= editVariantsTemp.length) return;
@@ -253,7 +319,7 @@ class ProductVariantController extends GetxController {
     dialogPriceC.clear();
     dialogPrices.clear();
 
-    for (var pl in sortedPriceListMaster) {
+    for (var pl in priceListMaster) {
       final existing = (v['prices'] as List?)?.firstWhereOrNull(
         (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
       );
@@ -293,29 +359,26 @@ class ProductVariantController extends GetxController {
   void saveEditVariant(int index) {
     if (index < 0 || index >= editVariantsTemp.length) return;
 
-    final newPrices = sortedPriceListMaster.fold<List<Map<String, dynamic>>>(
-      [],
-      (list, pl) {
-        final entry = dialogPrices[pl.id];
-        final enabled = entry?['enabled'] as bool? ?? false;
-        final val = (dialogPriceC[pl.id]?.text.trim() ?? '').replaceAll(
-          '.',
-          '',
-        );
-        if (!enabled || val.isEmpty) return list;
+    final newPrices = priceListMaster.fold<List<Map<String, dynamic>>>([], (
+      list,
+      pl,
+    ) {
+      final entry = dialogPrices[pl.id];
+      final enabled = entry?['enabled'] as bool? ?? false;
+      final val = (dialogPriceC[pl.id]?.text.trim() ?? '').replaceAll('.', '');
+      if (!enabled || val.isEmpty) return list;
 
-        final oldPrice = (editVariantsTemp[index]['prices'] as List?)
-            ?.firstWhereOrNull(
-              (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
-            );
+      final oldPrice = (editVariantsTemp[index]['prices'] as List?)
+          ?.firstWhereOrNull(
+            (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
+          );
 
-        return list..add({
-          'id': oldPrice?['id'] ?? '',
-          'price_list_id': pl.id,
-          'price': val,
-        });
-      },
-    );
+      return list..add({
+        'id': oldPrice?['id'] ?? '',
+        'price_list_id': pl.id,
+        'price': val,
+      });
+    });
 
     editVariantsTemp[index] = {
       ...editVariantsTemp[index],
@@ -333,7 +396,7 @@ class ProductVariantController extends GetxController {
 
     editVariantsTemp.refresh();
     Get.back();
-    AppToast.info('Varian diubah. Tekan Simpan.');
+    AppToast.info('Klik Simpan Perubahan untuk menyimpan ke server');
   }
 
   // ===================== CRUD =====================
@@ -478,46 +541,6 @@ class ProductVariantController extends GetxController {
     }
   }
 
-  // ===================== PRODUCT SUMMARY =====================
-  ProductSummary getSummaryForProduct(String productId) {
-    final variants = allVariants
-        .where((v) => v.productId == productId)
-        .toList();
-
-    final totalStock = variants.fold<int>(0, (s, v) => s + v.stockQty);
-    final isOutOfStock = variants.isNotEmpty && totalStock == 0;
-
-    final variantIds = variants.map((v) => v.id).toSet();
-    final productPrices = priceList
-        .where((p) => variantIds.contains(p.productVariantId))
-        .toList();
-
-    final normalPriceListId = priceListMaster
-        .firstWhereOrNull((pl) => pl.code.toLowerCase() == 'normal')
-        ?.id;
-
-    final mainPrice = productPrices.isEmpty
-        ? '0'
-        : ((normalPriceListId != null
-                      ? productPrices.firstWhereOrNull(
-                          (p) => p.priceListId == normalPriceListId,
-                        )
-                      : null) ??
-                  productPrices.first)
-              .price;
-
-    final additionalPriceCount = productPrices.length > 1
-        ? productPrices.length - 1
-        : 0;
-
-    return ProductSummary(
-      totalStock: totalStock,
-      isOutOfStock: isOutOfStock,
-      mainPrice: mainPrice,
-      additionalPriceCount: additionalPriceCount,
-    );
-  }
-
   // ===================== PRICE DISPLAY HELPERS =====================
   List<PriceData> getPricesByVariant(String variantId) =>
       priceList.where((e) => e.productVariantId == variantId).toList();
@@ -553,7 +576,7 @@ class ProductVariantController extends GetxController {
         AppToast.success('Unit berhasil dihapus');
         await fetchUnits();
       } else {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.error(_parseErrorMessage(res.body));
       }
     } catch (e) {
       AppToast.error('Terjadi kesalahan');
@@ -573,58 +596,79 @@ class ProductVariantController extends GetxController {
     return unitList.isNotEmpty ? unitList.first.id : '';
   }
 
-  // ===================== DETAIL HELPERS =====================
-  List<Map<String, dynamic>> get detailVariantMaps {
-    return productVariants.map((v) {
-      final prices = getPricesByVariant(
-        v.id,
-      ).map((p) => {'price_list_id': p.priceListId, 'price': p.price}).toList();
-
-      return {
-        'id': v.id,
-        'name': v.name,
-        'stock_qty': v.stockQty,
-        'unit_name': v.unitSymbol ?? v.unitName ?? '',
-        'barcode': v.barcode ?? '',
-        'prices': prices,
-      };
-    }).toList();
+  String _parseErrorMessage(String body) {
+    try {
+      return json.decode(body)['message'] ?? 'Terjadi kesalahan';
+    } catch (_) {
+      return 'Terjadi kesalahan';
+    }
   }
 
-  // Di dalam class ProductVariantController
+  // ===================== PRICE LIST SORTED =====================
+  List<PricelistData> get sortedPriceListMaster {
+    return [...priceListMaster]..sort((a, b) {
+      final aCode = a.code.toLowerCase();
+      final bCode = b.code.toLowerCase();
+      if (aCode == 'normal') return -1;
+      if (bCode == 'normal') return 1;
+      if (aCode == 'member') return -1;
+      if (bCode == 'member') return 1;
+      return 0;
+    });
+  }
 
-  /// Helper untuk mendapatkan daftar harga yang sudah rapi + nama price list
-  List<Map<String, dynamic>> getFormattedPrices(Map<String, dynamic> variant) {
-    final prices = variant['prices'] as List? ?? [];
-
-    return prices.map((p) {
-      final priceListId = p['price_list_id']?.toString() ?? '';
-
-      final priceList = sortedPriceListMaster.firstWhereOrNull(
-        (pl) => pl.id == priceListId,
+  List<Map<String, dynamic>> sortPricesByMaster(List prices) {
+    final sortedOrder = sortedPriceListMaster.map((pl) => pl.id).toList();
+    return [...prices]..sort((a, b) {
+      final ai = sortedOrder.indexOf(a['price_list_id']?.toString() ?? '');
+      final bi = sortedOrder.indexOf(b['price_list_id']?.toString() ?? '');
+      return (ai == -1 ? sortedOrder.length : ai).compareTo(
+        bi == -1 ? sortedOrder.length : bi,
       );
-
-      return {
-        'price_list_id': priceListId,
-        'price_list_name': priceList?.name ?? 'Unknown',
-        'price': p['price']?.toString() ?? '0',
-        'price_raw': p['price'], // kalau butuh number
-      };
-    }).toList();
+    });
   }
 
-  /// Optional: Kalau mau urutkan sesuai sortedPriceListMaster
-  List<Map<String, dynamic>> getFormattedPricesSorted(
-    Map<String, dynamic> variant,
-  ) {
-    final rawPrices = getFormattedPrices(variant);
-
-    // Buat map untuk lookup cepat
-    final priceMap = {for (var p in rawPrices) p['price_list_id']: p};
-
-    return sortedPriceListMaster
-        .where((pl) => priceMap.containsKey(pl.id))
-        .map((pl) => priceMap[pl.id]!)
+  // ===================== PRODUCT SUMMARY =====================
+  ProductSummary getSummaryForProduct(String productId) {
+    final variants = allVariants
+        .where((v) => v.productId == productId)
         .toList();
+
+    final totalStock = variants.fold<int>(0, (s, v) => s + v.stockQty);
+    final isOutOfStock = variants.isNotEmpty && totalStock == 0;
+
+    final normalPriceListId = priceListMaster
+        .firstWhereOrNull((pl) => pl.code.toLowerCase() == 'normal')
+        ?.id;
+
+    final mainVariant =
+        variants.firstWhereOrNull((v) => v.isBaseUnit == 1) ??
+        variants.firstOrNull;
+
+    final mainVariantPrices = mainVariant != null
+        ? priceList.where((p) => p.productVariantId == mainVariant.id).toList()
+        : <PriceData>[];
+
+    final mainPrice = mainVariantPrices.isEmpty
+        ? '0'
+        : ((normalPriceListId != null
+                      ? mainVariantPrices.firstWhereOrNull(
+                          (p) => p.priceListId == normalPriceListId,
+                        )
+                      : null) ??
+                  mainVariantPrices.first)
+              .price;
+
+    final additionalPriceCount = mainVariantPrices.length > 1
+        ? mainVariantPrices.length - 1
+        : 0;
+
+    return ProductSummary(
+      totalStock: totalStock,
+      isOutOfStock: isOutOfStock,
+      mainPrice: mainPrice,
+      additionalPriceCount: additionalPriceCount,
+      variantCount: variants.length,
+    );
   }
 }

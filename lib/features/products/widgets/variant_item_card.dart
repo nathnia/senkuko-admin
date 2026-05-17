@@ -1,3 +1,10 @@
+// lib/features/products/widgets/variant_item_card.dart
+//
+// Reusable variant card dipakai di:
+//   - AddProductPage   (mode: add)
+//   - EditProductPage  (mode: edit)
+//   - DetailProductPage (mode: detail)
+//
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
@@ -9,7 +16,9 @@ enum VariantCardMode { add, edit, detail }
 class VariantItemCard extends StatelessWidget {
   final Map<String, dynamic> variant;
   final VariantCardMode mode;
+
   final int index;
+
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
 
@@ -25,14 +34,13 @@ class VariantItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final variantC = Get.find<ProductVariantController>();
-
-    // Pakai yang sorted biar konsisten
-    final prices = variantC.getFormattedPricesSorted(variant);
-
+    final barcode = variant['barcode']?.toString() ?? '';
     final name = variant['name']?.toString() ?? '';
     final stockQty = variant['stock_qty']?.toString() ?? '0';
     final unitName = variant['unit_name']?.toString() ?? '';
-    final barcode = variant['barcode']?.toString() ?? '';
+    final prices = variantC.sortPricesByMaster(
+      variant['prices'] as List? ?? [],
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -44,12 +52,13 @@ class VariantItemCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // ── Header: nama, stok, barcode, action buttons ──
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Info kiri
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,6 +68,7 @@ class VariantItemCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
+                          color: Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -74,6 +84,7 @@ class VariantItemCard extends StatelessWidget {
                   ),
                 ),
 
+                // Action buttons (edit & delete) — hanya di mode add/edit
                 if (onEdit != null || onDelete != null)
                   Row(
                     children: [
@@ -99,27 +110,39 @@ class VariantItemCard extends StatelessWidget {
             ),
           ),
 
-          // Harga Section
+          // ── Harga ──
           if (prices.isNotEmpty) ...[
             Divider(height: 1, thickness: 0.5, color: Colors.grey.shade200),
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: prices.map((p) {
+                  // Resolve nama price list (sama untuk semua mode)
+                  final priceName =
+                      variantC.priceListMaster
+                          .firstWhereOrNull(
+                            (pl) => pl.id == p['price_list_id']?.toString(),
+                          )
+                          ?.name ??
+                      p['price_list_id']?.toString() ??
+                      '-';
+
+                  final priceValue = p['price']?.toString() ?? '0';
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          p['price_list_name'],
+                          priceName,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
                           ),
                         ),
                         Text(
-                          CurrencyFormatter.format(p['price']),
+                          CurrencyFormatter.format(priceValue),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,

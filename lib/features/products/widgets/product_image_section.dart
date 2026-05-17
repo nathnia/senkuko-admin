@@ -121,6 +121,7 @@ class ProductImageSection {
                             ) ??
                             false;
                         if (confirm) {
+                          controller.isDirty.value = true;
                           imageC.deleteProductImage(productId, image.id, index);
                         }
                       },
@@ -232,19 +233,25 @@ class ProductImageSection {
                 ),
               ),
             ),
+          // FIX 1: Wrap dengan Obx agar reaktif terhadap isUploadingImage
+          // FIX 2: Disable onTap saat uploading
+          // FIX 3: Tambahkan icon close di dalam container
           Positioned(
             top: 4,
             right: 4,
-            child: GestureDetector(
-              onTap: onDelete,
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: imageC.isUploadingImage.value
-                      ? Colors.grey.shade400
-                      : Colors.red,
-                  shape: BoxShape.circle,
+            child: Obx(
+              () => GestureDetector(
+                onTap: imageC.isUploadingImage.value ? null : onDelete,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: imageC.isUploadingImage.value
+                        ? Colors.grey.shade400
+                        : Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
                 ),
               ),
             ),

@@ -310,7 +310,7 @@ class DetailProductPage extends StatelessWidget {
   // ── Variants ──
   Widget _variantsCard() {
     return Obx(() {
-      final variants = variantC.detailVariantMaps;
+      final variants = variantC.productVariants;
 
       return AppCard(
         title: 'Varian Produk',
@@ -327,10 +327,31 @@ class DetailProductPage extends StatelessWidget {
               )
             : Column(
                 children: variants.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final v = entry.value;
+
+                  // Convert VariantData → Map untuk VariantItemCard
+                  final prices = variantC
+                      .getPricesByVariant(v.id)
+                      .map((p) => {
+                            'price_list_id': p.priceListId,
+                            'price': p.price,
+                          })
+                      .toList();
+
+                  final variantMap = {
+                    'id': v.id,
+                    'name': v.name,
+                    'stock_qty': v.stockQty,
+                    'unit_name': v.unitSymbol ?? v.unitName ?? '',
+                    'barcode': v.barcode ?? '',
+                    'prices': prices,
+                  };
+
                   return VariantItemCard(
-                    variant: entry.value,
+                    variant: variantMap,
                     mode: VariantCardMode.detail,
-                    index: entry.key,
+                    index: i,
                   );
                 }).toList(),
               ),

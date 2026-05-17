@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
@@ -67,20 +68,18 @@ class EditProductPage extends StatelessWidget {
           ),
           centerTitle: true,
           actions: [
-            Obx(() => AppSaveButton(
-                  isLoading: controller.isSubmitting.value,
-                  isDisabled: !controller.isDirty.value,
-                  onTap: () async {
-                    await controller.updateFullProduct();
-                    Get.back();
-                    Get.snackbar(
-                      'Sukses',
-                      'Produk berhasil diupdate',
-                      backgroundColor: Colors.green,
-                      colorText: Colors.white,
-                    );
-                  },
-                )),
+            Obx(
+              () => AppSaveButton(
+                isLoading: controller.isSubmitting.value,
+                isDisabled: !controller.isDirty.value,
+                onTap: () async {
+                  await controller.updateFullProduct();
+                  await controller.loadProductDetail(productId);
+                  Get.back();
+                  AppToast.success('Produk berhasil diupdate');
+                },
+              ),
+            ),
           ],
         ),
         body: Obx(() {
@@ -141,8 +140,10 @@ class EditProductPage extends StatelessWidget {
                   arguments: {'index': i},
                 );
               },
-              onDelete: () =>
-                  variantC.removeTempVariant(i, isEditMode: true),
+              onDelete: () {
+                controller.isDirty.value = true;
+                variantC.deleteVariant(i, isEditMode: true);
+              },
             );
           }).toList(),
         ),
