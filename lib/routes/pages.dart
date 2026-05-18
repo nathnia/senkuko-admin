@@ -45,12 +45,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.customer,
       page: () => CustomerPage(),
-      binding: CustomerBinding(), // ← register sekali di sini
+      binding: CustomerBinding(), 
     ),
     GetPage(
       name: AppRoutes.transaction,
       page: () => TransactionPage(),
-      binding: TransactionBinding(), // ← tambah ini
+      binding: TransactionBinding(), 
     ),
     GetPage(
       name: AppRoutes.transactionDetail,
@@ -58,36 +58,35 @@ class AppPages {
     ),
     GetPage(
       name: AppRoutes.promotions,
-      page: () => const PromotionPage(),
+      page: () => PromotionPage(),
       binding: PromotionBinding(), 
     ),
     GetPage(
       name: AppRoutes.promotionDetail,
-      page: () => const PromotionDetailPage(),
+      page: () =>  PromotionDetailPage(),
     ),
     GetPage(
       name: AppRoutes.promotionForm,
-      page: () => const PromotionFormPage(),
+      page: () =>  PromotionFormPage(),
     ),
     GetPage(
       name: AppRoutes.promotionConditionForm,
-      page: () => const PromotionConditionFormPage(),
+      page: () =>  PromotionConditionFormPage(),
     ),
     GetPage(
       name: AppRoutes.promotionRewardForm,
-      page: () => const PromotionRewardFormPage(),
+      page: () =>  PromotionRewardFormPage(),
     ),
-    // GetPage(name: AppRoutes.voucher, page: () => VoucherPage()),
     GetPage(name: AppRoutes.addPromo, page: () => PromotionFormPage()),
     GetPage(name: AppRoutes.addVoucher, page: () => AddVoucherPage()),
     GetPage(
   name: AppRoutes.vouchers,
-  page: () => const VoucherPage(),
+  page: () => VoucherPage(),
   binding: VoucherBinding(),
 ),
 GetPage(
   name: AppRoutes.voucherForm,
-  page: () => const VoucherFormPage(),
+  page: () =>  VoucherFormPage(),
   binding: VoucherBinding(),
 ),
   ];

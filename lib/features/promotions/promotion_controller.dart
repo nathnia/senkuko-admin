@@ -1,142 +1,164 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/promotions/promotion_service.dart';
 
 class PromotionController extends GetxController {
+  // ===================== STATE =====================
   final isLoading = false.obs;
   final isLoadingDetail = false.obs;
   final isSubmitting = false.obs;
 
+  // ===================== DATA =====================
   final promotionList = <PromotionData>[].obs;
-  final selectedPromotion = Rxn<Map<String, dynamic>>();
+  final filteredPromotions = <PromotionData>[].obs;
+  final selectedPromotion = Rxn<PromotionData>();
 
+  // ===================== PAGE STATE =====================
   final searchText = ''.obs;
   final selectedFilter = 'Semua'.obs;
 
-  // ── Form state (dipakai oleh PromotionFormPage) ───────────────────────────
+  // ===================== PROMOTION FORM =====================
+  final nameC = TextEditingController();
+  final codeC = TextEditingController();
+  final descC = TextEditingController();
+  final usageLimitC = TextEditingController(text: '0');
+  final validFrom = Rxn<DateTime>();
+  final validTo = Rxn<DateTime>();
+  final selectedType = 'discount_percent'.obs;
+  final isActive = true.obs;
+  final stackable = false.obs;
 
-  final formKey = GlobalKey<FormState>();
-
-  final nameCtrl = TextEditingController();
-  final codeCtrl = TextEditingController();
-  final descCtrl = TextEditingController();
-  final usageLimitCtrl = TextEditingController();
-
-  final formType = 'discount_percent'.obs;
-  final formIsActive = true.obs;
-  final formStackable = false.obs;
-  final formValidFrom = Rxn<DateTime>();
-  final formValidTo = Rxn<DateTime>();
-
-  /// Panggil ini sebelum buka halaman form.
-  /// [data] = null artinya mode Create; isi data artinya mode Edit.
-  void initForm([Map<String, dynamic>? data]) {
-    nameCtrl.text = data?['name'] ?? '';
-    codeCtrl.text = data?['code'] ?? '';
-    descCtrl.text = data?['description'] ?? '';
-    usageLimitCtrl.text = data?['usage_limit']?.toString() ?? '0';
-
-    formType.value = (data?['type'] as String?) ?? 'discount_percent';
-    formIsActive.value =
-        data?['is_active'] == 1 || data?['is_active'] == true ? true : true;
-    formStackable.value =
-        data?['stackable'] == 1 || data?['stackable'] == true;
-
-    formValidFrom.value =
-        data != null ? DateTime.tryParse(data['valid_from'] ?? '') : DateTime.now();
-    formValidTo.value = data != null
-        ? DateTime.tryParse(data['valid_to'] ?? '')
-        : DateTime.now().add(const Duration(days: 30));
+  void resetForm() {
+    nameC.clear();
+    codeC.clear();
+    descC.clear();
+    usageLimitC.text = '0';
+    validFrom.value = null;
+    validTo.value = null;
+    selectedType.value = 'discount_percent';
+    isActive.value = true;
+    stackable.value = false;
   }
 
-  void submitForm(String? editId) {
-    if (!formKey.currentState!.validate()) return;
-    if (formValidFrom.value == null || formValidTo.value == null) return;
-
-    final payload = {
-      'name': nameCtrl.text.trim(),
-      'code': codeCtrl.text.trim().toUpperCase(),
-      'type': formType.value,
-      'description': descCtrl.text.trim(),
-      'valid_from': formValidFrom.value!.toIso8601String(),
-      'valid_to': formValidTo.value!.toIso8601String(),
-      'usage_limit': int.tryParse(usageLimitCtrl.text) ?? 0,
-      'is_active': formIsActive.value,
-      'stackable': formStackable.value,
-    };
-
-    if (editId != null) {
-      updatePromotion(editId, payload);
-    } else {
-      createPromotion(payload);
-    }
+  void loadFormFromPromotion(PromotionData p) {
+    nameC.text = p.name;
+    codeC.text = p.code;
+    descC.text = p.description ?? '';
+    usageLimitC.text = p.usageLimit.toString();
+    validFrom.value = p.validFrom;
+    validTo.value = p.validTo;
+    selectedType.value = p.type;
+    isActive.value = p.isActive;
+    stackable.value = p.stackable;
   }
 
-  @override
-  void onClose() {
-    nameCtrl.dispose();
-    codeCtrl.dispose();
-    descCtrl.dispose();
-    usageLimitCtrl.dispose();
-    super.onClose();
+  // ===================== CONDITION FORM =====================
+  final conditionType = 'min_transaction_amount'.obs;
+  final conditionOperator = 'gte'.obs;
+  final conditionValueC = TextEditingController();
+  final conditionTargetIdC = TextEditingController();
+
+  bool conditionNeedsTargetId(String type) =>
+      type == 'specific_product' || type == 'specific_category';
+
+  void resetConditionForm() {
+    conditionType.value = 'min_transaction_amount';
+    conditionOperator.value = 'gte';
+    conditionValueC.clear();
+    conditionTargetIdC.clear();
   }
 
-  // ── Filters ───────────────────────────────────────────────────────────────
+  // ===================== REWARD FORM =====================
+  final rewardType = 'discount_percent'.obs;
+  final discountMode = 'per_transaction'.obs;
+  final discountValueC = TextEditingController();
+  final maxDiscountC = TextEditingController(text: '0');
+  final freeVariantIdC = TextEditingController();
+  final freeQtyC = TextEditingController(text: '1');
 
-  List<PromotionData> get filteredPromotions {
-    var list = promotionList.toList();
-
-    switch (selectedFilter.value) {
-      case 'Aktif':
-        list = list.where((p) => p.isValid).toList();
-        break;
-      case 'Tidak Aktif':
-        list = list.where((p) => !p.isActive).toList();
-        break;
-      case 'Kedaluwarsa':
-        list = list.where((p) => p.isExpired).toList();
-        break;
-    }
-
-    final q = searchText.value.toLowerCase();
-    if (q.isNotEmpty) {
-      list = list
-          .where((p) =>
-              p.name.toLowerCase().contains(q) ||
-              p.code.toLowerCase().contains(q))
-          .toList();
-    }
-
-    return list;
+  void resetRewardForm() {
+    rewardType.value = 'discount_percent';
+    discountMode.value = 'per_transaction';
+    discountValueC.clear();
+    maxDiscountC.text = '0';
+    freeVariantIdC.clear();
+    freeQtyC.text = '1';
   }
 
-  void updateSearch(String value) => searchText.value = value;
-  void updateFilter(String value) => selectedFilter.value = value;
-
-  // ── Fetch ─────────────────────────────────────────────────────────────────
-
+  // ===================== LIFECYCLE =====================
   @override
   void onInit() {
     super.onInit();
     fetchPromotions();
   }
 
+  @override
+  void onClose() {
+    nameC.dispose();
+    codeC.dispose();
+    descC.dispose();
+    usageLimitC.dispose();
+    conditionValueC.dispose();
+    conditionTargetIdC.dispose();
+    discountValueC.dispose();
+    maxDiscountC.dispose();
+    freeVariantIdC.dispose();
+    freeQtyC.dispose();
+    super.onClose();
+  }
+
+  // ===================== FILTER =====================
+  void _applyFilter() {
+    filteredPromotions.assignAll(
+      promotionList.where((p) {
+        final matchFilter = switch (selectedFilter.value) {
+          'Aktif' => p.isValid,
+          'Tidak Aktif' => !p.isActive,
+          'Kedaluwarsa' => p.isExpired,
+          _ => true,
+        };
+        final q = searchText.value.toLowerCase();
+        final matchSearch =
+            q.isEmpty ||
+            p.name.toLowerCase().contains(q) ||
+            p.code.toLowerCase().contains(q);
+        return matchFilter && matchSearch;
+      }).toList(),
+    );
+  }
+
+  void updateSearch(String value) {
+    searchText.value = value;
+    _applyFilter();
+  }
+
+  void updateFilter(String value) {
+    selectedFilter.value = value;
+    _applyFilter();
+  }
+
+  // ===================== FETCH =====================
   Future<void> fetchPromotions() async {
     isLoading.value = true;
     try {
       final res = await PromotionService.getAllPromotions();
       if (res.statusCode == 200) {
         promotionList.assignAll(promotionListModelFromJson(res.body).data);
+        _applyFilter();
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error('Gagal memuat daftar promosi');
       }
     } catch (e) {
-      debugPrint('Error fetchPromotions: $e');
-      Fluttertoast.showToast(msg: 'Gagal memuat data promosi');
+      AppToast.error('Terjadi kesalahan saat memuat promosi');
     } finally {
       isLoading.value = false;
     }
@@ -148,175 +170,105 @@ class PromotionController extends GetxController {
     try {
       final res = await PromotionService.getPromotionById(id);
       if (res.statusCode == 200) {
-        selectedPromotion.value = jsonDecode(res.body)['data'];
+        selectedPromotion.value = PromotionData.fromJson(
+          jsonDecode(res.body)['data'],
+        );
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error('Gagal memuat detail promosi');
       }
     } catch (e) {
-      debugPrint('Error fetchPromotionById: $e');
-      Fluttertoast.showToast(msg: 'Gagal memuat detail promosi');
+      AppToast.error('Terjadi kesalahan saat memuat detail promosi');
     } finally {
       isLoadingDetail.value = false;
     }
   }
 
-  // ── Create / Update / Delete ──────────────────────────────────────────────
-
-  Future<void> createPromotion(Map<String, dynamic> payload) async {
+  // ===================== CREATE =====================
+  Future<bool> createPromotion() async {
+    if (nameC.text.trim().isEmpty || codeC.text.trim().isEmpty) {
+      AppToast.warning('Nama dan Kode Promo harus diisi');
+      return false;
+    }
+    if (validFrom.value == null || validTo.value == null) {
+      AppToast.warning('Periode berlaku harus diisi');
+      return false;
+    }
     isSubmitting.value = true;
     try {
-      final res = await PromotionService.createPromotion(payload);
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        Fluttertoast.showToast(msg: 'Promosi berhasil dibuat');
-        await fetchPromotions();
-        Get.back();
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
+      final res = await PromotionService.createPromotion(_buildPayload());
+      if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+        return false;
       }
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        AppToast.error(_parseError(res.body));
+        return false;
+      }
+      AppToast.success('Promosi berhasil dibuat');
+      await fetchPromotions();
+      resetForm();
+      return true;
     } catch (e) {
-      debugPrint('Error createPromotion: $e');
-      Fluttertoast.showToast(msg: 'Gagal membuat promosi');
+      AppToast.error('Terjadi kesalahan saat membuat promosi');
+      return false;
     } finally {
       isSubmitting.value = false;
     }
   }
 
-  Future<void> updatePromotion(String id, Map<String, dynamic> payload) async {
+  // ===================== UPDATE =====================
+  Future<bool> updatePromotion(String id) async {
+    if (nameC.text.trim().isEmpty || codeC.text.trim().isEmpty) {
+      AppToast.warning('Nama dan Kode Promo harus diisi');
+      return false;
+    }
+    if (validFrom.value == null || validTo.value == null) {
+      AppToast.warning('Periode berlaku harus diisi');
+      return false;
+    }
     isSubmitting.value = true;
     try {
-      final res = await PromotionService.updatePromotion(id, payload);
-      if (res.statusCode == 200) {
-        Fluttertoast.showToast(msg: 'Promosi berhasil diperbarui');
-        await fetchPromotions();
-        Get.back();
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
+      final res = await PromotionService.updatePromotion(id, _buildPayload());
+      if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+        return false;
       }
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        AppToast.error(_parseError(res.body));
+        return false;
+      }
+      AppToast.success('Promosi berhasil diperbarui');
+      await fetchPromotions();
+      await fetchPromotionById(id);
+      return true;
     } catch (e) {
-      debugPrint('Error updatePromotion: $e');
-      Fluttertoast.showToast(msg: 'Gagal memperbarui promosi');
+      AppToast.error('Terjadi kesalahan saat memperbarui promosi');
+      return false;
     } finally {
       isSubmitting.value = false;
     }
   }
 
+  // ===================== DELETE =====================
   Future<void> deletePromotion(String id) async {
     try {
       final res = await PromotionService.deletePromotion(id);
       if (res.statusCode == 200) {
         promotionList.removeWhere((p) => p.id == id);
-        Fluttertoast.showToast(msg: 'Promosi berhasil dihapus');
+        _applyFilter();
+        AppToast.success('Promosi berhasil dihapus');
         if (Get.currentRoute != '/promotions') Get.back();
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
       } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
+        AppToast.error(_parseError(res.body));
       }
     } catch (e) {
-      debugPrint('Error deletePromotion: $e');
-      Fluttertoast.showToast(msg: 'Gagal menghapus promosi');
+      AppToast.error('Terjadi kesalahan saat menghapus promosi');
     }
   }
-
-  Future<void> toggleActive(PromotionData promo) async {
-    try {
-      final res = await PromotionService.updatePromotion(promo.id, {
-        'name': promo.name,
-        'code': promo.code,
-        'type': promo.type,
-        'description': promo.description ?? '',
-        'valid_from': promo.validFrom.toIso8601String(),
-        'valid_to': promo.validTo.toIso8601String(),
-        'usage_limit': promo.usageLimit,
-        'is_active': !promo.isActive,
-        'stackable': promo.stackable,
-      });
-      if (res.statusCode == 200) {
-        await fetchPromotions();
-        Fluttertoast.showToast(
-          msg: promo.isActive ? 'Promosi dinonaktifkan' : 'Promosi diaktifkan',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error toggleActive: $e');
-      Fluttertoast.showToast(msg: 'Gagal mengubah status promosi');
-    }
-  }
-
-  // ── Conditions ────────────────────────────────────────────────────────────
-
-  Future<void> addCondition(
-      String promotionId, Map<String, dynamic> payload) async {
-    isSubmitting.value = true;
-    try {
-      final res = await PromotionService.addCondition(promotionId, payload);
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        Fluttertoast.showToast(msg: 'Syarat berhasil ditambahkan');
-        await fetchPromotionById(promotionId);
-        Get.back();
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
-      }
-    } catch (e) {
-      debugPrint('Error addCondition: $e');
-      Fluttertoast.showToast(msg: 'Gagal menambahkan syarat');
-    } finally {
-      isSubmitting.value = false;
-    }
-  }
-
-  Future<void> deleteCondition(
-      String promotionId, String conditionId) async {
-    try {
-      final res =
-          await PromotionService.deleteCondition(promotionId, conditionId);
-      if (res.statusCode == 200) {
-        await fetchPromotionById(promotionId);
-        Fluttertoast.showToast(msg: 'Syarat berhasil dihapus');
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
-      }
-    } catch (e) {
-      debugPrint('Error deleteCondition: $e');
-      Fluttertoast.showToast(msg: 'Gagal menghapus syarat');
-    }
-  }
-
-  // ── Rewards ───────────────────────────────────────────────────────────────
-
-  Future<void> addReward(
-      String promotionId, Map<String, dynamic> payload) async {
-    isSubmitting.value = true;
-    try {
-      final res = await PromotionService.addReward(promotionId, payload);
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        Fluttertoast.showToast(msg: 'Reward berhasil ditambahkan');
-        await fetchPromotionById(promotionId);
-        Get.back();
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
-      }
-    } catch (e) {
-      debugPrint('Error addReward: $e');
-      Fluttertoast.showToast(msg: 'Gagal menambahkan reward');
-    } finally {
-      isSubmitting.value = false;
-    }
-  }
-
-  Future<void> deleteReward(String promotionId, String rewardId) async {
-    try {
-      final res =
-          await PromotionService.deleteReward(promotionId, rewardId);
-      if (res.statusCode == 200) {
-        await fetchPromotionById(promotionId);
-        Fluttertoast.showToast(msg: 'Reward berhasil dihapus');
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
-      }
-    } catch (e) {
-      debugPrint('Error deleteReward: $e');
-      Fluttertoast.showToast(msg: 'Gagal menghapus reward');
-    }
-  }
-
-  // ── Dialogs ───────────────────────────────────────────────────────────────
 
   void confirmDelete(String id, String name) async {
     final confirm = await AppDialog.confirm(
@@ -326,124 +278,219 @@ class PromotionController extends GetxController {
     if (confirm) deletePromotion(id);
   }
 
-  // ── Detail page — computed getters ────────────────────────────────────────
+  // ===================== TOGGLE ACTIVE =====================
+  Future<void> toggleActive(PromotionData promo) async {
+    try {
+      final res = await PromotionService.updatePromotion(promo.id, {
+        'name': promo.name,
+        'code': promo.code,
+        'type': promo.type,
+        'description': promo.description ?? '',
+        'valid_from': _formatDate(promo.validFrom),
+        'valid_to': _formatDate(promo.validTo),
+        'usage_limit': promo.usageLimit,
+        'is_active': !promo.isActive,
+        'stackable': promo.stackable,
+      });
+      if (res.statusCode == 200) {
+        await fetchPromotions();
+        AppToast.success(
+          promo.isActive ? 'Promosi dinonaktifkan' : 'Promosi diaktifkan',
+        );
+      } else {
+        AppToast.error(_parseError(res.body));
+      }
+    } catch (e) {
+      AppToast.error('Gagal mengubah status promosi');
+    }
+  }
 
-  List<Map<String, dynamic>> get detailConditions =>
-      (selectedPromotion.value?['conditions'] as List? ?? [])
-          .cast<Map<String, dynamic>>();
+  // ===================== CONDITIONS =====================
+  Future<bool> addCondition(String promotionId) async {
+    if (conditionValueC.text.trim().isEmpty) {
+      AppToast.warning('Value harus diisi');
+      return false;
+    }
+    if (conditionNeedsTargetId(conditionType.value) &&
+        conditionTargetIdC.text.trim().isEmpty) {
+      AppToast.warning('Target ID harus diisi');
+      return false;
+    }
 
-  List<Map<String, dynamic>> get detailRewards =>
-      (selectedPromotion.value?['rewards'] as List? ?? [])
-          .cast<Map<String, dynamic>>();
+    isSubmitting.value = true;
+    try {
+      final payload = {
+        'condition_type': conditionType.value,
+        'operator': conditionOperator.value,
+        'value': conditionValueC.text.trim(),
+        'target_type': conditionNeedsTargetId(conditionType.value)
+            ? conditionType.value
+            : null,
+        'target_id': conditionNeedsTargetId(conditionType.value)
+            ? conditionTargetIdC.text.trim()
+            : null,
+      };
+      final res = await PromotionService.addCondition(promotionId, payload);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        AppToast.success('Syarat berhasil ditambahkan');
+        await fetchPromotionById(promotionId);
+        resetConditionForm();
+        return true;
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error(_parseError(res.body));
+      }
+      return false;
+    } catch (e) {
+      AppToast.error('Terjadi kesalahan saat menambahkan syarat');
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<void> deleteCondition(String promotionId, String conditionId) async {
+    try {
+      final res = await PromotionService.deleteCondition(
+        promotionId,
+        conditionId,
+      );
+      if (res.statusCode == 200) {
+        await fetchPromotionById(promotionId);
+        AppToast.success('Syarat berhasil dihapus');
+      } else {
+        AppToast.error(_parseError(res.body));
+      }
+    } catch (e) {
+      AppToast.error('Terjadi kesalahan saat menghapus syarat');
+    }
+  }
+
+  // ===================== REWARDS =====================
+  Future<bool> addReward(String promotionId) async {
+    isSubmitting.value = true;
+    try {
+      final Map<String, dynamic> payload;
+
+      if (rewardType.value == 'free_item') {
+        if (freeVariantIdC.text.trim().isEmpty) {
+          AppToast.warning('Variant ID harus diisi');
+          return false;
+        }
+        payload = {
+          'reward_type': rewardType.value,
+          'free_variant_id': freeVariantIdC.text.trim(),
+          'free_qty': int.tryParse(freeQtyC.text) ?? 1,
+        };
+      } else {
+        if (discountValueC.text.trim().isEmpty) {
+          AppToast.warning('Nilai diskon harus diisi');
+          return false;
+        }
+        payload = {
+          'reward_type': rewardType.value,
+          'discount_value': double.tryParse(discountValueC.text) ?? 0,
+          'discount_mode': discountMode.value,
+          'max_discount_amount': double.tryParse(maxDiscountC.text) ?? 0,
+        };
+      }
+
+      final res = await PromotionService.addReward(promotionId, payload);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        AppToast.success('Reward berhasil ditambahkan');
+        await fetchPromotionById(promotionId);
+        resetRewardForm();
+        return true;
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error(_parseError(res.body));
+      }
+      return false;
+    } catch (e) {
+      AppToast.error('Terjadi kesalahan saat menambahkan reward');
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<void> deleteReward(String promotionId, String rewardId) async {
+    try {
+      final res = await PromotionService.deleteReward(promotionId, rewardId);
+      if (res.statusCode == 200) {
+        await fetchPromotionById(promotionId);
+        AppToast.success('Reward berhasil dihapus');
+      } else {
+        AppToast.error(_parseError(res.body));
+      }
+    } catch (e) {
+      AppToast.error('Terjadi kesalahan saat menghapus reward');
+    }
+  }
+
+  // ===================== DETAIL PAGE HELPERS =====================
+  List<PromotionCondition> get detailConditions =>
+      selectedPromotion.value?.conditions ?? [];
+
+  List<PromotionReward> get detailRewards =>
+      selectedPromotion.value?.rewards ?? [];
 
   String get detailValidPeriod {
-    final data = selectedPromotion.value;
-    if (data == null) return '';
+    final p = selectedPromotion.value;
+    if (p == null) return '';
     final df = DateFormat('dd MMM yyyy', 'id_ID');
-    return '${df.format(DateTime.parse(data['valid_from']))} – '
-        '${df.format(DateTime.parse(data['valid_to']))}';
+    return '${df.format(p.validFrom)} – ${df.format(p.validTo)}';
   }
 
   String get detailUsageDisplay {
-    final data = selectedPromotion.value;
-    if (data == null) return '';
-    return data['usage_limit'] == 0
+    final p = selectedPromotion.value;
+    if (p == null) return '';
+    return p.usageLimit == 0
         ? 'Unlimited'
-        : '${data['usage_count']}/${data['usage_limit']}x';
+        : '${p.usageCount}/${p.usageLimit}x';
   }
 
-  String get detailStackableLabel {
-    final data = selectedPromotion.value;
-    if (data == null) return '';
-    return (data['stackable'] == 1 || data['stackable'] == true)
-        ? 'Ya'
-        : 'Tidak';
-  }
+  String get detailStackableLabel =>
+      (selectedPromotion.value?.stackable ?? false) ? 'Ya' : 'Tidak';
 
-  String get detailStatusLabel {
-    final data = selectedPromotion.value;
-    if (data == null) return '';
-    return (data['is_active'] == 1 || data['is_active'] == true)
-        ? 'Aktif'
-        : 'Tidak Aktif';
-  }
+  String get detailStatusLabel =>
+      (selectedPromotion.value?.isActive ?? false) ? 'Aktif' : 'Tidak Aktif';
 
-  // ── Label helpers ─────────────────────────────────────────────────────────
-
-  String promotionTypeLabel(String type) {
-    switch (type) {
-      case 'discount_percent':
-        return 'Diskon %';
-      case 'discount_fixed':
-        return 'Diskon Nominal';
-      case 'free_item':
-        return 'Gratis Item';
-      default:
-        return type;
-    }
-  }
-
-  String conditionTypeLabel(String type) {
-    switch (type) {
-      case 'min_transaction_amount':
-        return 'Min. Total Belanja';
-      case 'min_qty':
-        return 'Min. Qty Item';
-      case 'specific_product':
-        return 'Produk Tertentu';
-      case 'specific_category':
-        return 'Kategori Tertentu';
-      case 'member_type':
-        return 'Tipe Member';
-      default:
-        return type;
-    }
-  }
-
-  String rewardTypeLabel(String type) {
-    switch (type) {
-      case 'discount_percent':
-        return 'Diskon %';
-      case 'discount_fixed':
-        return 'Diskon Nominal';
-      case 'free_item':
-        return 'Gratis Item';
-      default:
-        return type;
-    }
-  }
-
-  String discountModeLabel(String mode) {
-    switch (mode) {
-      case 'per_transaction':
-        return 'Per Transaksi';
-      case 'per_item':
-        return 'Per Item';
-      default:
-        return mode;
-    }
-  }
-
-  String rewardSubtitle(Map<String, dynamic> r) {
-    if (r['reward_type'] == 'free_item') {
-      var text = 'Qty: ${r['free_qty']}';
-      if ((r['free_variant_id'] ?? '').toString().isNotEmpty) {
-        text += ' • Variant: ${r['free_variant_id']}';
+  String rewardSubtitle(PromotionReward r) {
+    if (r.rewardType == 'free_item') {
+      var text = 'Qty: ${r.freeQty}';
+      if ((r.freeVariantId ?? '').isNotEmpty) {
+        text += ' • Variant: ${r.freeVariantId}';
       }
       return text;
     }
-
-    var text =
-        '${r['discount_value']} • ${discountModeLabel(r['discount_mode'] ?? '')}';
-    final maxDisc =
-        double.tryParse(r['max_discount_amount']?.toString() ?? '0') ?? 0;
+    var text = '${r.discountValue} • ${r.discountModeLabel}';
+    final maxDisc = r.maxDiscountAmount ?? 0;
     if (maxDisc > 0) text += ' • maks Rp$maxDisc';
     return text;
   }
 
-  // ── Helper ────────────────────────────────────────────────────────────────
+  // ===================== PRIVATE =====================
 
-  String _errorMessage(String body) {
+  String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')} 00:00:00';
+
+  Map<String, dynamic> _buildPayload() => {
+    'name': nameC.text.trim(),
+    'code': codeC.text.trim().toUpperCase(),
+    'type': selectedType.value,
+    'description': descC.text.trim(),
+    'valid_from': _formatDate(validFrom.value!),
+    'valid_to': _formatDate(validTo.value!),
+    'usage_limit': int.tryParse(usageLimitC.text) ?? 0,
+    'is_active': isActive.value,
+    'stackable': stackable.value,
+  };
+
+  String _parseError(String body) {
     try {
       return jsonDecode(body)['message'] ?? 'Terjadi kesalahan';
     } catch (_) {

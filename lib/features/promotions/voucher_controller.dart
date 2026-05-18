@@ -1,155 +1,159 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/promotions/voucher_model.dart';
 import 'package:senkukoadmin/features/promotions/voucher_service.dart';
 
 class VoucherController extends GetxController {
+  // ===================== STATE =====================
   final isLoading = false.obs;
   final isSubmitting = false.obs;
 
+  // ===================== DATA =====================
   final voucherList = <VoucherData>[].obs;
+  final filteredVouchers = <VoucherData>[].obs;
+
+  // ===================== PAGE STATE =====================
   final searchText = ''.obs;
   final selectedFilter = 'Semua'.obs;
-
-  // optional: filter by promotion (dari promotion detail page)
   final filterByPromotionId = Rxn<String>();
 
+  // ===================== LIFECYCLE =====================
   @override
   void onInit() {
     super.onInit();
     fetchVouchers();
   }
 
-  // ── Filters ───────────────────────────────────────────────────────────────
-
-  List<VoucherData> get filteredVouchers {
-    var list = voucherList.toList();
-
-    if (filterByPromotionId.value != null) {
-      list = list
-          .where((v) => v.promotionId == filterByPromotionId.value)
-          .toList();
-    }
-
-    switch (selectedFilter.value) {
-      case 'Aktif':
-        list = list.where((v) => v.isActive && !v.isUsed).toList();
-        break;
-      case 'Tidak Aktif':
-        list = list.where((v) => !v.isActive).toList();
-        break;
-      case 'Habis':
-        list = list.where((v) => v.isUsed).toList();
-        break;
-    }
-
-    final q = searchText.value.toLowerCase();
-    if (q.isNotEmpty) {
-      list = list.where((v) => v.code.toLowerCase().contains(q)).toList();
-    }
-
-    return list;
+  // ===================== FILTER =====================
+  void _applyFilter() {
+    filteredVouchers.assignAll(
+      voucherList.where((v) {
+        if (filterByPromotionId.value != null &&
+            v.promotionId != filterByPromotionId.value) {
+          return false;
+        }
+        final matchFilter = switch (selectedFilter.value) {
+          'Aktif' => v.isActive && !v.isUsed,
+          'Tidak Aktif' => !v.isActive,
+          'Habis' => v.isUsed,
+          _ => true,
+        };
+        final q = searchText.value.toLowerCase();
+        final matchSearch = q.isEmpty || v.code.toLowerCase().contains(q);
+        return matchFilter && matchSearch;
+      }).toList(),
+    );
   }
 
-  void updateSearch(String value) => searchText.value = value;
-  void updateFilter(String value) => selectedFilter.value = value;
+  void updateSearch(String value) {
+    searchText.value = value;
+    _applyFilter();
+  }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
+  void updateFilter(String value) {
+    selectedFilter.value = value;
+    _applyFilter();
+  }
 
+  void resetPageState({String? promotionId}) {
+    searchText.value = '';
+    selectedFilter.value = 'Semua';
+    filterByPromotionId.value = promotionId;
+    _applyFilter();
+  }
+
+  // ===================== FETCH =====================
   Future<void> fetchVouchers() async {
     isLoading.value = true;
     try {
       final res = await VoucherService.getAllVouchers();
       if (res.statusCode == 200) {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
+        _applyFilter();
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error('Gagal memuat daftar voucher');
       }
     } catch (e) {
-      debugPrint('Error fetchVouchers: $e');
-      Fluttertoast.showToast(msg: 'Gagal memuat data voucher');
+      AppToast.error('Terjadi kesalahan saat memuat voucher');
     } finally {
       isLoading.value = false;
     }
   }
 
-  // ── Create / Update / Delete ──────────────────────────────────────────────
-
-  Future<void> createVoucher(Map<String, dynamic> payload) async {
+  // ===================== CREATE =====================
+  Future<bool> createVoucher(Map<String, dynamic> payload) async {
     isSubmitting.value = true;
     try {
       final res = await VoucherService.createVoucher(payload);
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        Fluttertoast.showToast(msg: 'Voucher berhasil diterbitkan');
-        await fetchVouchers();
-        Get.back();
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
+
+      if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+        return false;
       }
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        AppToast.error(_parseError(res.body));
+        return false;
+      }
+
+      AppToast.success('Voucher berhasil diterbitkan');
+      await fetchVouchers();
+      return true;
     } catch (e) {
-      debugPrint('Error createVoucher: $e');
-      Fluttertoast.showToast(msg: 'Gagal menerbitkan voucher');
+      AppToast.error('Terjadi kesalahan saat menerbitkan voucher');
+      return false;
     } finally {
       isSubmitting.value = false;
     }
   }
 
-  Future<void> updateVoucher(String id, Map<String, dynamic> payload) async {
+  // ===================== UPDATE =====================
+  Future<bool> updateVoucher(String id, Map<String, dynamic> payload) async {
     isSubmitting.value = true;
     try {
       final res = await VoucherService.updateVoucher(id, payload);
-      if (res.statusCode == 200) {
-        Fluttertoast.showToast(msg: 'Voucher berhasil diperbarui');
-        await fetchVouchers();
-        Get.back();
-      } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
+
+      if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+        return false;
       }
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        AppToast.error(_parseError(res.body));
+        return false;
+      }
+
+      AppToast.success('Voucher berhasil diperbarui');
+      await fetchVouchers();
+      return true;
     } catch (e) {
-      debugPrint('Error updateVoucher: $e');
-      Fluttertoast.showToast(msg: 'Gagal memperbarui voucher');
+      AppToast.error('Terjadi kesalahan saat memperbarui voucher');
+      return false;
     } finally {
       isSubmitting.value = false;
     }
   }
 
+  // ===================== DELETE =====================
   Future<void> deleteVoucher(String id) async {
     try {
       final res = await VoucherService.deleteVoucher(id);
       if (res.statusCode == 200) {
         voucherList.removeWhere((v) => v.id == id);
-        Fluttertoast.showToast(msg: 'Voucher berhasil dihapus');
+        _applyFilter();
+        AppToast.success('Voucher berhasil dihapus');
         if (Get.currentRoute != '/vouchers') Get.back();
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
       } else {
-        Fluttertoast.showToast(msg: _errorMessage(res.body));
+        AppToast.error(_parseError(res.body));
       }
     } catch (e) {
-      debugPrint('Error deleteVoucher: $e');
-      Fluttertoast.showToast(msg: 'Gagal menghapus voucher');
-    }
-  }
-
-  Future<void> toggleStatus(VoucherData voucher) async {
-    try {
-      final newStatus = voucher.isActive ? 'inactive' : 'active';
-      final res = await VoucherService.updateVoucher(voucher.id, {
-        'code': voucher.code,
-        'status': newStatus,
-        'usage_limit': voucher.usageLimit,
-      });
-      if (res.statusCode == 200) {
-        await fetchVouchers();
-        Fluttertoast.showToast(
-          msg: newStatus == 'active'
-              ? 'Voucher diaktifkan'
-              : 'Voucher dinonaktifkan',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error toggleStatus: $e');
-      Fluttertoast.showToast(msg: 'Gagal mengubah status voucher');
+      AppToast.error('Terjadi kesalahan saat menghapus voucher');
     }
   }
 
@@ -161,7 +165,30 @@ class VoucherController extends GetxController {
     if (confirm) deleteVoucher(id);
   }
 
-  String _errorMessage(String body) {
+  // ===================== TOGGLE STATUS =====================
+  Future<void> toggleStatus(VoucherData voucher) async {
+    try {
+      final newStatus = voucher.isActive ? 'inactive' : 'active';
+      final res = await VoucherService.updateVoucher(voucher.id, {
+        'code': voucher.code,
+        'status': newStatus,
+        'usage_limit': voucher.usageLimit,
+      });
+      if (res.statusCode == 200) {
+        await fetchVouchers();
+        AppToast.success(
+          newStatus == 'active' ? 'Voucher diaktifkan' : 'Voucher dinonaktifkan',
+        );
+      } else {
+        AppToast.error(_parseError(res.body));
+      }
+    } catch (e) {
+      AppToast.error('Gagal mengubah status voucher');
+    }
+  }
+
+  // ===================== PRIVATE HELPERS =====================
+  String _parseError(String body) {
     try {
       return jsonDecode(body)['message'] ?? 'Terjadi kesalahan';
     } catch (_) {

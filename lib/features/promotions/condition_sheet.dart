@@ -12,42 +12,15 @@ class PromotionConditionFormPage extends StatelessWidget {
     final controller = Get.find<PromotionController>();
     final String promotionId = Get.arguments as String;
 
-    final conditionType = 'min_transaction_amount'.obs;
-    final operator = 'gte'.obs;
-    final valueCtrl = TextEditingController();
-    final targetIdCtrl = TextEditingController();
-
-    bool needsTargetId(String type) =>
-        type == 'specific_product' || type == 'specific_category';
-
-    void submit() {
-      if (valueCtrl.text.isEmpty) {
-        return;
-      }
-      if (needsTargetId(conditionType.value) && targetIdCtrl.text.isEmpty) {
-        return;
-      }
-      controller.addCondition(promotionId, {
-        'condition_type': conditionType.value,
-        'operator': operator.value,
-        'value': valueCtrl.text.trim(),
-        'target_type':
-            needsTargetId(conditionType.value) ? conditionType.value : null,
-        'target_id':
-            needsTargetId(conditionType.value) ? targetIdCtrl.text.trim() : null,
-      });
-    }
+    controller.resetConditionForm();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
-        leading: const Padding(
-          padding: EdgeInsets.only(left: 16),
-          child: AppBackButton(),
-        ),
-        leadingWidth: 40,
+        scrolledUnderElevation: 0,
+        leading: const AppBackButton(),
         title: const Text(
           'Tambah Syarat',
           style: TextStyle(
@@ -70,7 +43,7 @@ class PromotionConditionFormPage extends StatelessWidget {
                   _fieldLabel('Tipe Syarat'),
                   const SizedBox(height: 6),
                   Obx(() => DropdownButtonFormField<String>(
-                        value: conditionType.value,
+                        value: controller.conditionType.value,
                         decoration: _inputDecoration(),
                         items: const [
                           DropdownMenuItem(
@@ -89,13 +62,13 @@ class PromotionConditionFormPage extends StatelessWidget {
                               value: 'member_type',
                               child: Text('Tipe Member')),
                         ],
-                        onChanged: (v) => conditionType.value = v!,
+                        onChanged: (v) => controller.conditionType.value = v!,
                       )),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   _fieldLabel('Operator'),
                   const SizedBox(height: 6),
                   Obx(() => DropdownButtonFormField<String>(
-                        value: operator.value,
+                        value: controller.conditionOperator.value,
                         decoration: _inputDecoration(),
                         items: const [
                           DropdownMenuItem(
@@ -105,41 +78,41 @@ class PromotionConditionFormPage extends StatelessWidget {
                               value: 'lte',
                               child: Text('<= (lebih kecil atau sama)')),
                           DropdownMenuItem(
-                              value: 'eq', child: Text('= (sama dengan)')),
+                              value: 'eq',
+                              child: Text('= (sama dengan)')),
                           DropdownMenuItem(
                               value: 'in',
                               child: Text('in (salah satu dari)')),
                         ],
-                        onChanged: (v) => operator.value = v!,
+                        onChanged: (v) =>
+                            controller.conditionOperator.value = v!,
                       )),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   _fieldLabel('Value'),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: valueCtrl,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: _inputDecoration(
-                        hint: 'Contoh: 50000 atau member,reguler'),
+                  _textField(
+                    controller.conditionValueC,
+                    hint: 'Contoh: 50000 atau member,reguler',
                   ),
-                  Obx(() => needsTargetId(conditionType.value)
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 14),
-                            _fieldLabel(
-                              conditionType.value == 'specific_product'
-                                  ? 'Product ID'
-                                  : 'Category ID',
-                            ),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: targetIdCtrl,
-                              style: const TextStyle(fontSize: 13),
-                              decoration: _inputDecoration(hint: 'UUID'),
-                            ),
-                          ],
-                        )
-                      : const SizedBox()),
+                  Obx(() =>
+                      controller.conditionNeedsTargetId(
+                              controller.conditionType.value)
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 12),
+                                _fieldLabel(
+                                  controller.conditionType.value ==
+                                          'specific_product'
+                                      ? 'Product ID'
+                                      : 'Category ID',
+                                ),
+                                const SizedBox(height: 6),
+                                _textField(controller.conditionTargetIdC,
+                                    hint: 'UUID'),
+                              ],
+                            )
+                          : const SizedBox()),
                 ],
               ),
             ),
@@ -148,13 +121,19 @@ class PromotionConditionFormPage extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed:
-                        controller.isSubmitting.value ? null : submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
                     ),
+                    onPressed: controller.isSubmitting.value
+                        ? null
+                        : () async {
+                            final ok =
+                                await controller.addCondition(promotionId);
+                            if (ok) Get.back();
+                          },
                     child: controller.isSubmitting.value
                         ? const SizedBox(
                             width: 20,
@@ -165,8 +144,10 @@ class PromotionConditionFormPage extends StatelessWidget {
                         : const Text(
                             'Simpan Syarat',
                             style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
                   ),
                 )),
@@ -178,11 +159,11 @@ class PromotionConditionFormPage extends StatelessWidget {
 
   Widget _card({required Widget child}) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(color: Colors.grey.shade100, width: 0.5),
         ),
         child: child,
       );
@@ -192,20 +173,26 @@ class PromotionConditionFormPage extends StatelessWidget {
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       );
 
+  Widget _textField(TextEditingController c, {String? hint}) => TextField(
+        controller: c,
+        style: const TextStyle(fontSize: 13),
+        decoration: _inputDecoration(hint: hint),
+      );
+
   InputDecoration _inputDecoration({String? hint}) => InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: Colors.grey.shade100,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

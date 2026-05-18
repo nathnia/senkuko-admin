@@ -1,42 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
+import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/features/promotions/voucher_card.dart';
 import 'package:senkukoadmin/features/promotions/voucher_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-/// Bisa dipanggil dari:
-/// 1. Menu utama → semua voucher (promotionId = null)
-/// 2. Promotion detail → voucher by promotion (promotionId = id)
 class VoucherPage extends StatelessWidget {
-  const VoucherPage({super.key});
+  VoucherPage({super.key});
+
+  final controller = Get.find<VoucherController>();
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<VoucherController>();
-
-    // kalau dipanggil dari promotion detail, arguments = promotionId
     final String? promotionId = Get.arguments as String?;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.filterByPromotionId.value = promotionId;
+      controller.resetPageState(promotionId: promotionId);
       controller.fetchVouchers();
     });
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        leading: const Padding(
-          padding: EdgeInsets.only(left: 16),
-          child: AppBackButton(),
-        ),
-        leadingWidth: 40,
+        leading: const AppBackButton(),
         title: Text(
           promotionId != null ? 'Voucher Promo' : 'Semua Voucher',
           style: const TextStyle(
@@ -76,14 +68,13 @@ class VoucherPage extends StatelessWidget {
                 selectedLabel: controller.selectedFilter.value,
                 onChipTap: controller.updateFilter,
               )),
-          Expanded(child: _voucherList(controller, promotionId)),
+          Expanded(child: _voucherList(promotionId)),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () => Get.toNamed(
           AppRoutes.voucherForm,
-          // kalau dari promotion detail, langsung pre-fill promotion_id
           arguments: promotionId,
         ),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -95,7 +86,7 @@ class VoucherPage extends StatelessWidget {
     );
   }
 
-  Widget _voucherList(VoucherController controller, String? promotionId) {
+  Widget _voucherList(String? promotionId) {
     return Obx(() {
       if (controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -130,8 +121,8 @@ class VoucherPage extends StatelessWidget {
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           itemCount: list.length,
-          itemBuilder: (context, index) {
-            final voucher = list[index];
+          itemBuilder: (_, i) {
+            final voucher = list[i];
             return VoucherCard(
               voucher: voucher,
               onTap: () => Get.toNamed(
