@@ -29,18 +29,6 @@ class TransactionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // ICON
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: style.background,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(style.icon, color: style.color, size: 18),
-            ),
-            const SizedBox(width: 12),
-
             // INFO
             Expanded(
               child: Column(
