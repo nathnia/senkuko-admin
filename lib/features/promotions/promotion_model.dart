@@ -52,27 +52,29 @@ class PromotionData {
   });
 
   factory PromotionData.fromJson(Map<String, dynamic> json) => PromotionData(
-        id: json['id'],
-        name: json['name'],
-        code: json['code'],
-        type: json['type'],
-        description: json['description'],
-        validFrom: DateTime.parse(json['valid_from']),
-        validTo: DateTime.parse(json['valid_to']),
-        usageLimit: json['usage_limit'],
-        usageCount: json['usage_count'],
-        isActive: json['is_active'] == 1 || json['is_active'] == true,
-        stackable: json['stackable'] == 1 || json['stackable'] == true,
-        createdAt: DateTime.parse(json['created_at']),
-        conditions: (json['conditions'] as List<dynamic>?)
-                ?.map((e) => PromotionCondition.fromJson(e))
-                .toList() ??
-            [],
-        rewards: (json['rewards'] as List<dynamic>?)
-                ?.map((e) => PromotionReward.fromJson(e))
-                .toList() ??
-            [],
-      );
+    id: json['id'],
+    name: json['name'],
+    code: json['code'],
+    type: json['type'],
+    description: json['description'],
+    validFrom: DateTime.parse(json['valid_from']).toLocal(),
+    validTo: DateTime.parse(json['valid_to']).toLocal(),
+    usageLimit: json['usage_limit'],
+    usageCount: json['usage_count'],
+    isActive: json['is_active'] == 1 || json['is_active'] == true,
+    stackable: json['stackable'] == 1 || json['stackable'] == true,
+    createdAt: DateTime.parse(json['created_at']),
+    conditions:
+        (json['conditions'] as List<dynamic>?)
+            ?.map((e) => PromotionCondition.fromJson(e))
+            .toList() ??
+        [],
+    rewards:
+        (json['rewards'] as List<dynamic>?)
+            ?.map((e) => PromotionReward.fromJson(e))
+            .toList() ??
+        [],
+  );
 
   bool get isExpired => DateTime.now().isAfter(validTo);
   bool get isValid => isActive && !isExpired;
@@ -175,13 +177,18 @@ class PromotionReward {
     this.freeQty,
   });
 
-  factory PromotionReward.fromJson(Map<String, dynamic> json) => PromotionReward(
+  factory PromotionReward.fromJson(Map<String, dynamic> json) =>
+      PromotionReward(
         id: json['id'],
         promotionId: json['promotion_id'],
         rewardType: json['reward_type'],
-        discountValue: (json['discount_value'] as num?)?.toDouble(),
+        discountValue: json['discount_value'] != null
+            ? double.tryParse(json['discount_value'].toString())
+            : null,
+        maxDiscountAmount: json['max_discount_amount'] != null
+            ? double.tryParse(json['max_discount_amount'].toString())
+            : null,
         discountMode: json['discount_mode'],
-        maxDiscountAmount: (json['max_discount_amount'] as num?)?.toDouble(),
         freeVariantId: json['free_variant_id'],
         freeQty: json['free_qty'],
       );

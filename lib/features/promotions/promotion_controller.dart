@@ -64,8 +64,8 @@ class PromotionController extends GetxController {
   }
 
   // ===================== CONDITION FORM =====================
-  final conditionType = 'min_transaction_amount'.obs;
-  final conditionOperator = 'gte'.obs;
+  final conditionType = ''.obs;
+  final conditionOperator = ''.obs;
   final conditionValueC = TextEditingController();
   final conditionTargetIdC = TextEditingController();
 
@@ -73,25 +73,25 @@ class PromotionController extends GetxController {
       type == 'specific_product' || type == 'specific_category';
 
   void resetConditionForm() {
-    conditionType.value = 'min_transaction_amount';
-    conditionOperator.value = 'gte';
+    conditionType.value = '';
+    conditionOperator.value = '';
     conditionValueC.clear();
     conditionTargetIdC.clear();
   }
 
   // ===================== REWARD FORM =====================
-  final rewardType = 'discount_percent'.obs;
-  final discountMode = 'per_transaction'.obs;
+  final rewardType = ''.obs;
+  final discountMode = ''.obs;
   final discountValueC = TextEditingController();
   final maxDiscountC = TextEditingController(text: '0');
   final freeVariantIdC = TextEditingController();
   final freeQtyC = TextEditingController(text: '1');
 
   void resetRewardForm() {
-    rewardType.value = 'discount_percent';
-    discountMode.value = 'per_transaction';
+    rewardType.value = '';
+    discountMode.value = '';
     discountValueC.clear();
-    maxDiscountC.text = '0';
+    maxDiscountC.text = '';
     freeVariantIdC.clear();
     freeQtyC.text = '1';
   }
@@ -177,13 +177,8 @@ class PromotionController extends GetxController {
         selectedPromotion.value = PromotionData.fromJson(
           jsonDecode(res.body)['data'],
         );
-      } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
-      } else {
-        AppToast.error('Gagal memuat detail promosi');
       }
-    } catch (e) {
-      AppToast.error('Terjadi kesalahan saat memuat detail promosi');
+    } catch (_) {
     } finally {
       isLoadingDetail.value = false;
     }
@@ -478,7 +473,7 @@ class PromotionController extends GetxController {
 
   String _formatDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')} 00:00:00';
+      '${d.day.toString().padLeft(2, '0')} 12:00:00';
 
   Map<String, dynamic> _buildPayload() => {
     'name': nameC.text.trim(),

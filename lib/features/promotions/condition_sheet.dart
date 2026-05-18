@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 
@@ -41,12 +42,13 @@ class PromotionConditionFormPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _fieldLabel('Tipe Syarat'),
-                  const SizedBox(height: 6),
                   Obx(
-                    () => DropdownButtonFormField<String>(
-                      value: controller.conditionType.value,
-                      decoration: _inputDecoration(),
+                    () => AppDropdown<String>(
+                      label: 'Tipe Syarat',
+                      hint: 'Pilih tipe syarat',
+                      value: controller.conditionType.value.isEmpty
+                          ? null
+                          : controller.conditionType.value,
                       items: const [
                         DropdownMenuItem(
                           value: 'min_transaction_amount',
@@ -54,7 +56,7 @@ class PromotionConditionFormPage extends StatelessWidget {
                         ),
                         DropdownMenuItem(
                           value: 'min_qty',
-                          child: Text('Min. Qty Item'),
+                          child: Text('Min. Jumlah Item'),
                         ),
                         DropdownMenuItem(
                           value: 'specific_product',
@@ -72,37 +74,34 @@ class PromotionConditionFormPage extends StatelessWidget {
                       onChanged: (v) => controller.conditionType.value = v!,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  _fieldLabel('Operator'),
-                  const SizedBox(height: 6),
                   Obx(
-                    () => DropdownButtonFormField<String>(
-                      value: controller.conditionOperator.value,
-                      decoration: _inputDecoration(),
+                    () => AppDropdown<String>(
+                      label: 'Operator',
+                      hint: 'Pilih operator',
+                      value: controller.conditionOperator.value.isEmpty
+                          ? null
+                          : controller.conditionOperator.value,
                       items: const [
                         DropdownMenuItem(
                           value: 'gte',
-                          child: Text('>= (lebih besar atau sama)'),
+                          child: Text('Lebih besar atau sama dengan'),
                         ),
                         DropdownMenuItem(
                           value: 'lte',
-                          child: Text('<= (lebih kecil atau sama)'),
+                          child: Text('Lebih kecil atau sama dengan'),
                         ),
                         DropdownMenuItem(
                           value: 'eq',
-                          child: Text('= (sama dengan)'),
+                          child: Text('Sama dengan'),
                         ),
                         DropdownMenuItem(
                           value: 'in',
-                          child: Text('in (salah satu dari)'),
+                          child: Text('Salah satu dari '),
                         ),
                       ],
                       onChanged: (v) => controller.conditionOperator.value = v!,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  _fieldLabel('Value'),
-                  const SizedBox(height: 6),
                   AppTextField(
                     hint: 'Contoh: 50000 atau member,reguler',
                     controller: controller.conditionValueC,
@@ -112,22 +111,13 @@ class PromotionConditionFormPage extends StatelessWidget {
                         controller.conditionNeedsTargetId(
                           controller.conditionType.value,
                         )
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 12),
-                              _fieldLabel(
+                        ? AppTextField(
+                            hint:
                                 controller.conditionType.value ==
-                                        'specific_product'
-                                    ? 'Product ID'
-                                    : 'Category ID',
-                              ),
-                              const SizedBox(height: 6),
-                            AppTextField(
-                              hint: 'UUID',
-                              controller: controller.conditionTargetIdC,
-                            ),
-                            ],
+                                    'specific_product'
+                                ? 'Masukkan ID produk'
+                                : 'Masukkan ID kategori',
+                            controller: controller.conditionTargetIdC,
                           )
                         : const SizedBox(),
                   ),
@@ -188,31 +178,5 @@ class PromotionConditionFormPage extends StatelessWidget {
       border: Border.all(color: Colors.grey.shade100, width: 0.5),
     ),
     child: child,
-  );
-
-  Widget _fieldLabel(String label) => Text(
-    label,
-    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-  );
-
-
-  InputDecoration _inputDecoration({String? hint}) => InputDecoration(
-    hintText: hint,
-    hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-    filled: true,
-    fillColor: Colors.grey.shade100,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide.none,
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide.none,
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: AppColors.primary.withAlpha(80)),
-    ),
   );
 }

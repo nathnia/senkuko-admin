@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
@@ -24,10 +25,19 @@ class TransactionDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Detail Transaksi'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+              backgroundColor: AppColors.background,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: AppBackButton(onTap: () => Get.back()),
+        title: const Text(
+          'Detail Transaksi',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Obx(() {
         if (controller.isLoadingDetail.value) {

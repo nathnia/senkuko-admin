@@ -80,7 +80,7 @@ class TransactionPage extends StatelessWidget {
 
   Widget _summaryBar(TransactionController controller) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
         children: [
           Expanded(
@@ -166,6 +166,7 @@ class TransactionPage extends StatelessWidget {
         onRefresh: () async {
           await controller.fetchTransactions();
         },
+
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           itemCount: list.length,

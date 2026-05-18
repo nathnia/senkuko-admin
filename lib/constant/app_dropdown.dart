@@ -48,6 +48,7 @@ class AppDropdown<T> extends StatelessWidget {
             ),
           DropdownButtonFormField<T>(
             value: value,
+            isExpanded: true,
             hint: hint != null
                 ? Text(
                     hint!,

@@ -49,18 +49,17 @@ class PromotionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade100),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──────────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
               child: Row(
                 children: [
                   Expanded(
@@ -75,20 +74,20 @@ class PromotionCard extends StatelessWidget {
                             color: Color(0xFF1A1A2E),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(5),
+                            borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                                 color: Colors.grey.shade300, width: 0.5),
                           ),
                           child: Text(
                             promotion.code,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               fontFamily: 'monospace',
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.5,
@@ -100,7 +99,7 @@ class PromotionCard extends StatelessWidget {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                        horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: _typeBadgeColor.withAlpha(20),
                       borderRadius: BorderRadius.circular(6),
@@ -108,7 +107,7 @@ class PromotionCard extends StatelessWidget {
                     child: Text(
                       promotion.typeLabel,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: _typeBadgeColor,
                       ),
@@ -120,9 +119,8 @@ class PromotionCard extends StatelessWidget {
 
             Divider(height: 1, color: Colors.grey.shade100),
 
-            // ── Body ────────────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -130,46 +128,46 @@ class PromotionCard extends StatelessWidget {
                       promotion.description!.isNotEmpty) ...[
                     Text(
                       promotion.description!,
-                      style: const TextStyle(
-                          fontSize: 12, color: Colors.grey),
-                      maxLines: 2,
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade500),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 5),
                   ],
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined,
-                          size: 11, color: Colors.grey),
+                      Icon(Icons.calendar_today_outlined,
+                          size: 10, color: Colors.grey.shade400),
                       const SizedBox(width: 4),
                       Text(
                         '${df.format(promotion.validFrom)} – ${df.format(promotion.validTo)}',
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.grey),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.repeat_rounded,
-                          size: 11, color: Colors.grey),
+                      Icon(Icons.repeat_rounded,
+                          size: 10, color: Colors.grey.shade400),
                       const SizedBox(width: 4),
                       Text(
                         promotion.usageLimit == 0
                             ? 'Unlimited'
                             : '${promotion.usageCount}/${promotion.usageLimit}x dipakai',
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.grey),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500),
                       ),
                       if (promotion.stackable) ...[
-                        const SizedBox(width: 10),
-                        const Icon(Icons.layers_outlined,
-                            size: 11, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        const Text('Stackable',
+                        const SizedBox(width: 8),
+                        Icon(Icons.layers_outlined,
+                            size: 10, color: Colors.grey.shade400),
+                        const SizedBox(width: 3),
+                        Text('Stackable',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey)),
+                                fontSize: 11, color: Colors.grey.shade500)),
                       ],
                     ],
                   ),
@@ -177,29 +175,27 @@ class PromotionCard extends StatelessWidget {
               ),
             ),
 
-            // ── Footer ───────────────────────────────────────────────────────
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(14)),
+                    bottom: Radius.circular(12)),
                 border: Border(top: BorderSide(color: Colors.grey.shade100)),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                        horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: _statusColor.withAlpha(20),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       _statusLabel,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: _statusColor,
                       ),
@@ -212,17 +208,17 @@ class PromotionCard extends StatelessWidget {
                       promotion.isActive
                           ? Icons.toggle_on_rounded
                           : Icons.toggle_off_rounded,
-                      size: 28,
+                      size: 26,
                       color: promotion.isActive
                           ? AppColors.primary
                           : Colors.grey.shade400,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   GestureDetector(
                     onTap: onDelete,
                     child: Icon(Icons.delete_outline_rounded,
-                        size: 18, color: Colors.red.shade400),
+                        size: 16, color: Colors.red.shade400),
                   ),
                 ],
               ),

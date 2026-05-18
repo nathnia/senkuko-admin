@@ -22,12 +22,10 @@ import 'package:senkukoadmin/features/transactions/transaction_binding.dart';
 import 'package:senkukoadmin/features/transactions/transaction_detail_page.dart';
 import 'package:senkukoadmin/features/transactions/transaction_page.dart';
 import 'package:senkukoadmin/routes/routes.dart';
-import 'package:senkukoadmin/features/auth/splash_page.dart';
 
 // app_pages.dart
 class AppPages {
   static final pages = [
-    GetPage(name: AppRoutes.splash, page: () => SplashPage()),
     GetPage(name: AppRoutes.dashboard, page: () => DashboardPage()),
     GetPage(
       name: AppRoutes.product,
