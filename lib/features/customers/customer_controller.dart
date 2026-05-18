@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/customers/customer_model.dart';
@@ -110,6 +111,10 @@ class CustomerController extends GetxController {
       final res = await CustomerService.getAllCustomers();
       if (res.statusCode == 200) {
         customerList.assignAll(customerModelFromJson(res.body).data);
+      }else if (ApiHelper.isNetworkError(res)) {
+        AppToast.error(ApiHelper.parseError(res.body));
+      } else {
+        AppToast.error('Gagal memuat daftar pelanggan');
       }
     } catch (e) {
       AppToast.error('Gagal memuat data pelanggan');

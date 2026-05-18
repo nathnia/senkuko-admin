@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dropdown.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 
 class AddVoucherPage extends StatelessWidget {
   const AddVoucherPage({super.key});
@@ -17,27 +19,21 @@ class AddVoucherPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label("Judul Voucher"),
-            _inputField("Contoh: Diskon Lebaran"),
+            AppTextField(hint: "Contoh: Diskon Lebaran"),
             const SizedBox(height: 12),
 
-            _label("Kode Voucher"),
-            _inputField("Contoh: HEMAT20"),
+            AppTextField(hint: "Contoh: HEMAT20"),
             const SizedBox(height: 12),
 
-            _label("Minimum Belanja"),
-            _inputField("Contoh: Min. belanja 50000"),
+            AppTextField(hint: "Contoh: Min. belanja 50000"),
             const SizedBox(height: 12),
 
-            _label("Max Diskon"),
-            _inputField("Contoh: Max diskon 10000"),
+            AppTextField(hint: "Contoh: Max diskon 10000"),
             const SizedBox(height: 12),
 
-            _label("Kuota"),
-            _inputField("Contoh: 100"),
+            AppTextField(hint: "Contoh: 100"),
             const SizedBox(height: 12),
 
-            _label("Status"),
             _dropdownField(),
             const SizedBox(height: 20),
 
@@ -48,57 +44,10 @@ class AddVoucherPage extends StatelessWidget {
     );
   }
 
-  // ================= LABEL =================
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Color.fromARGB(221, 71, 71, 71),
-        ),
-      ),
-    );
-  }
-
-  // ================= INPUT =================
-  Widget _inputField(String hint) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.grey),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
   // ================= DROPDOWN =================
   Widget _dropdownField() {
-    return DropdownButtonFormField(
+    return AppDropdown<String>(
       value: "aktif",
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 4,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
       items: const [
         DropdownMenuItem(value: "aktif", child: Text("Aktif")),
         DropdownMenuItem(value: "terjadwal", child: Text("Terjadwal")),

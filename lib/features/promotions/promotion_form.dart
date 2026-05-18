@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dropdown.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
@@ -65,14 +67,18 @@ class PromotionFormPage extends StatelessWidget {
   Widget _infoFields() {
     return Column(
       children: [
-        _input(controller.nameC, 'Nama Promosi'),
-        _input(
-          controller.codeC,
-          'Kode Promo',
+        AppTextField(hint: 'Nama Promosi', controller: controller.nameC),
+        AppTextField(
+          hint: 'Kode Promo',
+          controller: controller.codeC,
           textCapitalization: TextCapitalization.characters,
         ),
-        Obx(() => _typeSelector()),
-        _input(controller.descC, 'Deskripsi (opsional)', maxLines: 2),
+        _typeSelector(),
+        AppTextField(
+          hint: 'Deskripsi (opsional)',
+          controller: controller.descC,
+          maxLines: 2,
+        ),
       ],
     );
   }
@@ -84,78 +90,21 @@ class PromotionFormPage extends StatelessWidget {
       'free_item': 'Gratis Item',
     };
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: () => _openTypeSheet(),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  labels[controller.selectedType.value] ?? 'Tipe Promosi',
-                  style: TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-              ),
-              Icon(Icons.arrow_drop_down_rounded, color: Colors.grey.shade400),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openTypeSheet() {
-    final options = {
-      'discount_percent': 'Diskon %',
-      'discount_fixed': 'Diskon Nominal',
-      'free_item': 'Gratis Item',
-    };
-
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Tipe Promosi',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-            ),
-            const SizedBox(height: 10),
-            ...options.entries.map(
-              (e) => ListTile(
-                title: Text(e.value, style: const TextStyle(fontSize: 14)),
-                trailing: controller.selectedType.value == e.key
-                    ? Icon(Icons.check_rounded, color: AppColors.primary)
-                    : null,
-                onTap: () {
-                  controller.selectedType.value = e.key;
-                  Get.back();
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+    return Obx(
+      () => AppDropdown<String>(
+        value: controller.selectedType.value.isEmpty
+            ? null
+            : controller.selectedType.value,
+        hint: 'Tipe Promosi',
+        items: labels.entries
+            .map(
+              (e) =>
+                  DropdownMenuItem<String>(value: e.key, child: Text(e.value)),
+            )
+            .toList(),
+        onChanged: (val) {
+          if (val != null) controller.selectedType.value = val;
+        },
       ),
     );
   }
@@ -163,9 +112,9 @@ class PromotionFormPage extends StatelessWidget {
   Widget _periodFields(BuildContext context) {
     return Column(
       children: [
-        _input(
-          controller.usageLimitC,
-          'Batas Pemakaian (0 = unlimited)',
+        AppTextField(
+          hint: 'Batas Pemakaian (0 = unlimited)',
+          controller: controller.usageLimitC,
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 4),
@@ -329,37 +278,6 @@ class PromotionFormPage extends StatelessWidget {
         const SizedBox(height: 12),
         child,
       ],
-    ),
-  );
-
-  Widget _input(
-    TextEditingController c,
-    String hint, {
-    TextInputType? keyboardType,
-    int maxLines = 1,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-  }) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: TextField(
-      controller: c,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      textCapitalization: textCapitalization,
-      style: const TextStyle(fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-      ),
     ),
   );
 

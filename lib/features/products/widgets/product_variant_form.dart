@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
@@ -23,9 +24,23 @@ class ProductVariantForm {
       onAction: () => variantC.addVariantFromForm(isEditMode: isEditMode),
       child: Column(
         children: [
-          _input(variantC.variantNameC, 'Nama Varian'),
-          _input(variantC.variantStockC, 'Stok', isNumberOnly: true),
-          _input(variantC.variantBarcodeC, 'Barcode (opsional)'),
+          AppTextField(
+            hint: 'Nama Varian',
+            controller: variantC.variantNameC,
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
+          AppTextField(
+            hint: 'Stok',
+            controller: variantC.variantStockC,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
+          AppTextField(
+            hint: 'Barcode (opsional)',
+            controller: variantC.variantBarcodeC,
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
           const SizedBox(height: 4),
           unitDropdown(),
           const SizedBox(height: 12),
@@ -51,12 +66,6 @@ class ProductVariantForm {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.straighten_outlined,
-                size: 16,
-                color: Colors.grey.shade500,
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   selected != null
@@ -121,9 +130,8 @@ class ProductVariantForm {
               ),
             ),
             const Divider(),
-            _inputRaw(nameC, 'Nama Unit'),
-            const SizedBox(height: 6),
-            _inputRaw(symbolC, 'Symbol (pcs, box, dll)'),
+            AppTextField(hint: 'Nama Unit', controller: nameC),
+            AppTextField(hint: 'Symbol (pcs, box, dll)', controller: symbolC),
             const SizedBox(height: 10),
             _primaryButton(
               label: 'Tambah',
@@ -259,57 +267,6 @@ class ProductVariantForm {
   }
 
   // ================= PRIVATE HELPERS =================
-  Widget _input(
-    TextEditingController c,
-    String hint, {
-    bool isNumberOnly = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: c,
-        onChanged: (_) => controller.isDirty.value = true,
-        keyboardType: isNumberOnly ? TextInputType.number : TextInputType.text,
-        inputFormatters: isNumberOnly
-            ? [FilteringTextInputFormatter.digitsOnly]
-            : null,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _inputRaw(TextEditingController c, String hint) {
-    return TextField(
-      controller: c,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-      ),
-    );
-  }
 
   Widget _bottomSheetHandle() {
     return Container(

@@ -28,25 +28,29 @@ class PromotionController extends GetxController {
   final nameC = TextEditingController();
   final codeC = TextEditingController();
   final descC = TextEditingController();
-  final usageLimitC = TextEditingController(text: '0');
+  final usageLimitC = TextEditingController(); // ← diubah (kosong)
+
   final validFrom = Rxn<DateTime>();
   final validTo = Rxn<DateTime>();
-  final selectedType = 'discount_percent'.obs;
+
+  final selectedType = ''.obs; // ← diubah (kosong)
   final isActive = true.obs;
   final stackable = false.obs;
 
+  // Reset Form
   void resetForm() {
     nameC.clear();
     codeC.clear();
     descC.clear();
-    usageLimitC.text = '0';
+    usageLimitC.clear(); // ← kosong
     validFrom.value = null;
     validTo.value = null;
-    selectedType.value = 'discount_percent';
+    selectedType.value = ''; // ← kosong
     isActive.value = true;
     stackable.value = false;
   }
 
+  // Load dari existing promotion
   void loadFormFromPromotion(PromotionData p) {
     nameC.text = p.name;
     codeC.text = p.code;
@@ -54,7 +58,7 @@ class PromotionController extends GetxController {
     usageLimitC.text = p.usageLimit.toString();
     validFrom.value = p.validFrom;
     validTo.value = p.validTo;
-    selectedType.value = p.type;
+    selectedType.value = p.type; // ini tetap pakai data existing
     isActive.value = p.isActive;
     stackable.value = p.stackable;
   }
@@ -447,9 +451,7 @@ class PromotionController extends GetxController {
   String get detailUsageDisplay {
     final p = selectedPromotion.value;
     if (p == null) return '';
-    return p.usageLimit == 0
-        ? 'Unlimited'
-        : '${p.usageCount}/${p.usageLimit}x';
+    return p.usageLimit == 0 ? 'Unlimited' : '${p.usageCount}/${p.usageLimit}x';
   }
 
   String get detailStackableLabel =>

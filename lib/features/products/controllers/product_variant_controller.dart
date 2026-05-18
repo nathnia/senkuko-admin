@@ -255,7 +255,7 @@ class ProductVariantController extends GetxController {
 
     final confirm = await AppDialog.confirm(
       title: 'Hapus Varian',
-      content: 'Varian ini akan dihapus permanen dari server. Lanjutkan?',
+      content: 'Varian ini akan dihapus permanen. Lanjutkan?',
       confirmLabel: 'Hapus',
     );
     false;
@@ -364,7 +364,7 @@ class ProductVariantController extends GetxController {
 
     editVariantsTemp.refresh();
     Get.back();
-    AppToast.info('Klik Simpan Perubahan untuk menyimpan ke server');
+    AppToast.info('Klik Simpan Perubahan untuk menyimpan');
   }
 
   // ===================== CRUD =====================

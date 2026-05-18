@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dropdown.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/promotions/voucher_controller.dart';
 import 'package:senkukoadmin/features/promotions/voucher_model.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -25,8 +27,9 @@ class VoucherFormPage extends StatelessWidget {
     final args = Get.arguments;
     final bool isEdit = args is Map && args['isEdit'] == true;
     final String? editId = isEdit ? args['id'] as String? : null;
-    final String? prefilledPromotionId =
-        isEdit ? null : (args is String ? args : null);
+    final String? prefilledPromotionId = isEdit
+        ? null
+        : (args is String ? args : null);
 
     final VoucherData? existing = isEdit
         ? controller.voucherList.firstWhereOrNull((v) => v.id == editId)
@@ -35,8 +38,7 @@ class VoucherFormPage extends StatelessWidget {
     // populate fields once
     WidgetsBinding.instance.addPostFrameCallback((_) {
       codeC.text = existing?.code ?? '';
-      promotionIdC.text =
-          existing?.promotionId ?? prefilledPromotionId ?? '';
+      promotionIdC.text = existing?.promotionId ?? prefilledPromotionId ?? '';
       usageLimitC.text = existing?.usageLimit.toString() ?? '1';
       status.value = existing?.status ?? 'active';
     });
@@ -64,8 +66,7 @@ class VoucherFormPage extends StatelessWidget {
             })
             .then((success) {
               if (success) {
-                Get.until(
-                    (route) => route.settings.name == AppRoutes.vouchers);
+                Get.until((route) => route.settings.name == AppRoutes.vouchers);
               }
             });
       }
@@ -99,13 +100,14 @@ class VoucherFormPage extends StatelessWidget {
                 children: [
                   // Promotion ID — create mode only
                   if (!isEdit) ...[
-                    _fieldLabel('Promotion ID'),
                     const SizedBox(height: 6),
                     prefilledPromotionId != null
                         ? Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(10),
@@ -119,84 +121,91 @@ class VoucherFormPage extends StatelessWidget {
                               ),
                             ),
                           )
-                        : _textField(promotionIdC, hint: 'UUID promotion'),
+                        : AppTextField(
+                            hint: 'UUID promotion',
+                            controller: promotionIdC,
+                          ),
                     const SizedBox(height: 12),
                   ],
 
-                  _fieldLabel('Kode Voucher'),
                   const SizedBox(height: 6),
-                  _textField(
-                    codeC,
+                  AppTextField(
                     hint: 'VOUCHER-SPESIAL-001',
+                    controller: codeC,
                     textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
 
-                  _fieldLabel('Batas Pemakaian'),
                   const SizedBox(height: 6),
-                  _textField(
-                    usageLimitC,
+                  AppTextField(
                     hint: '1',
+                    controller: usageLimitC,
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '0 = unlimited  •  1 = sekali pakai',
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                   ),
 
                   // Status — edit mode only
                   if (isEdit) ...[
                     const SizedBox(height: 12),
-                    _fieldLabel('Status'),
                     const SizedBox(height: 6),
-                    Obx(() => DropdownButtonFormField<String>(
-                          value: status.value,
-                          decoration: _inputDecoration(),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'active', child: Text('Aktif')),
-                            DropdownMenuItem(
-                                value: 'inactive',
-                                child: Text('Tidak Aktif')),
-                          ],
-                          onChanged: (v) => status.value = v!,
-                        )),
+                    Obx(
+                      () => AppDropdown<String>(
+                        value: status.value,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('Aktif'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inactive',
+                            child: Text('Tidak Aktif'),
+                          ),
+                        ],
+                        onChanged: (v) => status.value = v!,
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            Obx(() => SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
+            Obx(
+              () => SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    onPressed:
-                        controller.isSubmitting.value ? null : submit,
-                    child: controller.isSubmitting.value
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
-                          )
-                        : Text(
-                            isEdit ? 'Simpan Perubahan' : 'Terbitkan',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
+                    elevation: 0,
                   ),
-                )),
+                  onPressed: controller.isSubmitting.value ? null : submit,
+                  child: controller.isSubmitting.value
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          isEdit ? 'Simpan Perubahan' : 'Terbitkan',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -204,53 +213,13 @@ class VoucherFormPage extends StatelessWidget {
   }
 
   Widget _card({required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100, width: 0.5),
-        ),
-        child: child,
-      );
-
-  Widget _fieldLabel(String label) => Text(
-        label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-      );
-
-  Widget _textField(
-    TextEditingController c, {
-    String? hint,
-    TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-  }) =>
-      TextField(
-        controller: c,
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        style: const TextStyle(fontSize: 13),
-        decoration: _inputDecoration(hint: hint),
-      );
-
-  InputDecoration _inputDecoration({String? hint}) => InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: AppColors.primary.withAlpha(80)),
-        ),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade100, width: 0.5),
+    ),
+    child: child,
+  );
 }

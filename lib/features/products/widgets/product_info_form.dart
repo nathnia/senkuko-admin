@@ -1,9 +1,8 @@
-// lib/features/products/widgets/product_info_form.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
 
@@ -18,10 +17,30 @@ class ProductInfoForm {
       title: 'INFORMASI PRODUK',
       child: Column(
         children: [
-          _input(controller.nameC, 'Nama Produk'),
-          _input(controller.skuC, 'SKU Code'),
-          _input(controller.descC, 'Deskripsi'),
-          _input(controller.barcodeC, 'Barcode'),
+          AppTextField(
+            hint: 'Nama Produk',
+            controller: controller.nameC,
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
+
+          AppTextField(
+            hint: 'SKU Code',
+            controller: controller.skuC,
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
+
+          AppTextField(
+            hint: 'Deskripsi',
+            controller: controller.descC,
+            maxLines: 3,
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
+
+          AppTextField(
+            hint: 'Barcode',
+            controller: controller.barcodeC,
+            onChanged: (_) => controller.isDirty.value = true,
+          ),
           const SizedBox(height: 4),
           categorySelector(),
         ],
@@ -45,12 +64,6 @@ class ProductInfoForm {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.category_outlined,
-                size: 16,
-                color: Colors.grey.shade500,
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   selected?.name ?? 'Pilih Kategori',
@@ -110,18 +123,10 @@ class ProductInfoForm {
               ),
             ),
             const Divider(),
-            TextField(
-              onChanged: (_) => controller.isDirty.value = true,
+            AppTextField(
+              hint: 'Nama kategori baru',
               controller: newCategoryC,
-              decoration: InputDecoration(
-                hintText: 'Nama kategori baru',
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+              onChanged: (_) => controller.isDirty.value = true,
             ),
             const SizedBox(height: 10),
             _primaryButton(
@@ -153,38 +158,6 @@ class ProductInfoForm {
   }
 
   // ================= PRIVATE HELPERS =================
-  Widget _input(
-    TextEditingController c,
-    String hint, {
-    bool isNumberOnly = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: c,
-        onChanged: (_) => controller.isDirty.value = true,
-        keyboardType: isNumberOnly ? TextInputType.number : TextInputType.text,
-        inputFormatters: isNumberOnly
-            ? [FilteringTextInputFormatter.digitsOnly]
-            : null,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _bottomSheetHandle() {
     return Container(
       width: 36,

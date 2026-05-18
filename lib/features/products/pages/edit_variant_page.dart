@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dropdown.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/features/products/widgets/save_button.dart';
-
 
 class EditVariantPage extends StatelessWidget {
   EditVariantPage({super.key});
@@ -36,11 +37,7 @@ class EditVariantPage extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: [
-          AppSaveButton(
-            onTap: () => c.saveEditVariant(index),
-          ),
-        ],
+        actions: [AppSaveButton(onTap: () => c.saveEditVariant(index))],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -50,21 +47,21 @@ class EditVariantPage extends StatelessWidget {
               title: 'INFORMASI VARIAN',
               child: Column(
                 children: [
-                  _input(
-                    controller: c.dialogNameC,
+                  AppTextField(
                     hint: 'Nama Varian',
+                    controller: c.dialogNameC,
                     onChanged: (_) => controller.isDirty.value = true,
                   ),
-                  _input(
-                    controller: c.dialogStockC,
+                  AppTextField(
                     hint: 'Stok',
+                    controller: c.dialogStockC,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (_) => controller.isDirty.value = true,
                   ),
-                  _input(
-                    controller: c.dialogBarcodeC,
+                  AppTextField(
                     hint: 'Barcode (opsional)',
+                    controller: c.dialogBarcodeC,
                     onChanged: (_) => controller.isDirty.value = true,
                   ),
                 ],
@@ -75,15 +72,11 @@ class EditVariantPage extends StatelessWidget {
             AppCard(
               title: 'UNIT',
               child: Obx(
-                () => DropdownButtonFormField<String>(
+                () => AppDropdown<String>(
                   value: c.unitList.any((u) => u.id == c.dialogUnitId.value)
                       ? c.dialogUnitId.value
                       : null,
-                  isExpanded: true,
-                  hint: Text(
-                    'Pilih Unit',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-                  ),
+                  hint: 'Pilih Unit',
                   items: c.unitList
                       .map(
                         (u) => DropdownMenuItem<String>(
@@ -99,18 +92,6 @@ class EditVariantPage extends StatelessWidget {
                     if (val != null) c.dialogUnitId.value = val;
                     controller.isDirty.value = true;
                   },
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -141,7 +122,10 @@ class EditVariantPage extends StatelessWidget {
                     width: 100,
                     child: Text(
                       pl.name,
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -158,7 +142,9 @@ class EditVariantPage extends StatelessWidget {
                         hintText: '0',
                         prefixText: 'Rp ',
                         filled: true,
-                        fillColor: enabled ? Colors.white : Colors.grey.shade100,
+                        fillColor: enabled
+                            ? Colors.white
+                            : Colors.grey.shade100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
@@ -169,7 +155,9 @@ class EditVariantPage extends StatelessWidget {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppColors.primary.withAlpha(80)),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withAlpha(80),
+                          ),
                         ),
                         disabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -189,7 +177,9 @@ class EditVariantPage extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: enabled ? Colors.green.shade50 : Colors.grey.shade100,
+                        color: enabled
+                            ? Colors.green.shade50
+                            : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -197,7 +187,9 @@ class EditVariantPage extends StatelessWidget {
                             ? Icons.check_circle_rounded
                             : Icons.add_circle_outline_rounded,
                         size: 20,
-                        color: enabled ? Colors.green.shade500 : Colors.grey.shade400,
+                        color: enabled
+                            ? Colors.green.shade500
+                            : Colors.grey.shade400,
                       ),
                     ),
                   ),
@@ -205,35 +197,6 @@ class EditVariantPage extends StatelessWidget {
               ),
             );
           }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    ValueChanged<String>? onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
       ),
     );
