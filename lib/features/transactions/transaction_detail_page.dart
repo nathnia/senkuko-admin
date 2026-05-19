@@ -89,7 +89,7 @@ class TransactionDetailPage extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF2DC98E),
+                              color: AppColors.primary,
                             ),
                           ),
                         ),

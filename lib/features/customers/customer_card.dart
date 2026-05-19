@@ -6,29 +6,16 @@ class CustomerCard extends StatelessWidget {
   final CustomerData customer;
   final VoidCallback? onToggleStatus;
 
-  const CustomerCard({
-    super.key,
-    required this.customer,
-    this.onToggleStatus,
-  });
+  const CustomerCard({super.key, required this.customer, this.onToggleStatus});
 
   _MemberStyle _memberStyle(MemberType type) {
     switch (type) {
       case MemberType.vip:
-        return _MemberStyle(
-          color: AppColors.secondary,
-          label: 'VIP',
-        );
+        return _MemberStyle(color: AppColors.secondary, label: 'VIP');
       case MemberType.member:
-        return _MemberStyle(
-          color: AppColors.primary,
-          label: 'MEMBER',
-        );
+        return _MemberStyle(color: AppColors.primary, label: 'MEMBER');
       case MemberType.regular:
-        return _MemberStyle(
-          color: const Color(0xFF9E9E9E),
-          label: 'REGULAR',
-        );
+        return _MemberStyle(color: const Color(0xFF9E9E9E), label: 'REGULAR');
     }
   }
 
@@ -106,10 +93,7 @@ class CustomerCard extends StatelessWidget {
               const SizedBox(width: 10),
 
               // STATUS PILL — menggantikan Switch
-              _StatusPill(
-                isActive: isActive,
-                onTap: onToggleStatus,
-              ),
+              _StatusPill(isActive: isActive, onTap: onToggleStatus),
             ],
           ),
         ),
@@ -128,10 +112,10 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isActive ? AppColors.primary   : AppColors.danger;
-    final textColor   = isActive ? AppColors.primary   : AppColors.danger;
-    final dotColor    = isActive ? AppColors.primary   : AppColors.danger;
-    final label       = isActive ? 'Aktif' : 'Disuspend';
+    final borderColor = isActive ? AppColors.primary : AppColors.danger;
+    final textColor = isActive ? AppColors.primary : AppColors.danger;
+    final dotColor = isActive ? AppColors.primary : AppColors.danger;
+    final label = isActive ? 'Aktif' : 'Dinonaktifkan';
 
     return GestureDetector(
       onTap: onTap,
@@ -173,8 +157,7 @@ class _StatusPill extends StatelessWidget {
 class _MemberStyle {
   final Color color;
   final String label;
-  const _MemberStyle(
-      {required this.color, required this.label});
+  const _MemberStyle({required this.color, required this.label});
 }
 
 // ─── Badge ───────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
@@ -328,7 +329,8 @@ class DashboardPage extends StatelessWidget {
                 icon: Icons.confirmation_number_rounded,
                 label: 'Voucher',
                 sub: 'Kode kupon',
-                onTap: () => Get.toNamed(AppRoutes.voucher),
+                onTap: () =>
+                    AppToast.info('Fitur voucher sedang dalam pengembangan'),
               ),
             ),
             const SizedBox(width: 8),
@@ -403,7 +405,8 @@ class DashboardPage extends StatelessWidget {
   // ==================== ADD PRODUCT ====================
   Widget _addProductButton() {
     return GestureDetector(
-      onTap: () => Get.toNamed(AppRoutes.addProduct),
+      onTap: () =>
+          AppToast.info('Fitur tambah produk sedang dalam pengembangan'),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 15),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 
 TransactionModel transactionModelFromJson(String str) =>
@@ -41,14 +42,14 @@ class PaymentStyle {
     switch (method) {
       case 'cash':
         return const PaymentStyle(
-          color: Color(0xFF2DC98E),
+          color: AppColors.primary,
           background: Color(0xFFE8FAF3),
           icon: Icons.payments_outlined,
           label: 'Tunai',
         );
       case 'transfer':
         return const PaymentStyle(
-          color: Color(0xFF4F7EFF),
+          color: AppColors.secondary,
           background: Color(0xFFEEF3FF),
           icon: Icons.account_balance_outlined,
           label: 'Transfer',
