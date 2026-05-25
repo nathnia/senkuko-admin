@@ -90,7 +90,7 @@ class ProductCard extends StatelessWidget {
                               product.categoryName,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade500,
+                                color: AppColors.subtext,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),

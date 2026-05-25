@@ -45,7 +45,7 @@ class VoucherFormPage extends StatelessWidget {
 
     void submit() {
       if (codeC.text.trim().isEmpty) {
-        AppToast.warning('Kode voucher harus diisi');
+        AppToast.show('Kode voucher harus diisi');
         return;
       }
 
@@ -60,7 +60,7 @@ class VoucherFormPage extends StatelessWidget {
               if (success) Get.back();
             });
       } else {
-        AppToast.info('Fitur terbitkan voucher sedang dalam pengembangan');
+        AppToast.show('Fitur terbitkan voucher sedang dalam pengembangan');
       }
     }
 
@@ -137,7 +137,7 @@ class VoucherFormPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '0 = unlimited  •  1 = sekali pakai',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 11, color: AppColors.subtext),
                   ),
 
                   // Status — edit mode only

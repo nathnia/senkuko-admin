@@ -1,4 +1,3 @@
-// lib/features/products/controllers/product_image_controller.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,7 +14,7 @@ class ProductImageController extends GetxController {
   final pendingEditImages = <XFile>[].obs;
   final allProductImages = <String, List<ProductImageData>>{}.obs;
 
-  // ── Carousel state — taruh di sini biar StatelessWidget page tidak pegang state
+  // ── Carousel state
   final carouselIndex = 0.obs;
   final carouselController = PageController();
 
@@ -28,18 +27,10 @@ class ProductImageController extends GetxController {
     super.onClose();
   }
 
-  // ===================== HELPERS =====================
-
-  // bool _isNetworkError(response) =>
-  //     response.statusCode == 408 || response.statusCode == 503;
-
-  // String _parseMessage(String body) {
-  //   try {
-  //     return json.decode(body)['message'] ?? 'Terjadi kesalahan';
-  //   } catch (_) {
-  //     return 'Terjadi kesalahan';
-  //   }
-  // }
+  void clearAllCache() {
+    allProductImages.clear();
+    allProductImages.refresh();
+  }
 
   // ===================== FETCH =====================
   Future<void> fetchProductImages(String productId) async {
@@ -56,6 +47,31 @@ class ProductImageController extends GetxController {
 
       allProductImages.refresh();
     } catch (_) {}
+  }
+
+  // Fetch ke map sementara — tidak langsung update allProductImages
+  // Dipakai oleh fetchProducts() untuk atomic cache replacement
+  Future<void> fetchProductImagesInto(
+    String productId,
+    Map<String, List<ProductImageData>> target,
+  ) async {
+    try {
+      final res = await ProductService.getProductImages(productId);
+      if (res.statusCode != 200) return;
+
+      final jsonData = json.decode(res.body);
+      final List raw = jsonData['data'] ?? [];
+
+      target[productId] = raw
+          .map((e) => ProductImageData.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {}
+  }
+
+  // Replace semua cache sekaligus — atomic, tidak ada flicker
+  void replaceAllCache(Map<String, List<ProductImageData>> newCache) {
+    allProductImages.assignAll(newCache);
+    allProductImages.refresh();
   }
 
   List<ProductImageData> getImagesForProduct(String productId) {
@@ -78,18 +94,18 @@ class ProductImageController extends GetxController {
       final res = await ProductService.deleteProductImage(productId, imageId);
 
       if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
         return;
       }
 
       if (res.statusCode == 200 || res.statusCode == 204) {
         _removeImageLocally(productId, index);
-        AppToast.success('Gambar berhasil dihapus');
+        AppToast.show('Gambar berhasil dihapus');
       } else {
-        AppToast.error('Gagal menghapus gambar (${res.statusCode})');
+        AppToast.show('Gagal menghapus gambar (${res.statusCode})');
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menghapus gambar');
+      AppToast.show('Terjadi kesalahan saat menghapus gambar');
     } finally {
       isUploadingImage.value = false;
     }
@@ -121,7 +137,7 @@ class ProductImageController extends GetxController {
   }) async {
     final existingCount = getImagesForProduct(productId).length;
     if (existingCount + pendingEditImages.length >= maxImages) {
-      AppToast.warning('Maksimal $maxImages gambar per produk');
+      AppToast.show('Maksimal $maxImages gambar per produk');
       return;
     }
 
@@ -137,14 +153,14 @@ class ProductImageController extends GetxController {
 
       final ext = pickedFile.name.split('.').last.toLowerCase();
       if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-        AppToast.warning('Gunakan JPEG, PNG, atau WEBP');
+        AppToast.show('Gunakan JPEG, PNG, atau WEBP');
         return;
       }
 
       pendingEditImages.add(pickedFile);
-      Get.find<ProductController>().isDirty.value = true;
+      Get.find<ProductController>().checkDirty();
     } catch (e) {
-      AppToast.error('Gagal memilih gambar');
+      AppToast.show('Gagal memilih gambar');
     }
   }
 
@@ -164,7 +180,7 @@ class ProductImageController extends GetxController {
         );
 
         if (ApiHelper.isNetworkError(res)) {
-          AppToast.error(ApiHelper.parseError(res.body));
+          AppToast.show(ApiHelper.parseError(res.body));
           break;
         } else if (res.statusCode != 200 && res.statusCode != 201) {
           failCount++;
@@ -178,7 +194,7 @@ class ProductImageController extends GetxController {
     isUploadingImage.value = false;
 
     if (failCount > 0) {
-      AppToast.warning('$failCount gambar gagal diupload');
+      AppToast.show('$failCount gambar gagal diupload');
     }
   }
 
@@ -224,13 +240,12 @@ class ProductImageController extends GetxController {
     ImageSource source = ImageSource.gallery,
   }) async {
     if (pendingImages.length >= maxImages) {
-      AppToast.warning('Maksimal $maxImages gambar per produk');
+      AppToast.show('Maksimal $maxImages gambar per produk');
       return;
     }
 
     try {
       final picker = ImagePicker();
-
       final pickedFile = await picker.pickImage(
         source: source,
         maxWidth: 1024,
@@ -241,16 +256,15 @@ class ProductImageController extends GetxController {
       if (pickedFile == null) return;
 
       final ext = pickedFile.name.split('.').last.toLowerCase();
-
       if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-        AppToast.warning('Gunakan JPEG, PNG, atau WEBP');
+        AppToast.show('Gunakan JPEG, PNG, atau WEBP');
         return;
       }
 
       pendingImages.add(pickedFile);
-      Get.find<ProductController>().isDirty.value = true;
+      Get.find<ProductController>().checkDirty();
     } catch (e) {
-      AppToast.error('Gagal memilih gambar');
+      AppToast.show('Gagal memilih gambar');
     }
   }
 
@@ -270,8 +284,9 @@ class ProductImageController extends GetxController {
         );
 
         if (res.statusCode == 200 || res.statusCode == 201) {
+          // success
         } else if (ApiHelper.isNetworkError(res)) {
-          AppToast.error(ApiHelper.parseError(res.body));
+          AppToast.show(ApiHelper.parseError(res.body));
           break;
         } else {
           failCount++;
@@ -285,7 +300,7 @@ class ProductImageController extends GetxController {
     isUploadingImage.value = false;
 
     if (failCount > 0) {
-      AppToast.warning('$failCount gambar gagal diupload');
+      AppToast.show('$failCount gambar gagal diupload');
     }
   }
 }

@@ -18,10 +18,9 @@ class CustomerController extends GetxController {
   // ===================== LIST STATE =====================
   final isLoading = false.obs;
   final customerList = <CustomerData>[].obs;
+  final filteredCustomers = <CustomerData>[].obs; // ← cached, bukan computed getter
   final selectedCustomer = Rxn<CustomerData>();
   final searchText = ''.obs;
-
-  // null = semua, active = aktif, inactive = nonaktif
   final Rxn<CustomerStatus> statusFilter = Rxn(CustomerStatus.active);
 
   @override
@@ -58,26 +57,31 @@ class CustomerController extends GetxController {
   }
 
   // ===================== FILTER =====================
-  List<CustomerData> get filteredCustomers {
-    var list = customerList.toList();
+  // Filter jalan sekali, hasilnya disimpan di filteredCustomers (RxList)
+  // UI tidak recompute setiap rebuild — hanya rebuild saat filteredCustomers berubah
+  void _applyFilter() {
+    final lower = searchText.value.toLowerCase();
 
-    if (statusFilter.value != null) {
-      list = list.where((c) => c.status == statusFilter.value).toList();
-    }
+    filteredCustomers.assignAll(
+      customerList.where((c) {
+        final matchStatus =
+            statusFilter.value == null || c.status == statusFilter.value;
 
-    if (searchText.value.isNotEmpty) {
-      final lower = searchText.value.toLowerCase();
-      list = list.where((c) {
-        return c.name.toLowerCase().contains(lower) ||
+        final matchSearch =
+            lower.isEmpty ||
+            c.name.toLowerCase().contains(lower) ||
             (c.phone?.toLowerCase().contains(lower) ?? false) ||
             (c.email?.toLowerCase().contains(lower) ?? false);
-      }).toList();
-    }
 
-    return list;
+        return matchStatus && matchSearch;
+      }).toList(),
+    );
   }
 
-  void updateSearch(String value) => searchText.value = value;
+  void updateSearch(String value) {
+    searchText.value = value;
+    _applyFilter();
+  }
 
   void setStatusFilter(String label) {
     switch (label) {
@@ -87,12 +91,12 @@ class CustomerController extends GetxController {
       case 'Nonaktif':
         statusFilter.value = CustomerStatus.inactive;
         break;
-      default: // 'Semua'
+      default:
         statusFilter.value = null;
     }
+    _applyFilter();
   }
 
-  // label untuk chip agar UI tahu mana yang aktif
   String get statusFilterLabel {
     switch (statusFilter.value) {
       case CustomerStatus.active:
@@ -111,13 +115,14 @@ class CustomerController extends GetxController {
       final res = await CustomerService.getAllCustomers();
       if (res.statusCode == 200) {
         customerList.assignAll(customerModelFromJson(res.body).data);
-      }else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        _applyFilter();
+      } else if (ApiHelper.isNetworkError(res)) {
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error('Gagal memuat daftar pelanggan');
+        AppToast.show('Gagal memuat daftar pelanggan');
       }
     } catch (e) {
-      AppToast.error('Gagal memuat data pelanggan');
+      AppToast.show('Gagal memuat data pelanggan');
     } finally {
       isLoading.value = false;
     }
@@ -143,50 +148,46 @@ class CustomerController extends GetxController {
     final newStatus = customer.isActive
         ? CustomerStatus.inactive
         : CustomerStatus.active;
-    final label = newStatus == CustomerStatus.inactive
-        ? 'nonaktifkan'
-        : 'aktifkan';
+    final label = newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
 
     final confirmed = await AppDialog.confirm(
       title:
           '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
       content: 'Yakin ingin $label "${customer.name}"?',
-      confirmLabel: newStatus == CustomerStatus.active
-          ? 'Aktifkan'
-          : 'Nonaktifkan',
-      confirmColor: newStatus == CustomerStatus.active
-          ? Colors.green
-          : Colors.orange,
+      confirmLabel:
+          newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
+      confirmColor:
+          newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
     );
 
     if (!confirmed) return false;
 
     isLoading.value = true;
     try {
-      // .name → convert enum ke string ('active'/'inactive') untuk dikirim ke API
       final res = await CustomerService.updateCustomerStatus(
         customer.id,
         newStatus.name,
       );
       if (res.statusCode == 200) {
+        final updated = CustomerData.fromJson(jsonDecode(res.body)['data']);
         final idx = customerList.indexWhere((c) => c.id == customer.id);
         if (idx != -1) {
-          final updated = CustomerData.fromJson(jsonDecode(res.body)['data']);
           customerList[idx] = updated;
-          customerList.refresh();
         }
-        AppToast.success(
+        // Re-apply filter agar hasil list langsung sinkron
+        _applyFilter();
+        AppToast.show(
           newStatus == CustomerStatus.active
               ? 'Pelanggan diaktifkan'
               : 'Pelanggan dinonaktifkan',
         );
         return true;
       }
-      AppToast.error('Gagal mengubah status');
+      AppToast.show('Gagal mengubah status');
       return false;
     } catch (e) {
       debugPrint('Error toggleStatus: $e');
-      AppToast.error('Terjadi kesalahan');
+      AppToast.show('Terjadi kesalahan');
       return false;
     } finally {
       isLoading.value = false;

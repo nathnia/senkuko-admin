@@ -62,33 +62,46 @@ class ProductImageSection {
                   ...images.asMap().entries.map((entry) {
                     final int index = entry.key;
                     final ProductImageData image = entry.value;
-                    final existingCount = imageC
-                        .getImagesForProduct(productId)
-                        .length;
-                    final isPendingEdit = !isAddMode && index >= existingCount;
 
                     return _imageThumb(
                       imageUrl: image.imageUrl,
                       isPrimary: image.isPrimary,
-                      isLocal: isAddMode || isPendingEdit,
+                      isLocal: isAddMode ||
+                          (!isAddMode &&
+                              index >=
+                                  imageC
+                                      .getImagesForProduct(productId)
+                                      .length),
                       onDelete: () async {
                         if (isAddMode) {
                           imageC.removePendingImage(index);
                           return;
                         }
-                        if (isPendingEdit) {
-                          imageC.removePendingEditImage(index - existingCount);
+
+                        // Hitung ulang saat delete dipanggil, bukan saat build
+                        final currentExistingCount =
+                            imageC.getImagesForProduct(productId).length;
+                        final isPendingEditNow = index >= currentExistingCount;
+
+                        if (isPendingEditNow) {
+                          imageC.removePendingEditImage(
+                            index - currentExistingCount,
+                          );
                           return;
                         }
+
                         final confirm = await AppDialog.confirm(
                           title: 'Hapus Gambar',
                           content: 'Yakin ingin menghapus gambar ini?',
                           confirmLabel: 'Hapus',
                         );
-                        false;
                         if (confirm) {
                           controller.isDirty.value = true;
-                          imageC.deleteProductImage(productId, image.id, index);
+                          imageC.deleteProductImage(
+                            productId,
+                            image.id,
+                            index,
+                          );
                         }
                       },
                     );
@@ -199,7 +212,6 @@ class ProductImageSection {
                 ),
               ),
             ),
-
           Positioned(
             top: 4,
             right: 4,

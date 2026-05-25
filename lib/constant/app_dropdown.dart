@@ -1,4 +1,4 @@
-// lib/widgets/app_dropdown.dart
+// lib/constant/app_dropdown.dart
 import 'package:flutter/material.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 
@@ -10,6 +10,7 @@ class AppDropdown<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final bool isRequired;
   final bool enabled;
+  final bool showLabel;
 
   const AppDropdown({
     super.key,
@@ -20,39 +21,45 @@ class AppDropdown<T> extends StatelessWidget {
     required this.onChanged,
     this.isRequired = false,
     this.enabled = true,
+    this.showLabel = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveLabel = label ?? hint;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10), // sama kayak AppTextField
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (label != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Text(
-                    label!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
+          if (showLabel && effectiveLabel != null) ...[
+            Row(
+              children: [
+                Text(
+                  effectiveLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.subtext,
+                    fontWeight: FontWeight.w500,
                   ),
-                  if (isRequired)
-                    const Text(' *', style: TextStyle(color: Colors.red)),
-                ],
-              ),
+                ),
+                if (isRequired)
+                  const Text(
+                    ' *',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+              ],
             ),
+            const SizedBox(height: 5),
+          ],
           DropdownButtonFormField<T>(
             value: value,
             isExpanded: true,
             hint: hint != null
                 ? Text(
                     hint!,
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
                   )
                 : null,
             items: items,
@@ -68,7 +75,7 @@ class AppDropdown<T> extends StatelessWidget {
               filled: true,
               fillColor: enabled ? Colors.grey.shade100 : Colors.grey.shade200,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12, // sama kayak AppTextField
+                horizontal: 12,
                 vertical: 12,
               ),
               border: OutlineInputBorder(

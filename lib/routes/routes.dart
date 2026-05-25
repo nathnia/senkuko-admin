@@ -23,5 +23,6 @@ class AppRoutes {
   static const promotionConditionForm = '/promotions/condition/form';
   static const promotionRewardForm = '/promotions/reward/form';
   static const vouchers = '/vouchers';
-static const voucherForm = '/vouchers/form';
+  static const voucherForm = '/vouchers/form';
+  static const variantForm = '/variant-form';
 }

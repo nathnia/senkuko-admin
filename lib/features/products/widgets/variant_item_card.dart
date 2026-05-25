@@ -1,24 +1,16 @@
 // lib/features/products/widgets/variant_item_card.dart
-//
-// Reusable variant card dipakai di:
-//   - AddProductPage   (mode: add)
-//   - EditProductPage  (mode: edit)
-//   - DetailProductPage (mode: detail)
-//
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
-import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
+import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 
 enum VariantCardMode { add, edit, detail }
 
 class VariantItemCard extends StatelessWidget {
   final Map<String, dynamic> variant;
   final VariantCardMode mode;
-
   final int index;
-
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
 
@@ -33,12 +25,12 @@ class VariantItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final variantC = Get.find<ProductVariantController>();
+    final priceC = Get.find<PriceController>();
     final barcode = variant['barcode']?.toString() ?? '';
     final name = variant['name']?.toString() ?? '';
     final stockQty = variant['stock_qty']?.toString() ?? '0';
     final unitName = variant['unit_name']?.toString() ?? '';
-    final prices = variantC.sortPricesByMaster(
+    final prices = priceC.sortPricesByMaster(
       variant['prices'] as List? ?? [],
     );
 
@@ -58,7 +50,6 @@ class VariantItemCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Info kiri
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,8 +74,6 @@ class VariantItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Action buttons (edit & delete) — hanya di mode add/edit
                 if (onEdit != null || onDelete != null)
                   Row(
                     children: [
@@ -117,9 +106,8 @@ class VariantItemCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: prices.map((p) {
-                  // Resolve nama price list (sama untuk semua mode)
                   final priceName =
-                      variantC.priceListMaster
+                      priceC.priceListMaster
                           .firstWhereOrNull(
                             (pl) => pl.id == p['price_list_id']?.toString(),
                           )
@@ -166,7 +154,7 @@ class VariantItemCard extends StatelessWidget {
       children: [
         Icon(icon, size: 11, color: Colors.grey.shade400),
         const SizedBox(width: 3),
-        Text(text, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+        Text(text, style: TextStyle(fontSize: 12, color: AppColors.subtext)),
       ],
     );
   }

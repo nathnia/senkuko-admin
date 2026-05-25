@@ -4,9 +4,12 @@ import 'package:get/get.dart';
 
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
+import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
+import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
-import 'package:senkukoadmin/features/products/models/category_model.dart';
+import 'package:senkukoadmin/features/products/controllers/unit_controller.dart';
+import 'package:senkukoadmin/features/products/models/product_image_model.dart';
 import 'package:senkukoadmin/features/products/models/product_model.dart';
 import 'package:senkukoadmin/features/products/models/product_variant_model.dart';
 import 'package:senkukoadmin/features/products/product_service.dart';
@@ -14,6 +17,9 @@ import 'package:senkukoadmin/features/products/product_service.dart';
 class ProductController extends GetxController {
   ProductImageController get imageC => Get.find<ProductImageController>();
   ProductVariantController get variantC => Get.find<ProductVariantController>();
+  CategoryController get categoryC => Get.find<CategoryController>();
+  PriceController get priceC => Get.find<PriceController>();
+  UnitController get unitC => Get.find<UnitController>();
 
   // ===================== STATE =====================
   final isLoading = false.obs;
@@ -24,13 +30,11 @@ class ProductController extends GetxController {
 
   // ===================== DATA =====================
   final productList = <ProductData>[].obs;
-  final categoryList = <CategoryData>[].obs;
   final selectedProduct = Rxn<ProductData>();
 
   // ===================== PRODUCT PAGE STATE =====================
   final searchText = ''.obs;
   final selectedTab = 'Semua'.obs;
-
   final filteredProducts = <ProductData>[].obs;
 
   void _applyFilter() {
@@ -40,7 +44,8 @@ class ProductController extends GetxController {
           searchText.value.toLowerCase(),
         );
         final matchTab =
-            selectedTab.value == 'Semua' || p.categoryName == selectedTab.value;
+            selectedTab.value == 'Semua' ||
+            p.categoryName == selectedTab.value;
         return matchSearch && matchTab;
       }).toList(),
     );
@@ -62,7 +67,10 @@ class ProductController extends GetxController {
     _applyFilter();
   }
 
-  List<String> get tabs => ['Semua', ...categoryList.map((c) => c.name)];
+  List<String> get tabs => [
+    'Semua',
+    ...categoryC.categoryList.map((c) => c.name),
+  ];
 
   // ===================== PRODUCT FORM =====================
   final nameC = TextEditingController();
@@ -80,20 +88,34 @@ class ProductController extends GetxController {
 
   @override
   void onClose() {
-    nameC.dispose();
-    skuC.dispose();
-    descC.dispose();
-    barcodeC.dispose();
+    _categoryWorker?.dispose();
+    _pendingImagesWorker?.dispose();
+    _pendingEditImagesWorker?.dispose();
+    _variantsTempWorker?.dispose();
+    for (final c in [nameC, skuC, descC, barcodeC]) {
+      c.removeListener(checkDirty);
+      c.dispose();
+    }
     super.onClose();
   }
 
   // ===================== INIT =====================
   Future<void> loadInitialData() async {
+    if (isLoading.value) return;
     isLoading.value = true;
     try {
-      await Future.wait([fetchProducts(), fetchCategories()]);
+      // Semua fetch jalan parallel — categories, units, price lists
+      // fetchProducts sudah handle image fetch di background sendiri
+      await Future.wait([
+        fetchProducts(),
+        categoryC.fetchCategories(),
+        priceC.fetchPrices(),
+        priceC.fetchPriceLists(),
+        unitC.fetchUnits(),
+        variantC.fetchAllVariants(),
+      ]);
     } catch (e) {
-      AppToast.error('Gagal memuat data awal');
+      AppToast.show('Gagal memuat data awal');
     } finally {
       isLoading.value = false;
     }
@@ -101,48 +123,44 @@ class ProductController extends GetxController {
 
   // ===================== FETCH =====================
   Future<void> fetchProducts() async {
-    isLoading.value = true; // ← Tambahkan ini
-
     try {
       final res = await ProductService.getProducts();
-
       if (res.statusCode == 200) {
         final newProducts = productModelFromJson(res.body).data;
-
         productList.assignAll(newProducts);
-
-        // Fetch images untuk produk yang belum ada gambarnya
-        final needFetch = productList
-            .where((p) => imageC.getImagesForProduct(p.id).isEmpty)
-            .toList();
-
-        if (needFetch.isNotEmpty) {
-          await Future.wait(
-            needFetch.map((p) => imageC.fetchProductImages(p.id)),
-          );
-        }
-
         _applyFilter();
+
+        // Image fetch di background — tidak block UI
+        // List produk sudah tampil, gambar menyusul
+        _fetchAllImagesBackground(newProducts);
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error('Gagal memuat daftar produk');
+        AppToast.show('Gagal memuat daftar produk');
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat memuat produk');
-    } finally {
-      isLoading.value = false;
+      AppToast.show('Terjadi kesalahan saat memuat produk');
     }
   }
 
-  Future<void> fetchCategories() async {
-    final res = await ProductService.getCategories();
-    if (res.statusCode == 200) {
-      final jsonData = json.decode(res.body);
-      categoryList.assignAll(
-        (jsonData['data'] as List? ?? [])
-            .map((e) => CategoryData.fromJson(e))
-            .toList(),
+  // Background fetch — fire and forget, tidak di-await
+  void _fetchAllImagesBackground(List<ProductData> products) {
+    Future.microtask(() async {
+      final cache = <String, List<ProductImageData>>{};
+      await _fetchImagesInBatches(products, cache);
+      imageC.replaceAllCache(cache);
+    });
+  }
+
+  Future<void> _fetchImagesInBatches(
+    List<ProductData> products,
+    Map<String, List<ProductImageData>> cache, {
+    int batchSize = 5,
+  }) async {
+    for (var i = 0; i < products.length; i += batchSize) {
+      final batch = products.skip(i).take(batchSize).toList();
+      await Future.wait(
+        batch.map((p) => imageC.fetchProductImagesInto(p.id, cache)),
       );
     }
   }
@@ -154,11 +172,20 @@ class ProductController extends GetxController {
     selectedProduct.value = null;
 
     _clearProductForm();
+
+    _snapName = '';
+    _snapSku = '';
+    _snapDesc = '';
+    _snapBarcode = '';
+    _snapCategoryId = '';
+
     variantC.clearVariantForm();
     variantC.variantsTemp.clear();
     variantC.editVariantsTemp.clear();
     variantC.productVariants.clear();
     imageC.pendingImages.clear();
+
+    _listenFormChanges();
   }
 
   void _clearProductForm() {
@@ -199,7 +226,7 @@ class ProductController extends GetxController {
         }
       }
     } catch (e) {
-      AppToast.error('Gagal memuat detail produk');
+      AppToast.show('Gagal memuat detail produk');
     } finally {
       isLoadingDetail.value = false;
     }
@@ -215,6 +242,7 @@ class ProductController extends GetxController {
     barcodeC.clear();
     selectedCategoryId.value = '';
     variantC.editVariantsTemp.clear();
+    variantC.variantsTemp.clear();
     imageC.pendingEditImages.clear();
 
     editingProductId.value = productId;
@@ -222,8 +250,9 @@ class ProductController extends GetxController {
 
     try {
       await Future.wait([
-        if (variantC.priceListMaster.isEmpty) variantC.fetchPriceLists(),
-        if (variantC.unitList.isEmpty) variantC.fetchUnits(),
+        if (categoryC.categoryList.isEmpty) categoryC.fetchCategories(),
+        if (priceC.priceListMaster.isEmpty) priceC.fetchPriceLists(),
+        if (unitC.unitList.isEmpty) unitC.fetchUnits(),
         loadProductDetail(productId),
         imageC.fetchProductImages(productId),
       ]);
@@ -240,8 +269,12 @@ class ProductController extends GetxController {
       }
 
       variantC.initPriceControllers();
+
+      _takeSnapshot();
+      isDirty.value = false;
+      _listenFormChanges();
     } catch (e) {
-      AppToast.error('Gagal memuat data produk');
+      AppToast.show('Gagal memuat data produk');
     } finally {
       isLoadingDetail.value = false;
     }
@@ -250,11 +283,11 @@ class ProductController extends GetxController {
   // ===================== CREATE PRODUCT =====================
   Future<bool> createFullProduct() async {
     if (nameC.text.trim().isEmpty || skuC.text.trim().isEmpty) {
-      AppToast.warning('Nama dan SKU Code harus diisi');
+      AppToast.show('Nama dan SKU Code harus diisi');
       return false;
     }
     if (variantC.variantsTemp.isEmpty) {
-      AppToast.warning('Minimal tambahkan 1 variant');
+      AppToast.show('Minimal tambahkan 1 variant');
       return false;
     }
 
@@ -271,40 +304,42 @@ class ProductController extends GetxController {
       );
 
       if (ApiHelper.isNetworkError(productRes)) {
-        AppToast.error(ApiHelper.parseError(productRes.body));
+        AppToast.show(ApiHelper.parseError(productRes.body));
         return false;
       }
 
       if (productRes.statusCode != 201) {
-        AppToast.error('Gagal membuat produk');
+        AppToast.show('Gagal membuat produk');
         return false;
       }
 
       final newProductId =
           json.decode(productRes.body)['data']['id']?.toString() ?? '';
 
+      // Buat semua variant — biarkan partial failure tidak block semua
       for (var v in variantC.variantsTemp) {
         try {
           await variantC.createVariantWithPrices(
             productId: newProductId,
             variantData: v,
           );
-        } catch (e) {
-          debugPrint('Variant create failed: $e');
-        }
+        } catch (_) {}
       }
 
       await imageC.uploadPendingImages(newProductId);
 
-      await variantC.fetchAllVariants();
-      await variantC.fetchPrices();
-      await fetchProducts();
+      // Refresh data global setelah create
+      await Future.wait([
+        variantC.fetchAllVariants(),
+        priceC.fetchPrices(),
+        fetchProducts(),
+      ]);
 
       resetForAddProduct();
-      AppToast.success('Produk berhasil ditambahkan');
+      AppToast.show('Produk berhasil ditambahkan');
       return true;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menyimpan');
+      AppToast.show('Terjadi kesalahan saat menyimpan');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -314,7 +349,7 @@ class ProductController extends GetxController {
   // ===================== UPDATE PRODUCT =====================
   Future<void> updateFullProduct() async {
     if (editingProductId.value.isEmpty) {
-      AppToast.error('Product ID tidak ditemukan');
+      AppToast.show('Product ID tidak ditemukan');
       return;
     }
 
@@ -333,18 +368,17 @@ class ProductController extends GetxController {
       );
 
       if (ApiHelper.isNetworkError(productRes)) {
-        AppToast.error(ApiHelper.parseError(productRes.body));
+        AppToast.show(ApiHelper.parseError(productRes.body));
         return;
       }
 
       if (productRes.statusCode < 200 || productRes.statusCode >= 300) {
-        AppToast.error('Gagal update informasi produk');
+        AppToast.show('Gagal update informasi produk');
         return;
       }
 
       for (var v in variantC.editVariantsTemp) {
         final variantId = v['id']?.toString() ?? '';
-
         if (variantId.isEmpty) {
           await variantC.createVariantWithPrices(
             productId: editingProductId.value,
@@ -352,48 +386,87 @@ class ProductController extends GetxController {
           );
           continue;
         }
-
         await variantC.updateExistingVariant(v);
       }
 
       await imageC.uploadPendingEditImages(editingProductId.value);
-      await imageC.fetchProductImages(editingProductId.value);
 
-      await variantC.fetchAllVariants();
-      await variantC.fetchPrices();
-      await fetchProducts();
+      // Refresh data global setelah update
+      await Future.wait([
+        variantC.fetchAllVariants(),
+        priceC.fetchPrices(),
+        fetchProducts(),
+      ]);
+
+      // Reset _dirty flag di semua edit variants
+      for (var i = 0; i < variantC.editVariantsTemp.length; i++) {
+        variantC.editVariantsTemp[i] = {
+          ...variantC.editVariantsTemp[i],
+          '_dirty': false,
+        };
+      }
+      variantC.editVariantsTemp.refresh();
+
+      AppToast.show('Produk berhasil diupdate');
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menyimpan perubahan');
+      AppToast.show('Terjadi kesalahan saat menyimpan perubahan');
     } finally {
       isSubmitting.value = false;
     }
   }
 
-  // ===================== CATEGORY HELPERS =====================
-  Future<String?> createCategory(String name) async {
-    try {
-      final res = await ProductService.createCategory(name);
-      if (res.statusCode == 201) {
-        return json.decode(res.body)['data']['id'];
-      }
-    } catch (e) {
-      AppToast.error('Gagal tambah category');
-    }
-    return null;
+  // ===================== DIRTY TRACKING =====================
+  String _snapName = '';
+  String _snapSku = '';
+  String _snapDesc = '';
+  String _snapBarcode = '';
+  String _snapCategoryId = '';
+
+  Worker? _categoryWorker;
+  Worker? _pendingImagesWorker;
+  Worker? _pendingEditImagesWorker;
+  Worker? _variantsTempWorker;
+
+  void _takeSnapshot() {
+    _snapName = nameC.text;
+    _snapSku = skuC.text;
+    _snapDesc = descC.text;
+    _snapBarcode = barcodeC.text;
+    _snapCategoryId = selectedCategoryId.value;
   }
 
-  Future<void> deleteCategory(String id) async {
-    try {
-      final res = await ProductService.deleteCategory(id);
-      if (res.statusCode == 200) {
-        categoryList.removeWhere((c) => c.id == id);
-        if (selectedCategoryId.value == id) selectedCategoryId.value = '';
-        AppToast.success('Category berhasil dihapus');
-      } else {
-        AppToast.error(ApiHelper.parseError(res.body));
-      }
-    } catch (e) {
-      AppToast.error('Terjadi kesalahan');
+  void checkDirty() {
+    isDirty.value =
+        nameC.text != _snapName ||
+        skuC.text != _snapSku ||
+        descC.text != _snapDesc ||
+        barcodeC.text != _snapBarcode ||
+        selectedCategoryId.value != _snapCategoryId ||
+        imageC.pendingEditImages.isNotEmpty ||
+        imageC.pendingImages.isNotEmpty ||
+        variantC.variantsTemp.isNotEmpty ||
+        variantC.editVariantsTemp.any(
+          (v) => v['id'] == '' || v['_dirty'] == true,
+        );
+  }
+
+  void _listenFormChanges() {
+    for (final c in [nameC, skuC, descC, barcodeC]) {
+      c.removeListener(checkDirty);
+      c.addListener(checkDirty);
     }
+
+    _categoryWorker?.dispose();
+    _pendingImagesWorker?.dispose();
+    _pendingEditImagesWorker?.dispose();
+    _variantsTempWorker?.dispose();
+
+    _categoryWorker = ever(selectedCategoryId, (_) => checkDirty());
+    _pendingImagesWorker = ever(imageC.pendingImages, (_) => checkDirty());
+    _pendingEditImagesWorker = ever(
+      imageC.pendingEditImages,
+      (_) => checkDirty(),
+    );
+    _variantsTempWorker = ever(variantC.variantsTemp, (_) => checkDirty());
   }
 }

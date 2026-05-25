@@ -49,7 +49,7 @@ class DashboardPage extends StatelessWidget {
                 'Selamat datang 👋',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade500,
+                  color: AppColors.subtext,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -167,7 +167,7 @@ class DashboardPage extends StatelessWidget {
                 fontSize: 11,
                 color: isPrimary
                     ? Colors.white.withAlpha(180)
-                    : Colors.grey.shade500,
+                    : AppColors.subtext,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -330,7 +330,7 @@ class DashboardPage extends StatelessWidget {
                 label: 'Voucher',
                 sub: 'Kode kupon',
                 onTap: () =>
-                    AppToast.info('Fitur voucher sedang dalam pengembangan'),
+                    AppToast.show('Fitur voucher sedang dalam pengembangan'),
               ),
             ),
             const SizedBox(width: 8),
@@ -406,7 +406,7 @@ class DashboardPage extends StatelessWidget {
   Widget _addProductButton() {
     return GestureDetector(
       onTap: () =>
-          AppToast.info('Fitur tambah produk sedang dalam pengembangan'),
+          AppToast.show('Fitur tambah produk sedang dalam pengembangan'),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 15),

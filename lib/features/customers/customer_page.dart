@@ -41,6 +41,7 @@ class CustomerPage extends StatelessWidget {
                   onChanged: controller.updateSearch,
                 ),
               ),
+              // Obx hanya untuk chip — observe statusFilterLabel saja
               Obx(
                 () => AppFilterChips(
                   items: const [
@@ -58,10 +59,13 @@ class CustomerPage extends StatelessWidget {
         ),
       ),
       body: Obx(() {
+        // Loading hanya saat list masih kosong (initial load)
         if (controller.isLoading.value && controller.customerList.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
+        // Langsung observe filteredCustomers — RxList, bukan computed getter
+        // Hanya rebuild saat _applyFilter() dipanggil, bukan setiap observable berubah
         final list = controller.filteredCustomers;
 
         if (list.isEmpty) {
@@ -75,18 +79,17 @@ class CustomerPage extends StatelessWidget {
 
         return RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: () async {
-            await controller.fetchCustomers();
-          },
+          onRefresh: controller.fetchCustomers,
           child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(), // Penting!
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(12),
             itemCount: list.length,
             itemBuilder: (context, index) {
               final customer = list[index];
               return CustomerCard(
                 customer: customer,
-                onToggleStatus: () => controller.toggleCustomerStatus(customer),
+                onToggleStatus: () =>
+                    controller.toggleCustomerStatus(customer),
               );
             },
           ),

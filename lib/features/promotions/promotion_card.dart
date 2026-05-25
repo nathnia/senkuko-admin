@@ -129,7 +129,7 @@ class PromotionCard extends StatelessWidget {
                     Text(
                       promotion.description!,
                       style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500),
+                          fontSize: 11, color: AppColors.subtext),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -143,7 +143,7 @@ class PromotionCard extends StatelessWidget {
                       Text(
                         '${df.format(promotion.validFrom)} – ${df.format(promotion.validTo)}',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500),
+                            fontSize: 11, color: AppColors.subtext),
                       ),
                     ],
                   ),
@@ -158,7 +158,7 @@ class PromotionCard extends StatelessWidget {
                             ? 'Unlimited'
                             : '${promotion.usageCount}/${promotion.usageLimit}x dipakai',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500),
+                            fontSize: 11, color: AppColors.subtext),
                       ),
                       if (promotion.stackable) ...[
                         const SizedBox(width: 8),
@@ -167,7 +167,7 @@ class PromotionCard extends StatelessWidget {
                         const SizedBox(width: 3),
                         Text('Stackable',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade500)),
+                                fontSize: 11, color: AppColors.subtext)),
                       ],
                     ],
                   ),

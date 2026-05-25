@@ -75,12 +75,12 @@ class VoucherController extends GetxController {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
         _applyFilter();
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error('Gagal memuat daftar voucher');
+        AppToast.show('Gagal memuat daftar voucher');
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat memuat voucher');
+      AppToast.show('Terjadi kesalahan saat memuat voucher');
     } finally {
       isLoading.value = false;
     }
@@ -93,19 +93,19 @@ class VoucherController extends GetxController {
       final res = await VoucherService.createVoucher(payload);
 
       if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
         return false;
       }
       if (res.statusCode != 200 && res.statusCode != 201) {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
         return false;
       }
 
-      AppToast.success('Voucher berhasil diterbitkan');
+      AppToast.show('Voucher berhasil diterbitkan');
       await fetchVouchers();
       return true;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menerbitkan voucher');
+      AppToast.show('Terjadi kesalahan saat menerbitkan voucher');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -119,19 +119,19 @@ class VoucherController extends GetxController {
       final res = await VoucherService.updateVoucher(id, payload);
 
       if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
         return false;
       }
       if (res.statusCode < 200 || res.statusCode >= 300) {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
         return false;
       }
 
-      AppToast.success('Voucher berhasil diperbarui');
+      AppToast.show('Voucher berhasil diperbarui');
       await fetchVouchers();
       return true;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat memperbarui voucher');
+      AppToast.show('Terjadi kesalahan saat memperbarui voucher');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -145,15 +145,15 @@ class VoucherController extends GetxController {
       if (res.statusCode == 200) {
         voucherList.removeWhere((v) => v.id == id);
         _applyFilter();
-        AppToast.success('Voucher berhasil dihapus');
+        AppToast.show('Voucher berhasil dihapus');
         if (Get.currentRoute != '/vouchers') Get.back();
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menghapus voucher');
+      AppToast.show('Terjadi kesalahan saat menghapus voucher');
     }
   }
 
@@ -176,14 +176,14 @@ class VoucherController extends GetxController {
       });
       if (res.statusCode == 200) {
         await fetchVouchers();
-        AppToast.success(
+        AppToast.show(
           newStatus == 'active' ? 'Voucher diaktifkan' : 'Voucher dinonaktifkan',
         );
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      AppToast.error('Gagal mengubah status voucher');
+      AppToast.show('Gagal mengubah status voucher');
     }
   }
 

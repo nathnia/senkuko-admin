@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:senkukoadmin/constant/api_constant.dart';
 
 class ProductService {
-  static const _timeout = Duration(seconds: 15);
+  static const _timeout = Duration(seconds: 60);
 
   static Future<http.Response> _safe(Future<http.Response> request) async {
     try {
@@ -31,13 +31,6 @@ class ProductService {
   );
 
   static Future<http.Response> getProductById(String id) => _safe(
-    http.get(
-      Uri.parse('${ApiConstants.baseUrl}/products/$id'),
-      headers: ApiConstants.headers,
-    ),
-  );
-
-  static Future<http.Response> getProductDetail(String id) => _safe(
     http.get(
       Uri.parse('${ApiConstants.baseUrl}/products/$id'),
       headers: ApiConstants.headers,
@@ -261,14 +254,17 @@ class ProductService {
     ),
   );
 
-  static Future<http.Response> createCategory(String name) => _safe(
+  static Future<http.Response> createCategory({
+    required String name,
+    String? parentId,
+  }) => _safe(
     http.post(
       Uri.parse('${ApiConstants.baseUrl}/categories'),
       headers: ApiConstants.headers,
       body: jsonEncode({
         'name': name,
         'slug': name.toLowerCase().replaceAll(' ', '-'),
-        'parent_id': null,
+        'parent_id': parentId,
         'sort_order': 0,
         'is_active': true,
       }),

@@ -1,12 +1,11 @@
 import 'package:get/get.dart';
-import 'package:senkukoadmin/features/admin/pages/add_voucher_page.dart';
-import 'package:senkukoadmin/features/admin/pages/dashboard_page.dart';
+import 'package:senkukoadmin/features/dashboard_page.dart';
 import 'package:senkukoadmin/features/customers/customer_binding.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
 import 'package:senkukoadmin/features/products/pages/add_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/detail_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/edit_product_page.dart';
-import 'package:senkukoadmin/features/products/pages/edit_variant_page.dart';
+import 'package:senkukoadmin/features/products/pages/variant_form_page.dart';
 import 'package:senkukoadmin/features/products/product_binding.dart';
 import 'package:senkukoadmin/features/products/pages/product_page.dart';
 import 'package:senkukoadmin/features/promotions/condition_sheet.dart';
@@ -34,7 +33,6 @@ class AppPages {
     ),
     GetPage(name: AppRoutes.addProduct, page: () => AddProductPage()),
     GetPage(name: AppRoutes.editProduct, page: () => EditProductPage()),
-    GetPage(name: AppRoutes.editProductVariant, page: () => EditVariantPage()),
     GetPage(
       name: AppRoutes.detailProduct,
       page: () => DetailProductPage(),
@@ -43,12 +41,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.customer,
       page: () => CustomerPage(),
-      binding: CustomerBinding(), 
+      binding: CustomerBinding(),
     ),
     GetPage(
       name: AppRoutes.transaction,
       page: () => TransactionPage(),
-      binding: TransactionBinding(), 
+      binding: TransactionBinding(),
     ),
     GetPage(
       name: AppRoutes.transactionDetail,
@@ -57,35 +55,29 @@ class AppPages {
     GetPage(
       name: AppRoutes.promotions,
       page: () => PromotionPage(),
-      binding: PromotionBinding(), 
+      binding: PromotionBinding(),
     ),
-    GetPage(
-      name: AppRoutes.promotionDetail,
-      page: () =>  PromotionDetailPage(),
-    ),
-    GetPage(
-      name: AppRoutes.promotionForm,
-      page: () =>  PromotionFormPage(),
-    ),
+    GetPage(name: AppRoutes.promotionDetail, page: () => PromotionDetailPage()),
+    GetPage(name: AppRoutes.promotionForm, page: () => PromotionFormPage()),
     GetPage(
       name: AppRoutes.promotionConditionForm,
-      page: () =>  PromotionConditionFormPage(),
+      page: () => PromotionConditionFormPage(),
     ),
     GetPage(
       name: AppRoutes.promotionRewardForm,
-      page: () =>  PromotionRewardFormPage(),
+      page: () => PromotionRewardFormPage(),
     ),
     GetPage(name: AppRoutes.addPromo, page: () => PromotionFormPage()),
-    GetPage(name: AppRoutes.addVoucher, page: () => AddVoucherPage()),
     GetPage(
-  name: AppRoutes.vouchers,
-  page: () => VoucherPage(),
-  binding: VoucherBinding(),
-),
-GetPage(
-  name: AppRoutes.voucherForm,
-  page: () =>  VoucherFormPage(),
-  binding: VoucherBinding(),
-),
+      name: AppRoutes.vouchers,
+      page: () => VoucherPage(),
+      binding: VoucherBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.voucherForm,
+      page: () => VoucherFormPage(),
+      binding: VoucherBinding(),
+    ),
+    GetPage(name: AppRoutes.variantForm, page: () => VariantFormPage()),
   ];
 }

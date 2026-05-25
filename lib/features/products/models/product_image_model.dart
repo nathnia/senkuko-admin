@@ -1,5 +1,3 @@
-// lib/features/products/models/product_image_model.dart
-import 'package:flutter/foundation.dart';
 
 class ProductImageData {
   final String id;
@@ -20,8 +18,6 @@ class ProductImageData {
 
   factory ProductImageData.fromJson(Map<String, dynamic> json) {
     final url = json['url']?.toString() ?? json['image_url']?.toString() ?? '';
-
-    debugPrint("ProductImageData.fromJson → url: '$url'");
 
     return ProductImageData(
       id: json['id']?.toString() ?? '',

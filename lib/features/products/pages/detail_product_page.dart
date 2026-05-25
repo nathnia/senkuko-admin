@@ -1,7 +1,7 @@
-// lib/features/products/pages/detail_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
@@ -16,6 +16,7 @@ class DetailProductPage extends StatelessWidget {
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
   final imageC = Get.find<ProductImageController>();
+  final priceC = Get.find<PriceController>();
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +110,6 @@ class DetailProductPage extends StatelessWidget {
     });
   }
 
-  // ── Product Image ──
   Widget _productImage(String productId) {
     return Obx(() {
       final images = imageC.getImagesForProduct(productId);
@@ -172,7 +172,6 @@ class DetailProductPage extends StatelessWidget {
                       ),
                     ),
                     if (images.length > 1) ...[
-                      // counter badge pojok kanan atas
                       Positioned(
                         top: 10,
                         right: 10,
@@ -197,7 +196,6 @@ class DetailProductPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // dot indicator bawah tengah
                       Positioned(
                         bottom: 10,
                         left: 0,
@@ -208,7 +206,7 @@ class DetailProductPage extends StatelessWidget {
                             children: List.generate(images.length, (i) {
                               final isActive = i == imageC.carouselIndex.value;
                               return AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
+                                duration: const Duration(milliseconds: 6000),
                                 margin: const EdgeInsets.symmetric(
                                   horizontal: 3,
                                 ),
@@ -233,7 +231,6 @@ class DetailProductPage extends StatelessWidget {
     });
   }
 
-  // ── Name + Category ──
   Widget _nameCard(dynamic product) {
     return AppCard(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -255,7 +252,7 @@ class DetailProductPage extends StatelessWidget {
               Icon(
                 Icons.category_outlined,
                 size: 13,
-                color: Colors.grey.shade500,
+                color: AppColors.subtext,
               ),
               const SizedBox(width: 4),
               Text(
@@ -269,7 +266,6 @@ class DetailProductPage extends StatelessWidget {
     );
   }
 
-  // ── SKU / Barcode ──
   Widget _infoCard(dynamic product) {
     final hasSku = (product.skuCode ?? '').isNotEmpty;
     final hasBarcode = (product.barcode ?? '').isNotEmpty;
@@ -289,7 +285,6 @@ class DetailProductPage extends StatelessWidget {
     );
   }
 
-  // ── Description ──
   Widget _descriptionCard(dynamic product) {
     if ((product.description ?? '').isEmpty) return const SizedBox.shrink();
 
@@ -307,7 +302,6 @@ class DetailProductPage extends StatelessWidget {
     );
   }
 
-  // ── Variants ──
   Widget _variantsCard() {
     return Obx(() {
       final variants = variantC.productVariants;
@@ -330,8 +324,7 @@ class DetailProductPage extends StatelessWidget {
                   final i = entry.key;
                   final v = entry.value;
 
-                  // Convert VariantData → Map untuk VariantItemCard
-                  final prices = variantC
+                  final prices = priceC
                       .getPricesByVariant(v.id)
                       .map((p) => {
                             'price_list_id': p.priceListId,
@@ -366,7 +359,7 @@ class DetailProductPage extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+          style: TextStyle(fontSize: 13, color: AppColors.subtext),
         ),
         const Spacer(),
         Text(

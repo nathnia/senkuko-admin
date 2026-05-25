@@ -107,7 +107,7 @@ class VoucherPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade500,
+                  color: AppColors.subtext,
                 ),
               ),
             ],

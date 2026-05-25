@@ -157,12 +157,12 @@ class PromotionController extends GetxController {
         promotionList.assignAll(promotionListModelFromJson(res.body).data);
         _applyFilter();
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error('Gagal memuat daftar promosi');
+        AppToast.show('Gagal memuat daftar promosi');
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat memuat promosi');
+      AppToast.show('Terjadi kesalahan saat memuat promosi');
     } finally {
       isLoading.value = false;
     }
@@ -187,30 +187,30 @@ class PromotionController extends GetxController {
   // ===================== CREATE =====================
   Future<bool> createPromotion() async {
     if (nameC.text.trim().isEmpty || codeC.text.trim().isEmpty) {
-      AppToast.warning('Nama dan Kode Promo harus diisi');
+      AppToast.show('Nama dan Kode Promo harus diisi');
       return false;
     }
     if (validFrom.value == null || validTo.value == null) {
-      AppToast.warning('Periode berlaku harus diisi');
+      AppToast.show('Periode berlaku harus diisi');
       return false;
     }
     isSubmitting.value = true;
     try {
       final res = await PromotionService.createPromotion(_buildPayload());
       if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
         return false;
       }
       if (res.statusCode != 200 && res.statusCode != 201) {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
         return false;
       }
-      AppToast.success('Promosi berhasil dibuat');
+      AppToast.show('Promosi berhasil dibuat');
       await fetchPromotions();
       resetForm();
       return true;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat membuat promosi');
+      AppToast.show('Terjadi kesalahan saat membuat promosi');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -220,30 +220,30 @@ class PromotionController extends GetxController {
   // ===================== UPDATE =====================
   Future<bool> updatePromotion(String id) async {
     if (nameC.text.trim().isEmpty || codeC.text.trim().isEmpty) {
-      AppToast.warning('Nama dan Kode Promo harus diisi');
+      AppToast.show('Nama dan Kode Promo harus diisi');
       return false;
     }
     if (validFrom.value == null || validTo.value == null) {
-      AppToast.warning('Periode berlaku harus diisi');
+      AppToast.show('Periode berlaku harus diisi');
       return false;
     }
     isSubmitting.value = true;
     try {
       final res = await PromotionService.updatePromotion(id, _buildPayload());
       if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
         return false;
       }
       if (res.statusCode < 200 || res.statusCode >= 300) {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
         return false;
       }
-      AppToast.success('Promosi berhasil diperbarui');
+      AppToast.show('Promosi berhasil diperbarui');
       await fetchPromotions();
       await fetchPromotionById(id);
       return true;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat memperbarui promosi');
+      AppToast.show('Terjadi kesalahan saat memperbarui promosi');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -257,15 +257,15 @@ class PromotionController extends GetxController {
       if (res.statusCode == 200) {
         promotionList.removeWhere((p) => p.id == id);
         _applyFilter();
-        AppToast.success('Promosi berhasil dihapus');
+        AppToast.show('Promosi berhasil dihapus');
         if (Get.currentRoute != '/promotions') Get.back();
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menghapus promosi');
+      AppToast.show('Terjadi kesalahan saat menghapus promosi');
     }
   }
 
@@ -293,26 +293,26 @@ class PromotionController extends GetxController {
       });
       if (res.statusCode == 200) {
         await fetchPromotions();
-        AppToast.success(
+        AppToast.show(
           promo.isActive ? 'Promosi dinonaktifkan' : 'Promosi diaktifkan',
         );
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      AppToast.error('Gagal mengubah status promosi');
+      AppToast.show('Gagal mengubah status promosi');
     }
   }
 
   // ===================== CONDITIONS =====================
   Future<bool> addCondition(String promotionId) async {
     if (conditionValueC.text.trim().isEmpty) {
-      AppToast.warning('Value harus diisi');
+      AppToast.show('Value harus diisi');
       return false;
     }
     if (conditionNeedsTargetId(conditionType.value) &&
         conditionTargetIdC.text.trim().isEmpty) {
-      AppToast.warning('Target ID harus diisi');
+      AppToast.show('Target ID harus diisi');
       return false;
     }
 
@@ -331,18 +331,18 @@ class PromotionController extends GetxController {
       };
       final res = await PromotionService.addCondition(promotionId, payload);
       if (res.statusCode == 200 || res.statusCode == 201) {
-        AppToast.success('Syarat berhasil ditambahkan');
+        AppToast.show('Syarat berhasil ditambahkan');
         await fetchPromotionById(promotionId);
         resetConditionForm();
         return true;
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
       return false;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menambahkan syarat');
+      AppToast.show('Terjadi kesalahan saat menambahkan syarat');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -357,12 +357,12 @@ class PromotionController extends GetxController {
       );
       if (res.statusCode == 200) {
         await fetchPromotionById(promotionId);
-        AppToast.success('Syarat berhasil dihapus');
+        AppToast.show('Syarat berhasil dihapus');
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menghapus syarat');
+      AppToast.show('Terjadi kesalahan saat menghapus syarat');
     }
   }
 
@@ -374,7 +374,7 @@ class PromotionController extends GetxController {
 
       if (rewardType.value == 'free_item') {
         if (freeVariantIdC.text.trim().isEmpty) {
-          AppToast.warning('Variant ID harus diisi');
+          AppToast.show('Variant ID harus diisi');
           return false;
         }
         payload = {
@@ -384,7 +384,7 @@ class PromotionController extends GetxController {
         };
       } else {
         if (discountValueC.text.trim().isEmpty) {
-          AppToast.warning('Nilai diskon harus diisi');
+          AppToast.show('Nilai diskon harus diisi');
           return false;
         }
         payload = {
@@ -397,18 +397,18 @@ class PromotionController extends GetxController {
 
       final res = await PromotionService.addReward(promotionId, payload);
       if (res.statusCode == 200 || res.statusCode == 201) {
-        AppToast.success('Reward berhasil ditambahkan');
+        AppToast.show('Reward berhasil ditambahkan');
         await fetchPromotionById(promotionId);
         resetRewardForm();
         return true;
       } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.error(ApiHelper.parseError(res.body));
+        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
       return false;
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menambahkan reward');
+      AppToast.show('Terjadi kesalahan saat menambahkan reward');
       return false;
     } finally {
       isSubmitting.value = false;
@@ -420,12 +420,12 @@ class PromotionController extends GetxController {
       final res = await PromotionService.deleteReward(promotionId, rewardId);
       if (res.statusCode == 200) {
         await fetchPromotionById(promotionId);
-        AppToast.success('Reward berhasil dihapus');
+        AppToast.show('Reward berhasil dihapus');
       } else {
-        AppToast.error(_parseError(res.body));
+        AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      AppToast.error('Terjadi kesalahan saat menghapus reward');
+      AppToast.show('Terjadi kesalahan saat menghapus reward');
     }
   }
 

@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
-import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
@@ -76,7 +75,6 @@ class EditProductPage extends StatelessWidget {
                   await controller.updateFullProduct();
                   await controller.loadProductDetail(productId);
                   Get.back();
-                  AppToast.success('Produk berhasil diupdate');
                 },
               ),
             ),
@@ -96,10 +94,7 @@ class EditProductPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _forms.productForm(),
                 const SizedBox(height: 12),
-                // FIX: form tambah varian dulu, baru list varian di bawahnya
-                _forms.variantForm(isEditMode: true),
-                const SizedBox(height: 12),
-                _existingVariantsList(),
+                _variantSection(),
                 const SizedBox(height: 16),
               ],
             ),
@@ -109,45 +104,77 @@ class EditProductPage extends StatelessWidget {
     );
   }
 
-  Widget _existingVariantsList() {
-    return Obx(() {
-      if (variantC.editVariantsTemp.isEmpty) {
-        return AppCard(
-          child: Center(
-            child: Text(
-              'Belum ada varian',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-            ),
-          ),
-        );
-      }
-
-      return AppCard(
-        title: 'DAFTAR VARIAN',
-        child: Column(
-          children: variantC.editVariantsTemp.asMap().entries.map((entry) {
-            final i = entry.key;
-            final v = entry.value;
-
-            return VariantItemCard(
-              variant: v,
-              mode: VariantCardMode.edit,
-              index: i,
-              onEdit: () {
-                variantC.prepareEditVariant(i);
-                Get.toNamed(
-                  AppRoutes.editProductVariant,
-                  arguments: {'index': i},
+  Widget _variantSection() {
+    return AppCard(
+      title: 'VARIAN',
+      child: Column(
+        children: [
+          Obx(() {
+            if (variantC.editVariantsTemp.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return Column(
+              children: variantC.editVariantsTemp.asMap().entries.map((entry) {
+                final i = entry.key;
+                final v = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: VariantItemCard(
+                    variant: v,
+                    mode: VariantCardMode.edit,
+                    index: i,
+                    onEdit: () {
+                      variantC.prepareEditVariant(i);
+                      Get.toNamed(
+                        AppRoutes.variantForm,
+                        arguments: {'index': i, 'isEditMode': true},
+                      );
+                    },
+                    onDelete: () {
+                      controller.isDirty.value = true;
+                      variantC.deleteVariant(i, isEditMode: true);
+                    },
+                  ),
                 );
-              },
-              onDelete: () {
-                controller.isDirty.value = true;
-                variantC.deleteVariant(i, isEditMode: true);
-              },
+              }).toList(),
             );
-          }).toList(),
+          }),
+          _addVariantRow(isEditMode: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _addVariantRow({required bool isEditMode}) {
+    return GestureDetector(
+      onTap: () {
+        variantC.clearVariantForm();
+        Get.toNamed(
+          AppRoutes.variantForm,
+          arguments: {'isEditMode': isEditMode},
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
         ),
-      );
-    });
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Tambah Varian Baru',
+                style: TextStyle(
+                  color: AppColors.subtext,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(Icons.arrow_right_rounded, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -299,7 +299,7 @@ class PromotionFormPage extends StatelessWidget {
           Icon(
             Icons.calendar_today_outlined,
             size: 13,
-            color: Colors.grey.shade500,
+            color: AppColors.subtext,
           ),
           const SizedBox(width: 6),
           Text(

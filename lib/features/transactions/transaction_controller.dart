@@ -137,7 +137,7 @@ class TransactionController extends GetxController {
         transactionList.assignAll(transactionModelFromJson(res.body).data);
       }
     } catch (e) {
-      AppToast.error('Gagal memuat data transaksi');
+      AppToast.show('Gagal memuat data transaksi');
     } finally {
       isLoading.value = false;
     }
@@ -152,7 +152,7 @@ class TransactionController extends GetxController {
         selectedTransaction.value = json.decode(res.body)['data'];
       }
     } catch (e) {
-      AppToast.error('Gagal memuat detail transaksi');
+      AppToast.show('Gagal memuat detail transaksi');
     } finally {
       isLoadingDetail.value = false;
     }

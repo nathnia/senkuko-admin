@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/widgets.dart';
 import 'package:senkukoadmin/features/products/models/product_image_model.dart';
 
 ProductModel productModelFromJson(String str) =>
@@ -53,8 +52,6 @@ class ProductData {
 
 factory ProductData.fromJson(Map<String, dynamic> json) {
   final rawImages = json['images'] ?? [];
-
-  debugPrint("Parsing ${rawImages.length} images for product ${json['id']}");
 
   return ProductData(
     id: json['id']?.toString() ?? '',
