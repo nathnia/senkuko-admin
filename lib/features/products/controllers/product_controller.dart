@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
@@ -28,6 +30,10 @@ class ProductController extends GetxController {
   final editingProductId = ''.obs;
   final isDirty = false.obs;
 
+  // ADDED: O(1) dirty variant flag — updated only when variants list changes,
+  // not recomputed on every keypress via .any()
+  final hasDirtyVariants = false.obs;
+
   // ===================== DATA =====================
   final productList = <ProductData>[].obs;
   final selectedProduct = Rxn<ProductData>();
@@ -35,42 +41,221 @@ class ProductController extends GetxController {
   // ===================== PRODUCT PAGE STATE =====================
   final searchText = ''.obs;
   final selectedTab = 'Semua'.obs;
-  final filteredProducts = <ProductData>[].obs;
+  final selectedSort = ''.obs;
 
-  void _applyFilter() {
-    filteredProducts.assignAll(
-      productList.where((p) {
-        final matchSearch = p.name.toLowerCase().contains(
-          searchText.value.toLowerCase(),
-        );
-        final matchTab =
-            selectedTab.value == 'Semua' ||
-            p.categoryName == selectedTab.value;
-        return matchSearch && matchTab;
-      }).toList(),
+  // ADDED: stock status filters for inventory workflows
+  final showLowStockOnly = false.obs;
+  final showOutOfStockOnly = false.obs;
+  // Threshold configurable per business — default 5 units
+  final lowStockThreshold = 5.obs;
+
+  // PRICE FILTER
+  final minPrice = RxnDouble();
+  final maxPrice = RxnDouble();
+  final minPriceC = TextEditingController();
+  final maxPriceC = TextEditingController();
+
+  // ADDED: debounce timer for search — prevents filtering on every keypress
+  Timer? _searchDebounce;
+
+  // ===================== SORT =====================
+  void sortNewest() => selectedSort.value = 'newest';
+  void sortOldest() => selectedSort.value = 'oldest';
+  void sortPriceLowToHigh() => selectedSort.value = 'price_asc';
+  void sortPriceHighToLow() => selectedSort.value = 'price_desc';
+  void sortAZ() => selectedSort.value = 'az';
+  void sortLowStock() => selectedSort.value = 'low_stock';
+
+  // ADDED: human-readable sort label for active filter chip display
+  String get sortLabel {
+    switch (selectedSort.value) {
+      case 'newest':
+        return 'Terbaru';
+      case 'oldest':
+        return 'Terlama';
+      case 'price_asc':
+        return 'Harga ↑';
+      case 'price_desc':
+        return 'Harga ↓';
+      case 'az':
+        return 'A–Z';
+      case 'low_stock':
+        return 'Stok Menipis';
+      default:
+        return '';
+    }
+  }
+
+  // ADDED: human-readable price range label for active filter chip
+  String get priceRangeLabel {
+    final min = minPrice.value;
+    final max = maxPrice.value;
+    if (min != null && max != null) {
+      return '${CurrencyFormatter.format(min)}–${CurrencyFormatter.format(max)}';
+    }
+    if (min != null) return '≥ ${CurrencyFormatter.format(min)}';
+    if (max != null) return '≤ ${CurrencyFormatter.format(max)}';
+    return '';
+  }
+
+  // ===================== PRICE FILTER =====================
+  void applyPriceFilter() {
+    final min = double.tryParse(
+      minPriceC.text
+          .replaceAll('.', '')
+          .replaceAll(',', '')
+          .replaceAll('Rp', '')
+          .trim(),
     );
+    final max = double.tryParse(
+      maxPriceC.text
+          .replaceAll('.', '')
+          .replaceAll(',', '')
+          .replaceAll('Rp', '')
+          .trim(),
+    );
+    minPrice.value = min;
+    maxPrice.value = max;
   }
 
+  void setPriceRange({double? min, double? max}) {
+    minPrice.value = min;
+    maxPrice.value = max;
+    minPriceC.text = min != null ? min.toStringAsFixed(0) : '';
+    maxPriceC.text = max != null ? max.toStringAsFixed(0) : '';
+  }
+
+  void clearPriceRange() {
+    minPrice.value = null;
+    maxPrice.value = null;
+    minPriceC.clear();
+    maxPriceC.clear();
+  }
+
+  bool get hasActiveFilters =>
+      selectedSort.value.isNotEmpty ||
+      minPrice.value != null ||
+      maxPrice.value != null ||
+      showLowStockOnly.value ||
+      showOutOfStockOnly.value;
+
+  // ===================== FILTERED + SORTED PRODUCT LIST =====================
+  List<ProductData> get getFilteredProducts {
+    var products = [...productList];
+
+    // SEARCH
+    if (searchText.value.isNotEmpty) {
+      final q = searchText.value.toLowerCase();
+      products = products
+          .where((p) => p.name.toLowerCase().contains(q))
+          .toList();
+    }
+
+    // ✅ Di getFilteredProducts — ganti seluruh bagian CATEGORY TAB
+    if (selectedTab.value != 'Semua') {
+      products = products
+          .where((p) => p.categoryName == selectedTab.value)
+          .toList();
+    }
+
+    // PRICE FILTER
+    if (minPrice.value != null || maxPrice.value != null) {
+      products = products.where((product) {
+        final price = variantC.getSummaryForProduct(product.id).mainPriceValue;
+        final minOk = minPrice.value == null || price >= minPrice.value!;
+        final maxOk = maxPrice.value == null || price <= maxPrice.value!;
+        return minOk && maxOk;
+      }).toList();
+    }
+
+    // LOW STOCK FILTER
+    if (showLowStockOnly.value) {
+      products = products.where((p) {
+        final stock = variantC.getSummaryForProduct(p.id).totalStock;
+        return stock > 0 && stock <= lowStockThreshold.value;
+      }).toList();
+    }
+
+    // OUT OF STOCK FILTER
+    if (showOutOfStockOnly.value) {
+      products = products
+          .where((p) => variantC.getSummaryForProduct(p.id).isOutOfStock)
+          .toList();
+    }
+
+    // SORT — DateTime parsed twice for newest/oldest: parse once per product
+    switch (selectedSort.value) {
+      case 'newest':
+        products.sort((a, b) {
+          final aDate =
+              DateTime.tryParse(a.createdAt.toString()) ?? DateTime(2000);
+          final bDate =
+              DateTime.tryParse(b.createdAt.toString()) ?? DateTime(2000);
+          return bDate.compareTo(aDate);
+        });
+        break;
+      case 'oldest':
+        products.sort((a, b) {
+          final aDate =
+              DateTime.tryParse(a.createdAt.toString()) ?? DateTime(2000);
+          final bDate =
+              DateTime.tryParse(b.createdAt.toString()) ?? DateTime(2000);
+          return aDate.compareTo(bDate);
+        });
+        break;
+      case 'az':
+        products.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'price_asc':
+        products.sort((a, b) {
+          final aPrice = variantC.getSummaryForProduct(a.id).mainPriceValue;
+          final bPrice = variantC.getSummaryForProduct(b.id).mainPriceValue;
+          return aPrice.compareTo(bPrice);
+        });
+        break;
+      case 'price_desc':
+        products.sort((a, b) {
+          final aPrice = variantC.getSummaryForProduct(a.id).mainPriceValue;
+          final bPrice = variantC.getSummaryForProduct(b.id).mainPriceValue;
+          return bPrice.compareTo(aPrice);
+        });
+        break;
+      case 'low_stock':
+        products.sort((a, b) {
+          final aStock = variantC.getSummaryForProduct(a.id).totalStock;
+          final bStock = variantC.getSummaryForProduct(b.id).totalStock;
+          return aStock.compareTo(bStock);
+        });
+        break;
+    }
+
+    return products;
+  }
+
+  // ===================== FILTER ACTIONS =====================
   void updateSearch(String value) {
-    searchText.value = value;
-    _applyFilter();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      searchText.value = value;
+    });
   }
 
-  void changeTab(String tab) {
-    selectedTab.value = tab;
-    _applyFilter();
-  }
+  void changeTab(String tab) => selectedTab.value = tab;
 
   void resetPageState() {
     searchText.value = '';
     selectedTab.value = 'Semua';
-    _applyFilter();
+    selectedSort.value = '';
+    showLowStockOnly.value = false; // ADDED
+    showOutOfStockOnly.value = false; // ADDED
+    clearPriceRange();
+    _rebuildTabs();
   }
 
-  List<String> get tabs => [
-    'Semua',
-    ...categoryC.categoryList.map((c) => c.name),
-  ];
+  // List<String> get tabs => [
+  //   'Semua',
+  //   ...categoryC.categoryList.map((c) => c.name),
+  // ];
 
   // ===================== PRODUCT FORM =====================
   final nameC = TextEditingController();
@@ -88,10 +273,14 @@ class ProductController extends GetxController {
 
   @override
   void onClose() {
+    _searchDebounce?.cancel(); // ADDED: cancel any pending debounce
     _categoryWorker?.dispose();
     _pendingImagesWorker?.dispose();
     _pendingEditImagesWorker?.dispose();
     _variantsTempWorker?.dispose();
+    _editVariantsDirtyWorker?.dispose(); // ADDED
+    minPriceC.dispose();
+    maxPriceC.dispose();
     for (final c in [nameC, skuC, descC, barcodeC]) {
       c.removeListener(checkDirty);
       c.dispose();
@@ -99,13 +288,21 @@ class ProductController extends GetxController {
     super.onClose();
   }
 
-  // ===================== INIT =====================
+  // Di ProductController — ganti getter jadi RxList yang di-update setelah fetch
+  final tabs = <String>['Semua'].obs;
+
+  // Panggil ini setelah fetchCategories selesai
+  void _rebuildTabs() {
+    tabs.assignAll(['Semua', ...categoryC.categoryList.map((c) => c.name)]);
+  }
+
+  // ✅ FIX — pisahkan guard "sedang loading" dari kondisi retry
   Future<void> loadInitialData() async {
-    if (isLoading.value) return;
+    if (isLoading.value) return; // tetap ada, tapi reset hasError dulu
     isLoading.value = true;
+    hasError.value = false; // ← ini sudah ada, aman
+    errorMessage.value = '';
     try {
-      // Semua fetch jalan parallel — categories, units, price lists
-      // fetchProducts sudah handle image fetch di background sendiri
       await Future.wait([
         fetchProducts(),
         categoryC.fetchCategories(),
@@ -114,36 +311,60 @@ class ProductController extends GetxController {
         unitC.fetchUnits(),
         variantC.fetchAllVariants(),
       ]);
+      _rebuildTabs();
     } catch (e) {
-      AppToast.show('Gagal memuat data awal');
+      hasError.value = true;
+      errorMessage.value = 'Gagal memuat data. Coba lagi.';
+      _rebuildTabs(); // ✅ tetap rebuild tabs walau error parsial
     } finally {
       isLoading.value = false;
     }
   }
 
-  // ===================== FETCH =====================
-  Future<void> fetchProducts() async {
-    try {
-      final res = await ProductService.getProducts();
-      if (res.statusCode == 200) {
-        final newProducts = productModelFromJson(res.body).data;
-        productList.assignAll(newProducts);
-        _applyFilter();
+  final hasError = false.obs;
+  final errorMessage = ''.obs;
 
-        // Image fetch di background — tidak block UI
-        // List produk sudah tampil, gambar menyusul
-        _fetchAllImagesBackground(newProducts);
-      } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.show(ApiHelper.parseError(res.body));
-      } else {
-        AppToast.show('Gagal memuat daftar produk');
-      }
-    } catch (e) {
-      AppToast.show('Terjadi kesalahan saat memuat produk');
+  // // ✅ FIXED — full loadInitialData method
+  // Future<void> loadInitialData() async {
+  //   if (isLoading.value) return;
+  //   isLoading.value = true;
+  //   hasError.value = false;
+  //   errorMessage.value = '';
+  //   try {
+  //     await Future.wait([
+  //       fetchProducts(),
+  //       categoryC.fetchCategories(),
+  //       priceC.fetchPrices(),
+  //       priceC.fetchPriceLists(),
+  //       unitC.fetchUnits(),
+  //       variantC.fetchAllVariants(),
+  //     ]);
+  //   } catch (e) {
+  //     hasError.value = true;
+  //     errorMessage.value = 'Gagal memuat data. Coba lagi.';
+  //   } finally {
+  //     isLoading.value = false;
+  //   }
+  // }
+
+  // ✅ FIX — pisahkan antara "tampil toast" dan "lempar error ke caller"
+  Future<void> fetchProducts() async {
+    final res = await ProductService.getProducts(); // biarkan exception naik
+    if (res.statusCode == 200) {
+      final newProducts = productModelFromJson(res.body).data;
+      productList.assignAll(newProducts);
+      _fetchAllImagesBackground(newProducts);
+    } else if (ApiHelper.isNetworkError(res)) {
+      throw Exception(
+        ApiHelper.parseError(res.body),
+      ); // ✅ naik ke loadInitialData
+    } else {
+      throw Exception(
+        'Gagal memuat daftar produk',
+      ); // ✅ naik ke loadInitialData
     }
   }
 
-  // Background fetch — fire and forget, tidak di-await
   void _fetchAllImagesBackground(List<ProductData> products) {
     Future.microtask(() async {
       final cache = <String, List<ProductImageData>>{};
@@ -168,6 +389,7 @@ class ProductController extends GetxController {
   // ===================== FORM RESET =====================
   void resetForAddProduct() {
     isDirty.value = false;
+    hasDirtyVariants.value = false; // ADDED
     editingProductId.value = '';
     selectedProduct.value = null;
 
@@ -235,6 +457,7 @@ class ProductController extends GetxController {
   // ===================== LOAD EDIT DATA =====================
   Future<void> loadEditData(String productId) async {
     isDirty.value = false;
+    hasDirtyVariants.value = false; // ADDED
     selectedProduct.value = null;
     nameC.clear();
     skuC.clear();
@@ -316,7 +539,6 @@ class ProductController extends GetxController {
       final newProductId =
           json.decode(productRes.body)['data']['id']?.toString() ?? '';
 
-      // Buat semua variant — biarkan partial failure tidak block semua
       for (var v in variantC.variantsTemp) {
         try {
           await variantC.createVariantWithPrices(
@@ -328,9 +550,8 @@ class ProductController extends GetxController {
 
       await imageC.uploadPendingImages(newProductId);
 
-      // Refresh data global setelah create
       await Future.wait([
-        variantC.fetchAllVariants(),
+        variantC.fetchAllVariants(), // already calls invalidateSummaryCache
         priceC.fetchPrices(),
         fetchProducts(),
       ]);
@@ -391,14 +612,13 @@ class ProductController extends GetxController {
 
       await imageC.uploadPendingEditImages(editingProductId.value);
 
-      // Refresh data global setelah update
       await Future.wait([
-        variantC.fetchAllVariants(),
+        variantC.fetchAllVariants(), // already calls invalidateSummaryCache
         priceC.fetchPrices(),
         fetchProducts(),
       ]);
 
-      // Reset _dirty flag di semua edit variants
+      // Reset _dirty flag
       for (var i = 0; i < variantC.editVariantsTemp.length; i++) {
         variantC.editVariantsTemp[i] = {
           ...variantC.editVariantsTemp[i],
@@ -406,6 +626,7 @@ class ProductController extends GetxController {
         };
       }
       variantC.editVariantsTemp.refresh();
+      hasDirtyVariants.value = false; // ADDED
 
       AppToast.show('Produk berhasil diupdate');
     } catch (e) {
@@ -426,6 +647,7 @@ class ProductController extends GetxController {
   Worker? _pendingImagesWorker;
   Worker? _pendingEditImagesWorker;
   Worker? _variantsTempWorker;
+  Worker? _editVariantsDirtyWorker; // ADDED
 
   void _takeSnapshot() {
     _snapName = nameC.text;
@@ -435,6 +657,7 @@ class ProductController extends GetxController {
     _snapCategoryId = selectedCategoryId.value;
   }
 
+  // CHANGED: uses hasDirtyVariants observable instead of .any() on every call
   void checkDirty() {
     isDirty.value =
         nameC.text != _snapName ||
@@ -445,9 +668,7 @@ class ProductController extends GetxController {
         imageC.pendingEditImages.isNotEmpty ||
         imageC.pendingImages.isNotEmpty ||
         variantC.variantsTemp.isNotEmpty ||
-        variantC.editVariantsTemp.any(
-          (v) => v['id'] == '' || v['_dirty'] == true,
-        );
+        hasDirtyVariants.value; // O(1) read instead of O(N) .any()
   }
 
   void _listenFormChanges() {
@@ -460,6 +681,7 @@ class ProductController extends GetxController {
     _pendingImagesWorker?.dispose();
     _pendingEditImagesWorker?.dispose();
     _variantsTempWorker?.dispose();
+    _editVariantsDirtyWorker?.dispose();
 
     _categoryWorker = ever(selectedCategoryId, (_) => checkDirty());
     _pendingImagesWorker = ever(imageC.pendingImages, (_) => checkDirty());
@@ -468,5 +690,14 @@ class ProductController extends GetxController {
       (_) => checkDirty(),
     );
     _variantsTempWorker = ever(variantC.variantsTemp, (_) => checkDirty());
+
+    // ADDED: watch editVariantsTemp changes to update hasDirtyVariants in O(N)
+    // only when the list actually changes, not on every keypress
+    _editVariantsDirtyWorker = ever(variantC.editVariantsTemp, (list) {
+      hasDirtyVariants.value = list.any(
+        (v) => v['id'] == '' || v['_dirty'] == true,
+      );
+      checkDirty();
+    });
   }
 }

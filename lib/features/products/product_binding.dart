@@ -10,11 +10,11 @@ import 'package:senkukoadmin/features/products/controllers/unit_controller.dart'
 class ProductBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut(() => ProductImageController());
-    Get.lazyPut(() => ProductVariantController());
-    Get.lazyPut(() => UnitController());
-    Get.lazyPut(() => PriceController());
-    Get.lazyPut(() => CategoryController());
-    Get.lazyPut(() => ProductController());
+    Get.lazyPut(() => ProductImageController(), fenix: true);
+    Get.lazyPut(() => ProductVariantController(), fenix: true);
+    Get.lazyPut(() => UnitController(), fenix: true);
+    Get.lazyPut(() => PriceController(), fenix: true);
+    Get.lazyPut(() => CategoryController(), fenix: true);
+    Get.lazyPut(() => ProductController(), fenix: true);
   }
 }

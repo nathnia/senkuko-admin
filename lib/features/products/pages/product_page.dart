@@ -1,20 +1,26 @@
-// product_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
+import 'package:senkukoadmin/constant/app_active_filter_chip.dart';
+import 'package:senkukoadmin/constant/app_filter_button.dart';
 import 'package:senkukoadmin/constant/connectivity_service.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
-import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
-import 'package:senkukoadmin/features/products/widgets/product_card.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
+import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
+import 'package:senkukoadmin/features/products/widgets/category_bottom_sheet.dart';
+import 'package:senkukoadmin/features/products/widgets/filter_bottom_sheet.dart';
+import 'package:senkukoadmin/features/products/widgets/overflow_category_button.dart';
+import 'package:senkukoadmin/features/products/widgets/product_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class ProductPage extends StatelessWidget {
-  ProductPage({super.key});
+  ProductPage({super.key}) {
+    controller.resetPageState();
+    connectivityService.onReconnect = () => controller.loadInitialData();
+  }
 
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
@@ -23,13 +29,6 @@ class ProductPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Pasang callback reload — aman dipanggil berkali-kali
-    connectivityService.onReconnect = () => controller.loadInitialData();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.resetPageState();
-    });
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -46,7 +45,6 @@ class ProductPage extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: const [],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: Padding(
@@ -59,88 +57,11 @@ class ProductPage extends StatelessWidget {
                     onChanged: controller.updateSearch,
                   ),
                 ),
-
                 const SizedBox(width: 10),
-
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.white,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      builder: (_) {
-                        return Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Filter Produk',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.check_circle_outline),
-                                title: const Text('Semua Produk'),
-                                onTap: () {
-                                  controller.changeTab('Semua');
-                                  Get.back();
-                                },
-                              ),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.visibility_outlined),
-                                title: const Text('Produk Aktif'),
-                                onTap: () {
-                                  // controller.filterActiveProducts();
-                                  Get.back();
-                                },
-                              ),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.visibility_off_outlined,
-                                ),
-                                title: const Text('Produk Nonaktif'),
-                                onTap: () {
-                                  // controller.filterInactiveProducts();
-                                  Get.back();
-                                },
-                              ),
-
-                              const SizedBox(height: 10),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  child: Container(
-                    height: 48,
-                    width: 48,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.tune_rounded,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
+                Obx(
+                  () => AppFilterButton(
+                    isActive: controller.hasActiveFilters,
+                    onTap: () => showFilterSheet(context, controller),
                   ),
                 ),
               ],
@@ -150,45 +71,174 @@ class ProductPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Obx(
-            () => AppFilterChips(
-              items: controller.tabs
-                  .map((t) => FilterChipItem(label: t))
-                  .toList(),
-              selectedLabel: controller.selectedTab.value,
-              onChipTap: controller.changeTab,
-            ),
-          ),
+          // ── Category chips ───────────────────────────────────────────────
+          // ✅ Di ProductPage — tambah key berdasarkan jumlah tabs
+          Obx(() {
+            final tabs = controller.tabs;
+            final visibleTabs = tabs.take(6).toList();
+            final hasMore = tabs.length > 6;
+            final overflowTabs = tabs.skip(6).toList();
+
+            return Row(
+              children: [
+                Expanded(
+                  child: AppFilterChips(
+                    key: ValueKey(
+                      tabs.length,
+                    ), // ✅ paksa rebuild kalau jumlah berubah
+                    items: visibleTabs
+                        .map((t) => FilterChipItem(label: t))
+                        .toList(),
+                    selectedLabel: controller.selectedTab.value,
+                    onChipTap: controller.changeTab,
+                  ),
+                ),
+                if (hasMore)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: OverflowCategoryButton(
+                      overflowTabs: overflowTabs,
+                      selectedTab: controller.selectedTab.value,
+                      onTap: () => showCategorySheet(context, controller),
+                    ),
+                  ),
+              ],
+            );
+          }),
+          // ── Active filter chips ──────────────────────────────────────────
+          Obx(() {
+            final chips = <Widget>[];
+
+            if (controller.selectedSort.value.isNotEmpty) {
+              chips.add(
+                AppActiveFilterChip(
+                  label: 'Urutan: ${controller.sortLabel}',
+                  onRemove: () => controller.selectedSort.value = '',
+                ),
+              );
+            }
+            if (controller.minPrice.value != null ||
+                controller.maxPrice.value != null) {
+              chips.add(
+                AppActiveFilterChip(
+                  label: 'Harga: ${controller.priceRangeLabel}',
+                  onRemove: controller.clearPriceRange,
+                ),
+              );
+            }
+            if (controller.showLowStockOnly.value) {
+              chips.add(
+                AppActiveFilterChip(
+                  label: 'Stok Menipis',
+                  onRemove: () => controller.showLowStockOnly.value = false,
+                ),
+              );
+            }
+            if (controller.showOutOfStockOnly.value) {
+              chips.add(
+                AppActiveFilterChip(
+                  label: 'Stok Habis',
+                  onRemove: () => controller.showOutOfStockOnly.value = false,
+                ),
+              );
+            }
+
+            if (chips.isEmpty) return const SizedBox.shrink();
+
+            return SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: chips,
+              ),
+            );
+          }),
+
+          // ── Product list ─────────────────────────────────────────────────
+          // ✅ FIXED — product list section in ProductPage
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final list = controller.filteredProducts;
+              // NEW: error + retry state
+              if (controller.hasError.value) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.cloud_off_rounded,
+                        size: 48,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        controller.errorMessage.value,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.subtext,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: controller.loadInitialData,
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Coba Lagi'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final list = controller.getFilteredProducts;
 
               if (list.isEmpty) {
                 return Center(
-                  child: Text(
-                    'Produk tidak ditemukan',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.subtext,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 48,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Produk tidak ditemukan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.subtext,
+                        ),
+                      ),
+                      if (controller.hasActiveFilters) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: controller.resetPageState,
+                          child: const Text('Reset semua filter'),
+                        ),
+                      ],
+                    ],
                   ),
                 );
               }
 
               return RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () async {
-                  await Future.wait([
-                    controller.fetchProducts(),
-                    variantC.fetchAllVariants(),
-                    priceC.fetchPrices(),
-                  ]);
-                },
+                onRefresh: controller
+                    .loadInitialData, // now unified, handles error state
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                   itemCount: list.length,

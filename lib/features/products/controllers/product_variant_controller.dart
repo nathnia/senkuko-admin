@@ -14,17 +14,22 @@ import 'package:senkukoadmin/features/products/product_service.dart';
 class ProductSummary {
   final int totalStock;
   final bool isOutOfStock;
-  final String mainPrice;
+  final double mainPriceValue;
   final int additionalPriceCount;
   final int variantCount;
 
   const ProductSummary({
     required this.totalStock,
     required this.isOutOfStock,
-    required this.mainPrice,
+    required this.mainPriceValue,
     required this.additionalPriceCount,
     required this.variantCount,
   });
+}
+
+double parseIdPrice(String raw) {
+  return double.tryParse(raw.replaceAll('Rp', '').replaceAll(' ', '').trim()) ??
+      0.0;
 }
 
 class ProductVariantController extends GetxController {
@@ -32,13 +37,19 @@ class ProductVariantController extends GetxController {
   PriceController get priceC => Get.find<PriceController>();
 
   // ===================== STATE =====================
-  final isLoadingVariants = false.obs;
+  // REMOVED: isLoadingVariants — was declared but never set, dead state
 
   // ===================== DATA =====================
   final productVariants = <VariantData>[].obs;
   final editVariantsTemp = <Map<String, dynamic>>[].obs;
   final variantsTemp = <Map<String, dynamic>>[].obs;
   final allVariants = <VariantData>[].obs;
+
+  // ===================== SUMMARY CACHE =====================
+  // ADDED: cache so getSummaryForProduct is not recomputed on every render/sort
+  final _summaryCache = <String, ProductSummary>{};
+
+  void invalidateSummaryCache() => _summaryCache.clear();
 
   // ===================== ADD VARIANT FORM =====================
   final variantNameC = TextEditingController();
@@ -162,6 +173,13 @@ class ProductVariantController extends GetxController {
   void saveEditVariant(int index) {
     if (index < 0 || index >= editVariantsTemp.length) return;
 
+    // Build a lookup map once instead of scanning on every iteration
+    final existingPricesById = <String, dynamic>{};
+    for (final e in (editVariantsTemp[index]['prices'] as List? ?? [])) {
+      final key = (e['price_list_id']?.toString() ?? '');
+      if (key.isNotEmpty) existingPricesById[key] = e;
+    }
+
     final newPrices = priceC.priceListMaster.fold<List<Map<String, dynamic>>>(
       [],
       (list, pl) {
@@ -173,17 +191,14 @@ class ProductVariantController extends GetxController {
         );
         if (!enabled || val.isEmpty) return list;
 
-        final oldPrice = (editVariantsTemp[index]['prices'] as List?)
-            ?.firstWhereOrNull(
-              (e) => (e['price_list_id']?.toString() ?? '') == pl.id,
-            );
+        // O(1) lookup instead of O(N) firstWhereOrNull
+        final oldPrice = existingPricesById[pl.id];
 
-        return list
-          ..add({
-            'id': oldPrice?['id'] ?? '',
-            'price_list_id': pl.id,
-            'price': val,
-          });
+        return list..add({
+          'id': oldPrice?['id'] ?? '',
+          'price_list_id': pl.id,
+          'price': val,
+        });
       },
     );
 
@@ -211,9 +226,6 @@ class ProductVariantController extends GetxController {
   }
 
   // ===================== LIFECYCLE =====================
-  // onInit TIDAK lagi memanggil _loadInitialData
-  // Semua initial fetch dihandle oleh ProductController.loadInitialData()
-  // agar tidak ada double fetch dan semua berjalan parallel
   @override
   void onClose() {
     _removeVariantListeners();
@@ -237,6 +249,8 @@ class ProductVariantController extends GetxController {
             .map((e) => VariantData.fromJson(e))
             .toList(),
       );
+      // ADDED: invalidate cache whenever variants are refreshed
+      invalidateSummaryCache();
     }
   }
 
@@ -276,6 +290,7 @@ class ProductVariantController extends GetxController {
     variantsTemp.clear();
     editVariantsTemp.clear();
     productVariants.clear();
+    invalidateSummaryCache(); // ADDED: clear cache on full reset
     clearVariantForm();
   }
 
@@ -363,6 +378,7 @@ class ProductVariantController extends GetxController {
     final res = await ProductService.deleteVariant(variantId);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       list.removeAt(index);
+      invalidateSummaryCache(); // ADDED
       AppToast.show('Varian berhasil dihapus');
     } else {
       AppToast.show('Gagal menghapus varian');
@@ -394,16 +410,13 @@ class ProductVariantController extends GetxController {
 
     if (res.statusCode != 201) return;
 
-    final newVariantId =
-        json.decode(res.body)['data']['id']?.toString() ?? '';
+    final newVariantId = json.decode(res.body)['data']['id']?.toString() ?? '';
 
-    // Buat semua prices parallel
     await Future.wait(
       (variantData['prices'] as List? ?? [])
           .where((p) {
             final plId = p['price_list_id']?.toString() ?? '';
-            final price =
-                double.tryParse(p['price']?.toString() ?? '0') ?? 0;
+            final price = double.tryParse(p['price']?.toString() ?? '0') ?? 0;
             return plId.isNotEmpty && price > 0;
           })
           .map(
@@ -457,7 +470,15 @@ class ProductVariantController extends GetxController {
   }
 
   // ===================== PRODUCT SUMMARY =====================
+  // CHANGED: uses cache, stores price as double, removed debugPrint
   ProductSummary getSummaryForProduct(String productId) {
+    return _summaryCache.putIfAbsent(
+      productId,
+      () => _computeSummary(productId),
+    );
+  }
+
+  ProductSummary _computeSummary(String productId) {
     final variants = allVariants
         .where((v) => v.productId == productId)
         .toList();
@@ -479,7 +500,7 @@ class ProductVariantController extends GetxController {
               .toList()
         : <PriceData>[];
 
-    final mainPrice = mainVariantPrices.isEmpty
+    final rawPrice = mainVariantPrices.isEmpty
         ? '0'
         : ((normalPriceListId != null
                       ? mainVariantPrices.firstWhereOrNull(
@@ -489,13 +510,17 @@ class ProductVariantController extends GetxController {
                   mainVariantPrices.first)
               .price;
 
-    final additionalPriceCount =
-        mainVariantPrices.length > 1 ? mainVariantPrices.length - 1 : 0;
+    // CHANGED: parse once here using the safe ID-locale parser, store as double
+    final mainPriceValue = parseIdPrice(rawPrice);
+
+    final additionalPriceCount = mainVariantPrices.length > 1
+        ? mainVariantPrices.length - 1
+        : 0;
 
     return ProductSummary(
       totalStock: totalStock,
       isOutOfStock: isOutOfStock,
-      mainPrice: mainPrice,
+      mainPriceValue: mainPriceValue,
       additionalPriceCount: additionalPriceCount,
       variantCount: variants.length,
     );

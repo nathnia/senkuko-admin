@@ -101,7 +101,7 @@ class ProductCard extends StatelessWidget {
                               textBaseline: TextBaseline.alphabetic,
                               children: [
                                 Text(
-                                  CurrencyFormatter.format(summary.mainPrice),
+                                  CurrencyFormatter.format(summary.mainPriceValue),
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,

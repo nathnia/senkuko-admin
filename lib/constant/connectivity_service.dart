@@ -33,11 +33,11 @@ class ConnectivityService extends GetxController {
           _updateConnectionStatus(results);
         },
         onError: (error) {
-          print('Connectivity error: $error');
+          // print('Connectivity error: $error');
         },
       );
     } catch (e) {
-      print('Failed to check connectivity: $e');
+      // print('Failed to check connectivity: $e');
       // Fallback: assume offline if plugin fails
       _goOffline();
     }
