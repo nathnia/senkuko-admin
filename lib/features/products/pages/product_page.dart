@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
@@ -46,9 +47,9 @@ class ProductPage extends StatelessWidget {
         ),
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
+          preferredSize: const Size.fromHeight(40),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Row(
               children: [
                 Expanded(
@@ -71,8 +72,6 @@ class ProductPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // ── Category chips ───────────────────────────────────────────────
-          // ✅ Di ProductPage — tambah key berdasarkan jumlah tabs
           Obx(() {
             final tabs = controller.tabs;
             final visibleTabs = tabs.take(6).toList();
@@ -85,7 +84,7 @@ class ProductPage extends StatelessWidget {
                   child: AppFilterChips(
                     key: ValueKey(
                       tabs.length,
-                    ), // ✅ paksa rebuild kalau jumlah berubah
+                    ), 
                     items: visibleTabs
                         .map((t) => FilterChipItem(label: t))
                         .toList(),
@@ -156,49 +155,16 @@ class ProductPage extends StatelessWidget {
           }),
 
           // ── Product list ─────────────────────────────────────────────────
-          // ✅ FIXED — product list section in ProductPage
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              // NEW: error + retry state
               if (controller.hasError.value) {
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.cloud_off_rounded,
-                        size: 48,
-                        color: Colors.grey[300],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        controller.errorMessage.value,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.subtext,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: controller.loadInitialData,
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Coba Lagi'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                return AppErrorState(
+                  message: controller.errorMessage.value,
+                  onRetry: controller.loadInitialData,
                 );
               }
 
@@ -238,9 +204,9 @@ class ProductPage extends StatelessWidget {
               return RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: controller
-                    .loadInitialData, // now unified, handles error state
+                    .loadInitialData, 
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   itemCount: list.length,
                   itemBuilder: (context, i) => ProductCard(product: list[i]),
                 ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
 import 'package:senkukoadmin/features/transactions/transaction_model.dart';
@@ -43,6 +44,13 @@ class TransactionDetailPage extends StatelessWidget {
         if (controller.isLoadingDetail.value) {
           return const Center(child: CircularProgressIndicator());
         }
+         if (controller.hasDetailError.value) {
+    return AppErrorState(
+      message: controller.detailErrorMessage.value,
+      onRetry: () => controller.fetchTransactionById(id),
+    );
+  }
+
 
         final data = controller.selectedTransaction.value;
         if (data == null) {
@@ -52,7 +60,6 @@ class TransactionDetailPage extends StatelessWidget {
         final items = data['items'] as List? ?? [];
         final promotions = data['promotions'] as List? ?? [];
 
-        // parse amount dari detail response — sama seperti model
         final totalDiscount =
             double.parse((data['total_discount'] ?? '0').toString());
 

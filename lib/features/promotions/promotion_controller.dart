@@ -24,6 +24,9 @@ class PromotionController extends GetxController {
   final searchText = ''.obs;
   final selectedFilter = 'Semua'.obs;
 
+  final hasError = false.obs;
+  final errorMessage = ''.obs;
+
   // ===================== PROMOTION FORM =====================
   final nameC = TextEditingController();
   final codeC = TextEditingController();
@@ -150,26 +153,36 @@ class PromotionController extends GetxController {
 
   // ===================== FETCH =====================
   Future<void> fetchPromotions() async {
+    if (isLoading.value) return;
     isLoading.value = true;
+    hasError.value = false;
+    errorMessage.value = '';
     try {
       final res = await PromotionService.getAllPromotions();
       if (res.statusCode == 200) {
         promotionList.assignAll(promotionListModelFromJson(res.body).data);
         _applyFilter();
-      } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.show(ApiHelper.parseError(res.body));
       } else {
-        AppToast.show('Gagal memuat daftar promosi');
+        hasError.value = true;
+        errorMessage.value = ApiHelper.isNetworkError(res)
+            ? ApiHelper.parseError(res.body)
+            : 'Gagal memuat daftar promosi.';
       }
     } catch (e) {
-      AppToast.show('Terjadi kesalahan saat memuat promosi');
+      hasError.value = true;
+      errorMessage.value = 'Gagal memuat data.';
     } finally {
       isLoading.value = false;
     }
   }
 
+  final hasDetailError = false.obs;
+  final detailErrorMessage = ''.obs;
+
   Future<void> fetchPromotionById(String id) async {
     isLoadingDetail.value = true;
+    hasDetailError.value = false;
+    detailErrorMessage.value = '';
     selectedPromotion.value = null;
     try {
       final res = await PromotionService.getPromotionById(id);
@@ -177,8 +190,13 @@ class PromotionController extends GetxController {
         selectedPromotion.value = PromotionData.fromJson(
           jsonDecode(res.body)['data'],
         );
+      } else {
+        hasDetailError.value = true;
+        detailErrorMessage.value = 'Gagal memuat detail promosi. Coba lagi.';
       }
     } catch (_) {
+      hasDetailError.value = true;
+      detailErrorMessage.value = 'Gagal memuat detail promosi. Coba lagi.';
     } finally {
       isLoadingDetail.value = false;
     }

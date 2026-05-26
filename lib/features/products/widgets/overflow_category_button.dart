@@ -38,7 +38,7 @@ class OverflowCategoryButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: overflowActive ? Colors.white : Colors.black87,
+                color: overflowActive ? Colors.white : AppColors.subtitle
               ),
             ),
             const SizedBox(width: 4),

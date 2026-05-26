@@ -74,9 +74,9 @@ class ProductController extends GetxController {
       case 'oldest':
         return 'Terlama';
       case 'price_asc':
-        return 'Harga ↑';
+        return 'Harga Termurah';
       case 'price_desc':
-        return 'Harga ↓';
+        return 'Harga Termahal';
       case 'az':
         return 'A–Z';
       case 'low_stock':
@@ -296,12 +296,14 @@ class ProductController extends GetxController {
     tabs.assignAll(['Semua', ...categoryC.categoryList.map((c) => c.name)]);
   }
 
-  // ✅ FIX — pisahkan guard "sedang loading" dari kondisi retry
   Future<void> loadInitialData() async {
-    if (isLoading.value) return; // tetap ada, tapi reset hasError dulu
-    isLoading.value = true;
-    hasError.value = false; // ← ini sudah ada, aman
+    if (isLoading.value) return;
+
+    // Reset error state before the guard matters
+    hasError.value = false;
     errorMessage.value = '';
+    isLoading.value = true;
+
     try {
       await Future.wait([
         fetchProducts(),
@@ -315,7 +317,7 @@ class ProductController extends GetxController {
     } catch (e) {
       hasError.value = true;
       errorMessage.value = 'Gagal memuat data. Coba lagi.';
-      _rebuildTabs(); // ✅ tetap rebuild tabs walau error parsial
+      _rebuildTabs();
     } finally {
       isLoading.value = false;
     }
@@ -324,30 +326,6 @@ class ProductController extends GetxController {
   final hasError = false.obs;
   final errorMessage = ''.obs;
 
-  // // ✅ FIXED — full loadInitialData method
-  // Future<void> loadInitialData() async {
-  //   if (isLoading.value) return;
-  //   isLoading.value = true;
-  //   hasError.value = false;
-  //   errorMessage.value = '';
-  //   try {
-  //     await Future.wait([
-  //       fetchProducts(),
-  //       categoryC.fetchCategories(),
-  //       priceC.fetchPrices(),
-  //       priceC.fetchPriceLists(),
-  //       unitC.fetchUnits(),
-  //       variantC.fetchAllVariants(),
-  //     ]);
-  //   } catch (e) {
-  //     hasError.value = true;
-  //     errorMessage.value = 'Gagal memuat data. Coba lagi.';
-  //   } finally {
-  //     isLoading.value = false;
-  //   }
-  // }
-
-  // ✅ FIX — pisahkan antara "tampil toast" dan "lempar error ke caller"
   Future<void> fetchProducts() async {
     final res = await ProductService.getProducts(); // biarkan exception naik
     if (res.statusCode == 200) {
@@ -419,8 +397,13 @@ class ProductController extends GetxController {
   }
 
   // ===================== PRODUCT DETAIL =====================
+  final hasDetailError = false.obs;
+  final detailErrorMessage = ''.obs;
+
   Future<void> loadProductDetail(String productId) async {
     isLoadingDetail.value = true;
+    hasDetailError.value = false;
+    detailErrorMessage.value = '';
     selectedProduct.value = null;
     variantC.productVariants.clear();
 
@@ -446,9 +429,14 @@ class ProductController extends GetxController {
         if (jsonData['data'] != null) {
           selectedProduct.value = ProductData.fromJson(jsonData['data']);
         }
+      } else {
+        // non-200 juga harus error state, bukan diam
+        hasDetailError.value = true;
+        detailErrorMessage.value = 'Gagal memuat detail produk. Coba lagi.';
       }
     } catch (e) {
-      AppToast.show('Gagal memuat detail produk');
+      hasDetailError.value = true;
+      detailErrorMessage.value = 'Gagal memuat detail produk. Coba lagi.';
     } finally {
       isLoadingDetail.value = false;
     }
@@ -551,7 +539,7 @@ class ProductController extends GetxController {
       await imageC.uploadPendingImages(newProductId);
 
       await Future.wait([
-        variantC.fetchAllVariants(), // already calls invalidateSummaryCache
+        variantC.fetchAllVariants(),
         priceC.fetchPrices(),
         fetchProducts(),
       ]);

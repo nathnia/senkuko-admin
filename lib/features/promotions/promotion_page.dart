@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/features/promotions/promotion_card.dart';
@@ -15,8 +16,7 @@ class PromotionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {});
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -35,9 +35,9 @@ class PromotionPage extends StatelessWidget {
         ),
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
+          preferredSize: const Size.fromHeight(40),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: AppSearchBar(
               hintText: 'Cari nama atau kode promo...',
               onChanged: controller.updateSearch,
@@ -47,16 +47,18 @@ class PromotionPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Obx(() => AppFilterChips(
-                items: const [
-                  FilterChipItem(label: 'Semua'),
-                  FilterChipItem(label: 'Aktif'),
-                  FilterChipItem(label: 'Tidak Aktif'),
-                  FilterChipItem(label: 'Kedaluwarsa'),
-                ],
-                selectedLabel: controller.selectedFilter.value,
-                onChipTap: controller.updateFilter,
-              )),
+          Obx(
+            () => AppFilterChips(
+              items: const [
+                FilterChipItem(label: 'Semua'),
+                FilterChipItem(label: 'Aktif'),
+                FilterChipItem(label: 'Tidak Aktif'),
+                FilterChipItem(label: 'Kedaluwarsa'),
+              ],
+              selectedLabel: controller.selectedFilter.value,
+              onChipTap: controller.updateFilter,
+            ),
+          ),
           Expanded(child: _promotionList()),
         ],
       ),
@@ -78,15 +80,25 @@ class PromotionPage extends StatelessWidget {
         return const Center(child: CircularProgressIndicator());
       }
 
-      final list = controller.filteredPromotions;
+      // ADD THIS
+      if (controller.hasError.value) {
+        return AppErrorState(
+          message: controller.errorMessage.value,
+          onRetry: controller.fetchPromotions,
+        );
+      }
 
+      final list = controller.filteredPromotions;
       if (list.isEmpty) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.local_offer_outlined,
-                  size: 48, color: Colors.grey.shade300),
+              Icon(
+                Icons.local_offer_outlined,
+                size: 48,
+                color: Colors.grey.shade300,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Belum ada promosi',
@@ -105,7 +117,7 @@ class PromotionPage extends StatelessWidget {
         color: AppColors.primary,
         onRefresh: controller.fetchPromotions,
         child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: list.length,
           itemBuilder: (_, i) {
             final promo = list[i];

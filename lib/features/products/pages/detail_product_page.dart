@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
@@ -39,7 +40,32 @@ class DetailProductPage extends StatelessWidget {
       if (isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-
+      if (controller.hasDetailError.value) {
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: const AppBackButton(),
+            title: const Text(
+              'Detail Produk',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          body: AppErrorState(
+            message: controller.detailErrorMessage.value,
+            onRetry: () {
+              controller.loadProductDetail(productId);
+              imageC.fetchProductImages(productId);
+            },
+          ),
+        );
+      }
       if (product == null) {
         return const Scaffold(
           body: Center(child: Text("Produk tidak ditemukan")),
@@ -249,11 +275,7 @@ class DetailProductPage extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              Icon(
-                Icons.category_outlined,
-                size: 13,
-                color: AppColors.subtext,
-              ),
+              Icon(Icons.category_outlined, size: 13, color: AppColors.subtext),
               const SizedBox(width: 4),
               Text(
                 product.categoryName,
@@ -326,10 +348,12 @@ class DetailProductPage extends StatelessWidget {
 
                   final prices = priceC
                       .getPricesByVariant(v.id)
-                      .map((p) => {
-                            'price_list_id': p.priceListId,
-                            'price': p.price,
-                          })
+                      .map(
+                        (p) => {
+                          'price_list_id': p.priceListId,
+                          'price': p.price,
+                        },
+                      )
                       .toList();
 
                   final variantMap = {
@@ -357,10 +381,7 @@ class DetailProductPage extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: Colors.grey.shade400),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(fontSize: 13, color: AppColors.subtext),
-        ),
+        Text(label, style: TextStyle(fontSize: 13, color: AppColors.subtext)),
         const Spacer(),
         Text(
           value,

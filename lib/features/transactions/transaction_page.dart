@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
@@ -33,9 +34,9 @@ class TransactionPage extends StatelessWidget {
         ),
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
+          preferredSize: const Size.fromHeight(40),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: AppSearchBar(
               hintText: 'Cari invoice atau nama pelanggan...',
               onChanged: controller.updateSearch,
@@ -135,50 +136,49 @@ class TransactionPage extends StatelessWidget {
     );
   }
 
-  Widget _transactionList(TransactionController controller) {
-    return Obx(() {
-      if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
+Widget _transactionList(TransactionController controller) {
+  return Obx(() {
+    if (controller.isLoading.value) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-      final list = controller.filteredTransactions;
+    // ADD THIS
+    if (controller.hasError.value) {
+      return AppErrorState(
+        message: controller.errorMessage.value,
+        onRetry: controller.fetchTransactions,
+      );
+    }
 
-      if (list.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Transaksi tidak ditemukan',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.subtext,
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-
-      return RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          await controller.fetchTransactions();
-        },
-
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          itemCount: list.length,
-          itemBuilder: (context, index) => TransactionCard(
-            transaction: list[index],
-            onTap: () => Get.toNamed(
-              AppRoutes.transactionDetail,
-              arguments: list[index].id,
-            ),
+    final list = controller.filteredTransactions;
+    if (list.isEmpty) {
+      return Center(
+        child: Text(
+          'Transaksi tidak ditemukan',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.subtext,
           ),
         ),
       );
-    });
-  }
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: controller.fetchTransactions,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        itemCount: list.length,
+        itemBuilder: (context, index) => TransactionCard(
+          transaction: list[index],
+          onTap: () => Get.toNamed(
+            AppRoutes.transactionDetail,
+            arguments: list[index].id,
+          ),
+        ),
+      ),
+    );
+  });
+}
 }

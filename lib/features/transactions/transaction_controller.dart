@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
-import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_model.dart';
 import 'package:senkukoadmin/features/transactions/transaction_service.dart';
@@ -16,6 +16,9 @@ class TransactionController extends GetxController {
   final searchText = ''.obs;
   final selectedDateRange = Rxn<DateTimeRange>();
   final selectedQuickDate = 'Hari Ini'.obs;
+
+  final hasError = false.obs;
+  final errorMessage = ''.obs;
 
   final List<String> quickDateFilters = [
     'Hari Ini',
@@ -130,29 +133,47 @@ class TransactionController extends GetxController {
   // ===================== FETCH =====================
 
   Future<void> fetchTransactions() async {
+    if (isLoading.value) return;
     isLoading.value = true;
+    hasError.value = false;
+    errorMessage.value = '';
     try {
       final res = await TransactionService.getAllTransactions();
       if (res.statusCode == 200) {
         transactionList.assignAll(transactionModelFromJson(res.body).data);
+      } else {
+        hasError.value = true;
+        errorMessage.value = ApiHelper.isNetworkError(res)
+            ? ApiHelper.parseError(res.body)
+            : 'Gagal memuat daftar transaksi.';
       }
     } catch (e) {
-      AppToast.show('Gagal memuat data transaksi');
+      hasError.value = true;
+      errorMessage.value = 'Gagal memuat data.';
     } finally {
       isLoading.value = false;
     }
   }
 
+  final hasDetailError = false.obs;
+  final detailErrorMessage = ''.obs;
+
   Future<void> fetchTransactionById(String id) async {
     isLoadingDetail.value = true;
+    hasDetailError.value = false;
+    detailErrorMessage.value = '';
     selectedTransaction.value = null;
     try {
       final res = await TransactionService.getTransactionById(id);
       if (res.statusCode == 200) {
         selectedTransaction.value = json.decode(res.body)['data'];
+      } else {
+        hasDetailError.value = true;
+        detailErrorMessage.value = 'Gagal memuat detail transaksi. Coba lagi.';
       }
     } catch (e) {
-      AppToast.show('Gagal memuat detail transaksi');
+      hasDetailError.value = true;
+      detailErrorMessage.value = 'Gagal memuat detail transaksi. Coba lagi.';
     } finally {
       isLoadingDetail.value = false;
     }
