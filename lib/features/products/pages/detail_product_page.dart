@@ -8,6 +8,7 @@ import 'package:senkukoadmin/features/products/controllers/product_image_control
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
+import 'package:senkukoadmin/features/products/widgets/product_image_lightbox.dart';
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
@@ -124,7 +125,7 @@ class DetailProductPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _productImage(product.id),
+              _productImage(product.id, context),
               _nameCard(product),
               _infoCard(product),
               _descriptionCard(product),
@@ -136,122 +137,174 @@ class DetailProductPage extends StatelessWidget {
     });
   }
 
-  Widget _productImage(String productId) {
+  // Replace _productImage() in detail_product_page.dart
+
+  Widget _productImage(String productId, BuildContext context) {
     return Obx(() {
       final images = imageC.getImagesForProduct(productId);
 
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        height: 220,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: images.isEmpty
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 26,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Belum ada foto',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
-                )
-              : Stack(
-                  children: [
-                    PageView.builder(
-                      controller: imageC.carouselController,
-                      itemCount: images.length,
-                      onPageChanged: (i) => imageC.carouselIndex.value = i,
-                      itemBuilder: (_, i) => Image.network(
-                        images[i].imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (_, __, ___) => Center(
-                          child: Icon(
-                            Icons.broken_image_outlined,
-                            size: 32,
-                            color: Colors.grey.shade300,
-                          ),
+      return GestureDetector(
+        onTap: images.isEmpty
+            ? null
+            : () => ProductImageLightbox.show(
+                context,
+                images: images,
+                initialIndex: imageC.carouselIndex.value,
+              ),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          height: 220,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: images.isEmpty
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 26,
+                          color: Colors.grey.shade400,
                         ),
                       ),
-                    ),
-                    if (images.length > 1) ...[
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: Obx(
-                          () => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withAlpha(45),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${imageC.carouselIndex.value + 1} / ${images.length}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Belum ada foto',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  )
+                : Stack(
+                    children: [
+                      PageView.builder(
+                        controller: imageC.carouselController,
+                        itemCount: images.length,
+                        onPageChanged: (i) => imageC.carouselIndex.value = i,
+                        itemBuilder: (_, i) => Hero(
+                          // Tag matches lightbox Hero tag for smooth transition
+                          tag: 'product_image_${images[i].id}_$i',
+                          child: Image.network(
+                            images[i].imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                size: 32,
+                                color: Colors.grey.shade300,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      Positioned(
-                        bottom: 10,
-                        left: 0,
-                        right: 0,
-                        child: Obx(
-                          () => Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(images.length, (i) {
-                              final isActive = i == imageC.carouselIndex.value;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 6000),
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 3,
+
+                      // Tap-to-expand hint overlay
+                      if (images.isNotEmpty)
+                        Positioned(
+                          bottom: 10,
+                          right: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(
+                                  Icons.open_in_full_rounded,
+                                  size: 10,
+                                  color: Colors.white,
                                 ),
-                                width: isActive ? 16 : 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? Colors.white
-                                      : Colors.white.withAlpha(50),
-                                  borderRadius: BorderRadius.circular(3),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Tap untuk perbesar',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              );
-                            }),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+
+                      if (images.length > 1) ...[
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Obx(
+                            () => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${imageC.carouselIndex.value + 1} / ${images.length}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 10,
+                          left: 0,
+                          right: 0,
+                          child: Obx(
+                            () => Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(images.length, (i) {
+                                final isActive =
+                                    i == imageC.carouselIndex.value;
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                  ),
+                                  width: isActive ? 16 : 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+          ),
         ),
       );
     });

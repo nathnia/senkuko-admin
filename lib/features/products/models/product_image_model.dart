@@ -1,4 +1,3 @@
-
 class ProductImageData {
   final String id;
   final String productId;
@@ -17,14 +16,20 @@ class ProductImageData {
   });
 
   factory ProductImageData.fromJson(Map<String, dynamic> json) {
-    final url = json['url']?.toString() ?? json['image_url']?.toString() ?? '';
+    // list response uses "url", detail endpoint uses "image_url"
+    final url = json['image_url']?.toString() ?? json['url']?.toString() ?? '';
 
     return ProductImageData(
       id: json['id']?.toString() ?? '',
       productId: json['product_id']?.toString() ?? '',
       imageUrl: url,
       publicId: json['public_id']?.toString() ?? '',
-      isPrimary: json['is_primary'] == true || json['isPrimary'] == true,
+      isPrimary:
+          json['is_primary'] == true ||
+          json['is_primary'] ==
+              1 // ← backend returns int 0/1
+              ||
+          json['isPrimary'] == true,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),

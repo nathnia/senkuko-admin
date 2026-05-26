@@ -327,40 +327,27 @@ class ProductController extends GetxController {
   final errorMessage = ''.obs;
 
   Future<void> fetchProducts() async {
-    final res = await ProductService.getProducts(); // biarkan exception naik
+    final res = await ProductService.getProducts();
     if (res.statusCode == 200) {
       final newProducts = productModelFromJson(res.body).data;
       productList.assignAll(newProducts);
-      _fetchAllImagesBackground(newProducts);
+      _seedImageCacheFromProducts(newProducts); 
     } else if (ApiHelper.isNetworkError(res)) {
-      throw Exception(
-        ApiHelper.parseError(res.body),
-      ); // ✅ naik ke loadInitialData
+      throw Exception(ApiHelper.parseError(res.body));
     } else {
-      throw Exception(
-        'Gagal memuat daftar produk',
-      ); // ✅ naik ke loadInitialData
+      throw Exception('Gagal memuat daftar produk');
     }
   }
 
-  void _fetchAllImagesBackground(List<ProductData> products) {
-    Future.microtask(() async {
-      final cache = <String, List<ProductImageData>>{};
-      await _fetchImagesInBatches(products, cache);
+  void _seedImageCacheFromProducts(List<ProductData> products) {
+    final cache = <String, List<ProductImageData>>{};
+    for (final product in products) {
+      if (product.images != null && product.images!.isNotEmpty) {
+        cache[product.id] = product.images!;
+      }
+    }
+    if (cache.isNotEmpty) {
       imageC.replaceAllCache(cache);
-    });
-  }
-
-  Future<void> _fetchImagesInBatches(
-    List<ProductData> products,
-    Map<String, List<ProductImageData>> cache, {
-    int batchSize = 5,
-  }) async {
-    for (var i = 0; i < products.length; i += batchSize) {
-      final batch = products.skip(i).take(batchSize).toList();
-      await Future.wait(
-        batch.map((p) => imageC.fetchProductImagesInto(p.id, cache)),
-      );
     }
   }
 

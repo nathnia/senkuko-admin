@@ -61,7 +61,7 @@ class ProductCard extends StatelessWidget {
                                   child: Text(
                                     product.name,
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w600,
                                       fontSize: 14,
                                       color: Colors.black87,
                                     ),
@@ -90,7 +90,7 @@ class ProductCard extends StatelessWidget {
                               product.categoryName,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.subtext,
+                                color: Colors.grey.shade700,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -101,7 +101,9 @@ class ProductCard extends StatelessWidget {
                               textBaseline: TextBaseline.alphabetic,
                               children: [
                                 Text(
-                                  CurrencyFormatter.format(summary.mainPriceValue),
+                                  CurrencyFormatter.format(
+                                    summary.mainPriceValue,
+                                  ),
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
@@ -114,7 +116,7 @@ class ProductCard extends StatelessWidget {
                                     '+${summary.additionalPriceCount} harga lain',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey.shade400,
+                                      color: Colors.grey.shade600,
                                     ),
                                   ),
                                 ],
@@ -205,11 +207,7 @@ class _Badge extends StatelessWidget {
   final String label;
   final _BadgeType type;
 
-  const _Badge({
-    required this.icon,
-    required this.label,
-    required this.type,
-  });
+  const _Badge({required this.icon, required this.label, required this.type});
 
   @override
   Widget build(BuildContext context) {
