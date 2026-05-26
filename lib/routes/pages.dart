@@ -5,6 +5,7 @@ import 'package:senkukoadmin/features/customers/customer_page.dart';
 import 'package:senkukoadmin/features/products/pages/add_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/detail_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/edit_product_page.dart';
+import 'package:senkukoadmin/features/products/pages/manage_categories_page.dart';
 import 'package:senkukoadmin/features/products/pages/variant_form_page.dart';
 import 'package:senkukoadmin/features/products/product_binding.dart';
 import 'package:senkukoadmin/features/products/pages/product_page.dart';
@@ -22,7 +23,6 @@ import 'package:senkukoadmin/features/transactions/transaction_detail_page.dart'
 import 'package:senkukoadmin/features/transactions/transaction_page.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-// app_pages.dart
 class AppPages {
   static final pages = [
     GetPage(name: AppRoutes.dashboard, page: () => DashboardPage()),
@@ -33,11 +33,7 @@ class AppPages {
     ),
     GetPage(name: AppRoutes.addProduct, page: () => AddProductPage()),
     GetPage(name: AppRoutes.editProduct, page: () => EditProductPage()),
-    GetPage(
-      name: AppRoutes.detailProduct,
-      page: () => DetailProductPage(),
-      // ← hapus binding
-    ),
+    GetPage(name: AppRoutes.detailProduct, page: () => DetailProductPage()),
     GetPage(
       name: AppRoutes.customer,
       page: () => CustomerPage(),
@@ -79,5 +75,9 @@ class AppPages {
       binding: VoucherBinding(),
     ),
     GetPage(name: AppRoutes.variantForm, page: () => VariantFormPage()),
+    GetPage(
+      name: AppRoutes.manageCategories,
+      page: () => ManageCategoriesPage(),
+    ),
   ];
 }

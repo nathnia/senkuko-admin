@@ -157,6 +157,23 @@ class ProductController extends GetxController {
           .where((p) => p.categoryName == selectedTab.value)
           .toList();
     }
+    // if (selectedTab.value != 'Semua') {
+    //   final selectedParent = categoryC.parentCategories.firstWhereOrNull(
+    //     (c) => c.name == selectedTab.value,
+    //   );
+
+    //   if (selectedParent != null) {
+    //     final childIds = categoryC
+    //         .getSubCategories(selectedParent.id)
+    //         .map((e) => e.id)
+    //         .toSet();
+
+    //     products = products.where((p) {
+    //       return p.categoryName == selectedTab.value ||
+    //           childIds.contains(p.categoryId);
+    //     }).toList();
+    //   }
+    // }
 
     // PRICE FILTER
     if (minPrice.value != null || maxPrice.value != null) {
@@ -295,6 +312,9 @@ class ProductController extends GetxController {
   void _rebuildTabs() {
     tabs.assignAll(['Semua', ...categoryC.categoryList.map((c) => c.name)]);
   }
+  // void _rebuildTabs() {
+  //   tabs.assignAll(['Semua', ...categoryC.parentCategories.map((c) => c.name)]);
+  // }
 
   Future<void> loadInitialData() async {
     if (isLoading.value) return;
@@ -331,7 +351,7 @@ class ProductController extends GetxController {
     if (res.statusCode == 200) {
       final newProducts = productModelFromJson(res.body).data;
       productList.assignAll(newProducts);
-      _seedImageCacheFromProducts(newProducts); 
+      _seedImageCacheFromProducts(newProducts);
     } else if (ApiHelper.isNetworkError(res)) {
       throw Exception(ApiHelper.parseError(res.body));
     } else {

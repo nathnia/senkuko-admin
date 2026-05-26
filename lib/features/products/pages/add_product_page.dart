@@ -1,12 +1,13 @@
 // lib/features/products/pages/add_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
-import 'package:senkukoadmin/constant/app_back_button.dart';
-import 'package:senkukoadmin/features/products/widgets/product_form.dart';
+import 'package:senkukoadmin/features/products/widgets/product_image_section.dart';
+import 'package:senkukoadmin/features/products/widgets/product_info_form.dart';
 import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -16,7 +17,6 @@ class AddProductPage extends StatelessWidget {
 
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
-  late final _forms = ProductFormWidgets(controller);
 
   Future<bool> _confirmLeave() async {
     if (!controller.isDirty.value) return true;
@@ -25,8 +25,6 @@ class AddProductPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -64,9 +62,13 @@ class AddProductPage extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              _forms.productImageGrid('', isAddMode: true),
+              ProductImageSection(
+                controller: controller,
+                productId: '',
+                isAddMode: true,
+              ),
               const SizedBox(height: 12),
-              _forms.productForm(),
+              ProductInfoForm(controller: controller),
               const SizedBox(height: 12),
               _variantSection(),
               const SizedBox(height: 20),
@@ -118,12 +120,10 @@ class AddProductPage extends StatelessWidget {
 
   Widget _addVariantRow({required bool isEditMode}) {
     return GestureDetector(
-      onTap: () {
-        Get.toNamed(
-          AppRoutes.variantForm,
-          arguments: {'isEditMode': isEditMode},
-        );
-      },
+      onTap: () => Get.toNamed(
+        AppRoutes.variantForm,
+        arguments: {'isEditMode': isEditMode},
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(

@@ -1,13 +1,14 @@
 // lib/features/products/pages/edit_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
-import 'package:senkukoadmin/constant/app_back_button.dart';
-import 'package:senkukoadmin/features/products/widgets/product_form.dart';
+import 'package:senkukoadmin/features/products/widgets/product_image_section.dart';
+import 'package:senkukoadmin/features/products/widgets/product_info_form.dart';
 import 'package:senkukoadmin/features/products/widgets/save_button.dart';
 import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
@@ -19,7 +20,6 @@ class EditProductPage extends StatelessWidget {
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
   final imageC = Get.find<ProductImageController>();
-  late final _forms = ProductFormWidgets(controller);
 
   Future<bool> _confirmLeave() async {
     if (!controller.isDirty.value) return true;
@@ -32,7 +32,7 @@ class EditProductPage extends StatelessWidget {
 
     if (productId == null) {
       return const Scaffold(
-        body: Center(child: Text("ID Produk tidak ditemukan")),
+        body: Center(child: Text('ID Produk tidak ditemukan')),
       );
     }
 
@@ -90,11 +90,14 @@ class EditProductPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _forms.productImageGrid(productId),
+                ProductImageSection(
+                  controller: controller,
+                  productId: productId,
+                ),
                 const SizedBox(height: 12),
-                _forms.productForm(),
+                ProductInfoForm(controller: controller),
                 const SizedBox(height: 12),
-                _variantSection(),
+                _variantSection(productId),
                 const SizedBox(height: 16),
               ],
             ),
@@ -104,7 +107,7 @@ class EditProductPage extends StatelessWidget {
     );
   }
 
-  Widget _variantSection() {
+  Widget _variantSection(String productId) {
     return AppCard(
       title: 'VARIAN',
       child: Column(

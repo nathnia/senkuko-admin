@@ -1,4 +1,3 @@
-// routes.dart — tambah editCustomer
 class AppRoutes {
   static const String splash = "/splash";
   static const String dashboard = "/dashboard";
@@ -25,4 +24,5 @@ class AppRoutes {
   static const vouchers = '/vouchers';
   static const voucherForm = '/vouchers/form';
   static const variantForm = '/variant-form';
+  static const manageCategories = '/manage-categories';
 }

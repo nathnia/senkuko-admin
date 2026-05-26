@@ -10,14 +10,22 @@ import 'package:senkukoadmin/features/products/controllers/product_controller.da
 import 'package:senkukoadmin/features/products/models/product_image_model.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
 
-class ProductImageSection {
+class ProductImageSection extends StatelessWidget {
   final ProductController controller;
-  final imageC = Get.find<ProductImageController>();
+  final String productId;
+  final bool isAddMode;
 
-  ProductImageSection(this.controller);
+  const ProductImageSection({
+    super.key,
+    required this.controller,
+    required this.productId,
+    this.isAddMode = false,
+  });
 
-  // ================= PRODUCT IMAGE GRID =================
-  Widget productImageGrid(String productId, {bool isAddMode = false}) {
+  ProductImageController get imageC => Get.find<ProductImageController>();
+
+  @override
+  Widget build(BuildContext context) {
     return Obx(() {
       final List<ProductImageData> images;
       if (isAddMode) {
@@ -78,7 +86,6 @@ class ProductImageSection {
                           return;
                         }
 
-                        // Hitung ulang saat delete dipanggil, bukan saat build
                         final currentExistingCount =
                             imageC.getImagesForProduct(productId).length;
                         final isPendingEditNow = index >= currentExistingCount;
@@ -106,8 +113,7 @@ class ProductImageSection {
                       },
                     );
                   }),
-                  if (canAddMore)
-                    _addImageButton(productId: productId, isAddMode: isAddMode),
+                  if (canAddMore) _addImageButton(context),
                 ],
               ),
             ),
@@ -227,7 +233,11 @@ class ProductImageSection {
                         : Colors.red,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                  child: const Icon(
+                    Icons.close,
+                    size: 14,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -238,15 +248,11 @@ class ProductImageSection {
   }
 
   // ================= ADD IMAGE BUTTON =================
-  Widget _addImageButton({required String productId, required bool isAddMode}) {
+  Widget _addImageButton(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        if (isAddMode) {
-          _showAddImageSourcePicker();
-        } else {
-          _showImageSourcePicker(productId);
-        }
-      },
+      onTap: () => isAddMode
+          ? _showAddImageSourcePicker(context)
+          : _showImageSourcePicker(context),
       child: Container(
         width: 100,
         height: 100,
@@ -275,9 +281,12 @@ class ProductImageSection {
   }
 
   // ================= IMAGE SOURCE PICKERS =================
-  void _showImageSourcePicker(String productId) {
-    Get.bottomSheet(
-      Container(
+  void _showImageSourcePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Container(
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -324,13 +333,15 @@ class ProductImageSection {
           ],
         ),
       ),
-      isScrollControlled: true,
     );
   }
 
-  void _showAddImageSourcePicker() {
-    Get.bottomSheet(
-      Container(
+  void _showAddImageSourcePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Container(
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -349,16 +360,16 @@ class ProductImageSection {
             _imageSourceTile(
               icon: Icons.photo_library_outlined,
               label: 'Pilih dari Galeri',
-              onTap: () async {
-                await Navigator.of(Get.overlayContext!).maybePop();
+              onTap: () {
+                Get.back();
                 imageC.pickImageForNewProduct(source: ImageSource.gallery);
               },
             ),
             _imageSourceTile(
               icon: Icons.camera_alt_outlined,
               label: 'Ambil dari Kamera',
-              onTap: () async {
-                await Navigator.of(Get.overlayContext!).maybePop();
+              onTap: () {
+                Get.back();
                 imageC.pickImageForNewProduct(source: ImageSource.camera);
               },
             ),
@@ -366,7 +377,6 @@ class ProductImageSection {
           ],
         ),
       ),
-      isScrollControlled: true,
     );
   }
 
@@ -390,7 +400,6 @@ class ProductImageSection {
     );
   }
 
-  // ================= SHARED HELPERS =================
   Widget _bottomSheetHandle() {
     return Container(
       width: 36,
