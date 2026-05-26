@@ -53,12 +53,7 @@ class AppFilterChips extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.primary : Colors.white,
                     borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.primary
-                          : Colors.grey.shade300,
-                      width: 0.5,
-                    ),
+
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -80,7 +75,7 @@ class AppFilterChips extends StatelessWidget {
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.w500,
-                          color: isSelected ? Colors.white : Colors.black87,
+                          color: isSelected ? Colors.white : AppColors.subtitle,
                         ),
                       ),
                     ],

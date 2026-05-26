@@ -18,10 +18,14 @@ class CustomerController extends GetxController {
   // ===================== LIST STATE =====================
   final isLoading = false.obs;
   final customerList = <CustomerData>[].obs;
-  final filteredCustomers = <CustomerData>[].obs; // ← cached, bukan computed getter
+  final filteredCustomers =
+      <CustomerData>[].obs; // ← cached, bukan computed getter
   final selectedCustomer = Rxn<CustomerData>();
   final searchText = ''.obs;
   final Rxn<CustomerStatus> statusFilter = Rxn(CustomerStatus.active);
+
+  final hasError = false.obs;
+  final errorMessage = ''.obs;
 
   @override
   void onInit() {
@@ -109,24 +113,29 @@ class CustomerController extends GetxController {
   }
 
   // ===================== FETCH =====================
-  Future<void> fetchCustomers() async {
-    isLoading.value = true;
-    try {
-      final res = await CustomerService.getAllCustomers();
-      if (res.statusCode == 200) {
-        customerList.assignAll(customerModelFromJson(res.body).data);
-        _applyFilter();
-      } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.show(ApiHelper.parseError(res.body));
-      } else {
-        AppToast.show('Gagal memuat daftar pelanggan');
-      }
-    } catch (e) {
-      AppToast.show('Gagal memuat data pelanggan');
-    } finally {
-      isLoading.value = false;
+ Future<void> fetchCustomers() async {
+  if (isLoading.value) return;
+  isLoading.value = true;
+  hasError.value = false;
+  errorMessage.value = '';
+  try {
+    final res = await CustomerService.getAllCustomers();
+    if (res.statusCode == 200) {
+      customerList.assignAll(customerModelFromJson(res.body).data);
+      _applyFilter();
+    } else {
+      hasError.value = true;
+      errorMessage.value = ApiHelper.isNetworkError(res)
+          ? ApiHelper.parseError(res.body)
+          : 'Gagal memuat daftar pelanggan.';
     }
+  } catch (e) {
+    hasError.value = true;
+    errorMessage.value = 'Gagal memuat data.';
+  } finally {
+    isLoading.value = false;
   }
+}
 
   Future<void> fetchCustomerById(String id) async {
     isLoading.value = true;
@@ -148,16 +157,20 @@ class CustomerController extends GetxController {
     final newStatus = customer.isActive
         ? CustomerStatus.inactive
         : CustomerStatus.active;
-    final label = newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
+    final label = newStatus == CustomerStatus.inactive
+        ? 'nonaktifkan'
+        : 'aktifkan';
 
     final confirmed = await AppDialog.confirm(
       title:
           '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
       content: 'Yakin ingin $label "${customer.name}"?',
-      confirmLabel:
-          newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
-      confirmColor:
-          newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
+      confirmLabel: newStatus == CustomerStatus.active
+          ? 'Aktifkan'
+          : 'Nonaktifkan',
+      confirmColor: newStatus == CustomerStatus.active
+          ? Colors.green
+          : Colors.orange,
     );
 
     if (!confirmed) return false;

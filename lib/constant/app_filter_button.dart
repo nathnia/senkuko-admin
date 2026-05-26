@@ -20,20 +20,21 @@ class AppFilterButton extends StatelessWidget {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(12),
+            width: 42,
+            height: 42,
+            padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: isActive
-                  ? AppColors.primary.withOpacity(0.1)
-                  : Colors.white,
+              color: isActive ? AppColors.primary.withAlpha(20) : Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: isActive
-                  ? Border.all(color: AppColors.primary, width: 1.5)
-                  : null,
+              border: Border.all(
+                color: isActive ? AppColors.primary : Colors.grey.shade200,
+                width: isActive ? 1.5 : 0.5,
+              ),
             ),
             child: Icon(
               Icons.tune_rounded,
               size: 20,
-              color: isActive ? AppColors.primary : Colors.black87,
+              color: isActive ? AppColors.primary : AppColors.subtitle,
             ),
           ),
           if (isActive)
