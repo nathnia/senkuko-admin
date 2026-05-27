@@ -205,113 +205,198 @@ class VariantFormPage extends StatelessWidget {
     );
   }
 
+  // FILE: lib/features/products/pages/variant_form_page.dart
+  // Only _openUnitPopup changes — rest of the file is identical to what you have.
+
   void _openUnitPopup(BuildContext context) {
     final nameC = TextEditingController();
     final symbolC = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) => Container(
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              _sheetHandle(),
-              const SizedBox(height: 14),
-              const Text(
-                'Pilih / Tambah Unit',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Obx(
-                  () => ListView(
-                    controller: scrollController,
-                    children: unitC.unitList.map((u) {
-                      return ListTile(
-                        title: Text(
-                          '${u.name} (${u.symbol})',
-                          style: const TextStyle(fontSize: 14),
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // ── Header ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Column(
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
-                        onTap: () {
-                          c.selectedUnitId.value = u.id;
-                          Get.back();
-                        },
-                        trailing: GestureDetector(
-                          onTap: () async {
-                            final confirm = await AppDialog.confirm(
-                              title: 'Hapus Unit',
-                              content: 'Yakin mau hapus unit ini?',
-                            );
-                            if (confirm) await unitC.deleteUnit(u.id);
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Pilih Unit',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+
+                // ── Unit list ──
+                Expanded(
+                  child: Obx(
+                    () => ListView.builder(
+                      controller: scrollController,
+                      itemCount: unitC.unitList.length,
+                      itemBuilder: (_, i) {
+                        final u = unitC.unitList[i];
+                        final isSelected = c.selectedUnitId.value == u.id;
+
+                        return InkWell(
+                          onTap: () {
+                            c.selectedUnitId.value = u.id;
+                            Get.back();
                           },
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 13, 12, 13),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${u.name} (${u.symbol})',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : Colors.black87,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w500
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Icon(
+                                      Icons.check_rounded,
+                                      color: AppColors.primary,
+                                      size: 16,
+                                    ),
+                                  ),
+                                // Delete button
+                                GestureDetector(
+                                  onTap: () async {
+                                    final confirm = await AppDialog.confirm(
+                                      title: 'Hapus Unit',
+                                      content: 'Yakin mau hapus "${u.name}"?',
+                                    );
+                                    if (confirm) await unitC.deleteUnit(u.id);
+                                  },
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 17,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Icon(
-                              Icons.delete_outline_rounded,
-                              size: 15,
-                              color: Colors.red.shade400,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                // ── Add form ──
+                Container(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    MediaQuery.of(context).viewInsets.bottom + 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: Colors.grey.shade100),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppTextField(hint: 'Nama Unit', controller: nameC),
+                      AppTextField(
+                        hint: 'Symbol (pcs, box, dll)',
+                        controller: symbolC,
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            if (nameC.text.trim().isEmpty ||
+                                symbolC.text.trim().isEmpty) {
+                              return;
+                            }
+                            final newId = await unitC.createUnit(
+                              nameC.text.trim(),
+                              symbolC.text.trim(),
+                            );
+                            if (newId != null) {
+                              c.selectedUnitId.value = newId;
+                              Get.back();
+                            }
+                          },
+                          child: const Text(
+                            'Tambah',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const Divider(),
-              AppTextField(hint: 'Nama Unit', controller: nameC),
-              AppTextField(hint: 'Symbol (pcs, box, dll)', controller: symbolC),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    elevation: 0,
-                  ),
-                  onPressed: () async {
-                    if (nameC.text.isEmpty || symbolC.text.isEmpty) return;
-                    final newId = await unitC.createUnit(
-                      nameC.text.trim(),
-                      symbolC.text.trim(),
-                    );
-                    if (newId != null) {
-                      c.selectedUnitId.value = newId;
-                      Get.back();
-                    }
-                  },
-                  child: const Text(
-                    'Tambah',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
-    );
+    ).whenComplete(() {
+      nameC.dispose();
+      symbolC.dispose();
+    });
   }
 
   Widget _priceListCard({required bool isEditing}) {
@@ -327,7 +412,9 @@ class VariantFormPage extends StatelessWidget {
         return Column(
           children: priceC.sortedPriceListMaster.map((pl) {
             return Obx(() {
-              final priceMap = isEditing ? priceC.dialogPrices : priceC.formPrices;
+              final priceMap = isEditing
+                  ? priceC.dialogPrices
+                  : priceC.formPrices;
               final enabled = priceMap[pl.id]?['enabled'] as bool? ?? false;
               final priceController = isEditing
                   ? priceC.dialogPriceC[pl.id]
@@ -428,17 +515,6 @@ class VariantFormPage extends StatelessWidget {
           }).toList(),
         );
       }),
-    );
-  }
-
-  Widget _sheetHandle() {
-    return Container(
-      width: 36,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(2),
-      ),
     );
   }
 }

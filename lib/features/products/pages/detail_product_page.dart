@@ -11,6 +11,7 @@ import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/features/products/widgets/product_image_lightbox.dart';
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
+import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 
 class DetailProductPage extends StatelessWidget {
   DetailProductPage({super.key});
@@ -19,6 +20,8 @@ class DetailProductPage extends StatelessWidget {
   final variantC = Get.find<ProductVariantController>();
   final imageC = Get.find<ProductImageController>();
   final priceC = Get.find<PriceController>();
+  // Tambah controller di class
+  final categoryC = Get.find<CategoryController>();
 
   @override
   Widget build(BuildContext context) {
@@ -310,7 +313,18 @@ class DetailProductPage extends StatelessWidget {
     });
   }
 
+  // Ganti _nameCard:
   Widget _nameCard(dynamic product) {
+    final categoryC = Get.find<CategoryController>();
+    final cat = categoryC.categoryList.firstWhereOrNull(
+      (c) => c.name == product.categoryName,
+    );
+    final categoryDisplay = cat == null
+        ? product.categoryName
+        : cat.parentName != null
+        ? '${cat.parentName} › ${cat.name}'
+        : cat.name;
+
     return AppCard(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
@@ -326,16 +340,21 @@ class DetailProductPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.category_outlined, size: 13, color: AppColors.subtext),
-              const SizedBox(width: 4),
-              Text(
-                product.categoryName,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
+          if (categoryDisplay.isNotEmpty)
+            Row(
+              children: [
+                Icon(
+                  Icons.category_outlined,
+                  size: 13,
+                  color: AppColors.subtext,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  categoryDisplay,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
         ],
       ),
     );

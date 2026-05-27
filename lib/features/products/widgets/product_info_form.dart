@@ -6,7 +6,6 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
-import 'package:senkukoadmin/features/products/models/category_model.dart';
 import 'package:senkukoadmin/features/products/widgets/app_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
@@ -79,8 +78,8 @@ class _CategorySelector extends StatelessWidget {
           final displayName = selected == null
               ? 'Pilih Kategori'
               : selected.parentName != null
-                  ? '${selected.parentName} › ${selected.name}'
-                  : selected.name;
+              ? '${selected.parentName} › ${selected.name}'
+              : selected.name;
 
           return GestureDetector(
             onTap: () => _openSheet(context),
@@ -103,8 +102,10 @@ class _CategorySelector extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Icon(Icons.arrow_drop_down_rounded,
-                      color: Colors.grey.shade400),
+                  Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: Colors.grey.shade400,
+                  ),
                 ],
               ),
             ),
@@ -133,7 +134,8 @@ class _CategorySelector extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CATEGORY SELECTOR SHEET — all ephemeral state lives here
+// CATEGORY SELECTOR SHEET
+// StatefulWidget — owns all ephemeral UI state.
 // ═══════════════════════════════════════════════════════════════
 class _CategorySelectorSheet extends StatefulWidget {
   final CategoryController categoryC;
@@ -192,8 +194,11 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
 
   void _expandSheet() {
     if (_sheetC.isAttached && _sheetC.size < 1.0) {
-      _sheetC.animateTo(1.0,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _sheetC.animateTo(
+        1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -224,54 +229,61 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Handle
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 12),
 
-          // Title row + manage button inline
-          Row(
+          // Title centered + kelola link on right
+          Stack(
+            alignment: Alignment.center,
             children: [
-              const Expanded(
+              const Center(
                 child: Text(
                   'Pilih Kategori',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                 ),
               ),
-              // Manage button — compact text link, not a full button
-              GestureDetector(
-                onTap: () {
-                  Get.back();
-                  Get.toNamed(AppRoutes.manageCategories);
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.settings_outlined,
-                        size: 13, color: Colors.grey.shade400),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Kelola',
-                      style: TextStyle(
-                        fontSize: 12,
+              Positioned(
+                right: 0,
+                child: GestureDetector(
+                  onTap: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.manageCategories);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.settings_outlined,
+                        size: 13,
                         color: Colors.grey.shade400,
-                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        'Kelola',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade400,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -285,18 +297,23 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
             onTap: _expandSheet,
             decoration: InputDecoration(
               hintText: 'Cari kategori...',
-              hintStyle:
-                  TextStyle(fontSize: 13, color: Colors.grey.shade400),
-              prefixIcon: Icon(Icons.search_rounded,
-                  color: Colors.grey.shade400, size: 18),
+              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: Colors.grey.shade400,
+                size: 18,
+              ),
               suffixIcon: _searchQuery.isNotEmpty
                   ? GestureDetector(
                       onTap: () {
                         _searchC.clear();
                         _onSearchChanged('');
                       },
-                      child: Icon(Icons.close_rounded,
-                          color: Colors.grey.shade400, size: 16),
+                      child: Icon(
+                        Icons.close_rounded,
+                        color: Colors.grey.shade400,
+                        size: 16,
+                      ),
                     )
                   : null,
               filled: true,
@@ -315,15 +332,49 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
     );
   }
 
-  // ── Body ──────────────────────────────────────────────────────
+  // FILE: lib/features/products/widgets/product_info_form.dart
+  // Hanya _buildBody di _CategorySelectorSheetState yang berubah
+
   Widget _buildBody(ScrollController scrollController) {
     return Obx(() {
-      final parents = widget.categoryC.parentCategories;
-
-      if (parents.isEmpty) return _buildEmptyState();
-      if (_searchQuery.isNotEmpty) {
-        return _buildSearchResults(scrollController);
+      if (widget.categoryC.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
       }
+
+      // Network error — inline, tidak full page karena ini sheet
+      if (widget.categoryC.hasError.value) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 36,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Gagal memuat kategori',
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: widget.categoryC.fetchCategories,
+                icon: const Icon(Icons.refresh_rounded, size: 14),
+                label: const Text('Coba Lagi'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  textStyle: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final parents = widget.categoryC.parentCategories;
+      if (parents.isEmpty) return _buildEmptyState();
+      if (_searchQuery.isNotEmpty) return _buildSearchResults(scrollController);
       return _buildGroupedList(scrollController, parents);
     });
   }
@@ -336,8 +387,10 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
 
     if (results.isEmpty) {
       return Center(
-        child: Text('Kategori tidak ditemukan',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+        child: Text(
+          'Kategori tidak ditemukan',
+          style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+        ),
       );
     }
 
@@ -346,12 +399,9 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
       itemCount: results.length,
       itemBuilder: (_, i) {
         final cat = results[i];
-        final hasChildren =
-            widget.categoryC.getSubCategories(cat.id).isNotEmpty;
-        final isSelectable = !hasChildren;
-
-        return _SearchResultTile(
-          name: cat.parentName != null
+        final isSelectable = widget.categoryC.getSubCategories(cat.id).isEmpty;
+        return _SelectableTile(
+          label: cat.parentName != null
               ? '${cat.parentName} › ${cat.name}'
               : cat.name,
           isSelected: widget.selectedId == cat.id,
@@ -372,7 +422,7 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
         final hasChildren = children.isNotEmpty;
         final isCollapsed = _collapsed.contains(parent.id);
 
-        return _GroupSection(
+        return _CategoryGroup(
           parentName: parent.name,
           parentId: parent.id,
           hasChildren: hasChildren,
@@ -382,11 +432,14 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
           onToggle: hasChildren ? () => _toggleGroup(parent.id) : null,
           onTapParent: !hasChildren ? () => _select(parent.id) : null,
           children: children
-              .map((c) => _LeafTile(
-                    name: c.name,
-                    isSelected: widget.selectedId == c.id,
-                    onTap: () => _select(c.id),
-                  ))
+              .map(
+                (c) => _SelectableTile(
+                  label: c.name,
+                  isSelected: widget.selectedId == c.id,
+                  isSelectable: true,
+                  onTap: () => _select(c.id),
+                ),
+              )
               .toList(),
         );
       },
@@ -398,12 +451,16 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.folder_off_outlined,
-              size: 40, color: Colors.grey.shade300),
+          Icon(
+            Icons.folder_off_outlined,
+            size: 40,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 8),
-          Text('Belum ada kategori',
-              style:
-                  TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+          Text(
+            'Belum ada kategori',
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          ),
           const SizedBox(height: 12),
           TextButton.icon(
             onPressed: () {
@@ -424,9 +481,9 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GROUP SECTION — parent label + collapsible children
+// CATEGORY GROUP — subtle header + collapsible children
 // ═══════════════════════════════════════════════════════════════
-class _GroupSection extends StatelessWidget {
+class _CategoryGroup extends StatelessWidget {
   final String parentName;
   final String parentId;
   final bool hasChildren;
@@ -437,7 +494,7 @@ class _GroupSection extends StatelessWidget {
   final VoidCallback? onTapParent;
   final List<Widget> children;
 
-  const _GroupSection({
+  const _CategoryGroup({
     required this.parentName,
     required this.parentId,
     required this.hasChildren,
@@ -454,20 +511,18 @@ class _GroupSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Group header row ──
         InkWell(
           onTap: parentSelectable ? onTapParent : onToggle,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    parentName.toUpperCase(),
+                    parentName,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: parentSelected
                           ? AppColors.primary
                           : Colors.grey.shade500,
@@ -476,23 +531,27 @@ class _GroupSection extends StatelessWidget {
                 ),
                 if (parentSelected)
                   Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(Icons.check_rounded,
-                        color: AppColors.primary, size: 13),
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(
+                      Icons.check_rounded,
+                      color: AppColors.primary,
+                      size: 13,
+                    ),
                   ),
                 if (hasChildren)
                   AnimatedRotation(
                     turns: isCollapsed ? -0.25 : 0,
                     duration: const Duration(milliseconds: 180),
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 16, color: Colors.grey.shade400),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 16,
+                      color: Colors.grey.shade400,
+                    ),
                   ),
               ],
             ),
           ),
         ),
-
-        // ── Children ──
         AnimatedCrossFade(
           firstChild: Column(children: children),
           secondChild: const SizedBox.shrink(),
@@ -501,67 +560,24 @@ class _GroupSection extends StatelessWidget {
               : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 180),
         ),
-
-        // Divider between groups
         Divider(height: 1, color: Colors.grey.shade100),
       ],
     );
   }
 }
 
-// ─── Leaf tile — child category ───────────────────────────────────
-class _LeafTile extends StatelessWidget {
-  final String name;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _LeafTile({
-    required this.name,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        // Selected state gets a subtle tinted background
-        color: isSelected
-            ? AppColors.primary.withAlpha(8)
-            : Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(36, 9, 16, 9),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isSelected ? AppColors.primary : Colors.black87,
-                  fontWeight:
-                      isSelected ? FontWeight.w500 : FontWeight.normal,
-                ),
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_rounded, color: AppColors.primary, size: 15),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Search result tile ───────────────────────────────────────────
-class _SearchResultTile extends StatelessWidget {
-  final String name;
+// ═══════════════════════════════════════════════════════════════
+// SELECTABLE TILE — flat tap target, selected + disabled states
+// Used for category children and search results.
+// ═══════════════════════════════════════════════════════════════
+class _SelectableTile extends StatelessWidget {
+  final String label;
   final bool isSelected;
   final bool isSelectable;
   final VoidCallback? onTap;
 
-  const _SearchResultTile({
-    required this.name,
+  const _SelectableTile({
+    required this.label,
     required this.isSelected,
     required this.isSelectable,
     required this.onTap,
@@ -571,29 +587,26 @@ class _SearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Container(
-        color: isSelected
-            ? AppColors.primary.withAlpha(8)
-            : Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                name,
+                label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: !isSelectable
                       ? Colors.grey.shade400
                       : isSelected
-                          ? AppColors.primary
-                          : Colors.black87,
+                      ? AppColors.primary
+                      : Colors.black87,
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
                 ),
               ),
             ),
             if (isSelected)
-              Icon(Icons.check_rounded, color: AppColors.primary, size: 15),
+              Icon(Icons.check_rounded, color: AppColors.primary, size: 16),
           ],
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/models/category_model.dart';
 import 'package:senkukoadmin/features/products/widgets/add_category_sheet.dart';
@@ -40,9 +41,18 @@ class ManageCategoriesPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
+
       body: Obx(() {
         if (_categoryC.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
+        }
+
+        // Network error — full page error state dengan retry
+        if (_categoryC.hasError.value) {
+          return AppErrorState(
+            message: 'Gagal memuat kategori. Coba lagi.',
+            onRetry: _categoryC.fetchCategories,
+          );
         }
 
         final parents = _categoryC.parentCategories;
@@ -215,10 +225,7 @@ class _ParentRow extends StatelessWidget {
                 if (childCount > 0)
                   Text(
                     '$childCount sub-kategori',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade400,
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                   ),
               ],
             ),
@@ -266,10 +273,7 @@ class _ChildRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade700,
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
               ),
               _DeleteButton(onTap: onDelete),
@@ -317,7 +321,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.folder_off_outlined, size: 44, color: Colors.grey.shade300),
+          Icon(
+            Icons.folder_off_outlined,
+            size: 44,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 10),
           Text(
             'Belum ada kategori',

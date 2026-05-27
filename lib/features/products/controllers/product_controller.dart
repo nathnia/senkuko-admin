@@ -151,29 +151,14 @@ class ProductController extends GetxController {
           .toList();
     }
 
-    // ✅ Di getFilteredProducts — ganti seluruh bagian CATEGORY TAB
+
     if (selectedTab.value != 'Semua') {
-      products = products
-          .where((p) => p.categoryName == selectedTab.value)
-          .toList();
+      products = products.where((p) {
+        if (p.categoryName.isEmpty) return false;
+        final parentName = categoryC.resolveParentName(p.categoryName);
+        return parentName == selectedTab.value;
+      }).toList();
     }
-    // if (selectedTab.value != 'Semua') {
-    //   final selectedParent = categoryC.parentCategories.firstWhereOrNull(
-    //     (c) => c.name == selectedTab.value,
-    //   );
-
-    //   if (selectedParent != null) {
-    //     final childIds = categoryC
-    //         .getSubCategories(selectedParent.id)
-    //         .map((e) => e.id)
-    //         .toSet();
-
-    //     products = products.where((p) {
-    //       return p.categoryName == selectedTab.value ||
-    //           childIds.contains(p.categoryId);
-    //     }).toList();
-    //   }
-    // }
 
     // PRICE FILTER
     if (minPrice.value != null || maxPrice.value != null) {
@@ -200,7 +185,7 @@ class ProductController extends GetxController {
           .toList();
     }
 
-    // SORT — DateTime parsed twice for newest/oldest: parse once per product
+    // SORT
     switch (selectedSort.value) {
       case 'newest':
         products.sort((a, b) {
@@ -305,16 +290,11 @@ class ProductController extends GetxController {
     super.onClose();
   }
 
-  // Di ProductController — ganti getter jadi RxList yang di-update setelah fetch
   final tabs = <String>['Semua'].obs;
 
-  // Panggil ini setelah fetchCategories selesai
   void _rebuildTabs() {
-    tabs.assignAll(['Semua', ...categoryC.categoryList.map((c) => c.name)]);
+    tabs.assignAll(['Semua', ...categoryC.parentCategories.map((c) => c.name)]);
   }
-  // void _rebuildTabs() {
-  //   tabs.assignAll(['Semua', ...categoryC.parentCategories.map((c) => c.name)]);
-  // }
 
   Future<void> loadInitialData() async {
     if (isLoading.value) return;

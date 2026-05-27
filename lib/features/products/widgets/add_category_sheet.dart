@@ -3,15 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dropdown.dart';
+import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 
-// ═══════════════════════════════════════════════════════════════
-// ADD CATEGORY SHEET
-//
-// Single-step: type toggle + form in one sheet.
-// Eliminates the two-step modal stack — faster for daily admin use.
-// onCategoryCreated is optional (only used by the selector sheet).
-// ═══════════════════════════════════════════════════════════════
 class AddCategorySheet extends StatefulWidget {
   final CategoryController categoryC;
   final void Function(String newId)? onCategoryCreated;
@@ -72,8 +67,7 @@ class _AddCategorySheetState extends State<AddCategorySheet> {
         backgroundColor: const Color(0xFF3A3A3A),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -123,102 +117,42 @@ class _AddCategorySheetState extends State<AddCategorySheet> {
             isSubCategory: _isSubCategory,
             onChanged: (value) => setState(() {
               _isSubCategory = value;
-              // Reset parent selection when switching type
               _selectedParentId = null;
             }),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
 
           // ── Parent dropdown (only when sub-category) ──
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
             child: _isSubCategory
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _FieldLabel('Masuk ke dalam'),
-                      const SizedBox(height: 6),
-                      Obx(() {
-                        final parents = widget.categoryC.parentCategories;
-                        return DropdownButtonFormField<String>(
-                          value: _selectedParentId,
-                          hint: Text(
-                            'Pilih kategori utama',
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey.shade400),
-                          ),
-                          items: parents
-                              .map((c) => DropdownMenuItem(
-                                    value: c.id,
-                                    child: Text(c.name,
-                                        style:
-                                            const TextStyle(fontSize: 14)),
-                                  ))
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _selectedParentId = v),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: AppColors.primary.withAlpha(80),
-                                width: 1.5,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                          ),
-                          icon: Icon(Icons.keyboard_arrow_down_rounded,
-                              color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(12),
-                          dropdownColor: Colors.white,
-                        );
-                      }),
-                      const SizedBox(height: 14),
-                    ],
-                  )
+                ? Obx(() {
+                    final parents = widget.categoryC.parentCategories;
+                    return AppDropdown<String>(
+                      label: 'Masuk ke dalam',
+                      hint: 'Pilih kategori utama',
+                      value: _selectedParentId,
+                      items: parents
+                          .map((c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Text(c.name),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedParentId = v),
+                    );
+                  })
                 : const SizedBox.shrink(),
           ),
 
           // ── Category name ──
-          _FieldLabel(_isSubCategory ? 'Nama Sub-Kategori' : 'Nama Kategori'),
-          const SizedBox(height: 6),
-          TextField(
+          AppTextField(
             controller: _nameC,
-            autofocus: true,
+            label: _isSubCategory ? 'Nama Sub-Kategori' : 'Nama Kategori',
+            hint: _isSubCategory ? 'cth: Minuman Soda' : 'cth: Makanan',
             textCapitalization: TextCapitalization.words,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              hintText:
-                  _isSubCategory ? 'cth: Minuman Soda' : 'cth: Makanan',
-              hintStyle:
-                  TextStyle(fontSize: 14, color: Colors.grey.shade400),
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: AppColors.primary.withAlpha(80),
-                  width: 1.5,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 12),
-            ),
-            onSubmitted: (_) => _save(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
           // ── Save button ──
           SizedBox(
@@ -244,8 +178,7 @@ class _AddCategorySheetState extends State<AddCategorySheet> {
                     )
                   : const Text(
                       'Simpan',
-                      style: TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
             ),
           ),
@@ -255,11 +188,7 @@ class _AddCategorySheetState extends State<AddCategorySheet> {
   }
 }
 
-// ─── Type toggle ─────────────────────────────────────────────────
-//
-// Segmented-style toggle: cleaner than two big option tiles
-// for a binary choice with no complex descriptions needed.
-// ─────────────────────────────────────────────────────────────────
+// ─── Type toggle ──────────────────────────────────────────────────────────────
 class _TypeToggle extends StatelessWidget {
   final bool isSubCategory;
   final void Function(bool) onChanged;
@@ -317,12 +246,7 @@ class _ToggleOption extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: EdgeInsets.fromLTRB(
-            isLeft ? 3 : 0,
-            3,
-            isLeft ? 0 : 3,
-            3,
-          ),
+          margin: EdgeInsets.fromLTRB(isLeft ? 3 : 0, 3, isLeft ? 0 : 3, 3),
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
@@ -341,32 +265,12 @@ class _ToggleOption extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 color: selected ? AppColors.primary : Colors.grey.shade500,
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ─── Field label ─────────────────────────────────────────────────
-class _FieldLabel extends StatelessWidget {
-  final String text;
-
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 12,
-        color: AppColors.subtext,
-        fontWeight: FontWeight.w500,
       ),
     );
   }

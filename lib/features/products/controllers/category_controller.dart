@@ -1,4 +1,5 @@
-// lib/features/products/controllers/category_controller.dart
+// FILE: lib/features/products/controllers/category_controller.dart
+
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
@@ -9,6 +10,7 @@ import 'package:senkukoadmin/features/products/product_service.dart';
 class CategoryController extends GetxController {
   final categoryList = <CategoryData>[].obs;
   final isLoading = false.obs;
+  final hasError = false.obs;
 
   // ===================== GETTERS =====================
   List<CategoryData> get parentCategories =>
@@ -17,9 +19,26 @@ class CategoryController extends GetxController {
   List<CategoryData> getSubCategories(String parentId) =>
       categoryList.where((c) => c.parentId == parentId).toList();
 
+  // ===================== LOOKUP HELPERS =====================
+  CategoryData? findByName(String name) {
+    if (name.isEmpty) return null;
+    return categoryList.firstWhereOrNull(
+      (c) => c.name.toLowerCase() == name.toLowerCase(),
+    );
+  }
+
+  String? resolveParentName(String categoryName) {
+    final cat = findByName(categoryName);
+    if (cat == null) return null;
+    if (cat.parentId == null) return cat.name;
+    final parent = categoryList.firstWhereOrNull((c) => c.id == cat.parentId);
+    return parent?.name;
+  }
+
   // ===================== FETCH =====================
   Future<void> fetchCategories() async {
     isLoading.value = true;
+    hasError.value = false;
     try {
       final res = await ProductService.getCategories();
       if (res.statusCode == 200) {
@@ -29,9 +48,11 @@ class CategoryController extends GetxController {
               .map((e) => CategoryData.fromJson(e))
               .toList(),
         );
+      } else {
+        hasError.value = true;
       }
     } catch (e) {
-      AppToast.show('Gagal memuat kategori');
+      hasError.value = true;
     } finally {
       isLoading.value = false;
     }

@@ -1,3 +1,5 @@
+// FILE: lib/features/products/pages/product_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
@@ -11,9 +13,7 @@ import 'package:senkukoadmin/constant/connectivity_service.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
-import 'package:senkukoadmin/features/products/widgets/category_bottom_sheet.dart';
 import 'package:senkukoadmin/features/products/widgets/filter_bottom_sheet.dart';
-import 'package:senkukoadmin/features/products/widgets/overflow_category_button.dart';
 import 'package:senkukoadmin/features/products/widgets/product_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
@@ -72,74 +72,43 @@ class ProductPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Obx(() {
-            final tabs = controller.tabs;
-            final visibleTabs = tabs.take(6).toList();
-            final hasMore = tabs.length > 6;
-            final overflowTabs = tabs.skip(6).toList();
+          // ── Category tabs — all visible, horizontally scrollable ──
+          Obx(() => AppFilterChips(
+                items: controller.tabs
+                    .map((t) => FilterChipItem(label: t))
+                    .toList(),
+                selectedLabel: controller.selectedTab.value,
+                onChipTap: controller.changeTab,
+              )),
 
-            return Row(
-              children: [
-                Expanded(
-                  child: AppFilterChips(
-                    key: ValueKey(
-                      tabs.length,
-                    ), 
-                    items: visibleTabs
-                        .map((t) => FilterChipItem(label: t))
-                        .toList(),
-                    selectedLabel: controller.selectedTab.value,
-                    onChipTap: controller.changeTab,
-                  ),
-                ),
-                if (hasMore)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: OverflowCategoryButton(
-                      overflowTabs: overflowTabs,
-                      selectedTab: controller.selectedTab.value,
-                      onTap: () => showCategorySheet(context, controller),
-                    ),
-                  ),
-              ],
-            );
-          }),
-          // ── Active filter chips ──────────────────────────────────────────
+          // ── Active filter chips ──
           Obx(() {
             final chips = <Widget>[];
 
             if (controller.selectedSort.value.isNotEmpty) {
-              chips.add(
-                AppActiveFilterChip(
-                  label: 'Urutan: ${controller.sortLabel}',
-                  onRemove: () => controller.selectedSort.value = '',
-                ),
-              );
+              chips.add(AppActiveFilterChip(
+                label: 'Urutan: ${controller.sortLabel}',
+                onRemove: () => controller.selectedSort.value = '',
+              ));
             }
             if (controller.minPrice.value != null ||
                 controller.maxPrice.value != null) {
-              chips.add(
-                AppActiveFilterChip(
-                  label: 'Harga: ${controller.priceRangeLabel}',
-                  onRemove: controller.clearPriceRange,
-                ),
-              );
+              chips.add(AppActiveFilterChip(
+                label: 'Harga: ${controller.priceRangeLabel}',
+                onRemove: controller.clearPriceRange,
+              ));
             }
             if (controller.showLowStockOnly.value) {
-              chips.add(
-                AppActiveFilterChip(
-                  label: 'Stok Menipis',
-                  onRemove: () => controller.showLowStockOnly.value = false,
-                ),
-              );
+              chips.add(AppActiveFilterChip(
+                label: 'Stok Menipis',
+                onRemove: () => controller.showLowStockOnly.value = false,
+              ));
             }
             if (controller.showOutOfStockOnly.value) {
-              chips.add(
-                AppActiveFilterChip(
-                  label: 'Stok Habis',
-                  onRemove: () => controller.showOutOfStockOnly.value = false,
-                ),
-              );
+              chips.add(AppActiveFilterChip(
+                label: 'Stok Habis',
+                onRemove: () => controller.showOutOfStockOnly.value = false,
+              ));
             }
 
             if (chips.isEmpty) return const SizedBox.shrink();
@@ -154,7 +123,7 @@ class ProductPage extends StatelessWidget {
             );
           }),
 
-          // ── Product list ─────────────────────────────────────────────────
+          // ── Product list ──
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
@@ -175,11 +144,8 @@ class ProductPage extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 48,
-                        color: Colors.grey[300],
-                      ),
+                      Icon(Icons.inventory_2_outlined,
+                          size: 48, color: Colors.grey[300]),
                       const SizedBox(height: 12),
                       Text(
                         'Produk tidak ditemukan',
@@ -203,8 +169,7 @@ class ProductPage extends StatelessWidget {
 
               return RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: controller
-                    .loadInitialData, 
+                onRefresh: controller.loadInitialData,
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   itemCount: list.length,
