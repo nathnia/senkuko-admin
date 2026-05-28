@@ -10,18 +10,21 @@ import 'package:senkukoadmin/routes/routes.dart';
 class ProductCard extends StatelessWidget {
   final ProductData product;
 
-  const ProductCard({super.key, required this.product});
+  // Get.find di field level — bukan di build()
+  final _variantC = Get.find<ProductVariantController>();
+  final _imageC = Get.find<ProductImageController>();
+
+  ProductCard({super.key, required this.product});
 
   @override
   Widget build(BuildContext context) {
-    final variantC = Get.find<ProductVariantController>();
-    final imageC = Get.find<ProductImageController>();
-
+    // Obx ini HANYA observe variantC — tidak menyentuh imageC sama sekali
+    // _ProductImage punya Obx sendiri untuk imageC
     return Obx(() {
-      final summary = variantC.getSummaryForProduct(product.id);
-      final variants = variantC.allVariants
+      final summary = _variantC.getSummaryForProduct(product.id);
+      final variantCount = _variantC.allVariants
           .where((v) => v.productId == product.id)
-          .toList();
+          .length;
 
       return Opacity(
         opacity: summary.isOutOfStock ? 0.45 : 1.0,
@@ -40,109 +43,13 @@ class ProductCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Gambar — stretch ikutin tinggi konten ──
-                  _ProductImage(productId: product.id, imageC: imageC),
+                  _ProductImage(productId: product.id, imageC: _imageC),
                   const SizedBox(width: 12),
-
-                  // ── Info ──
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Nama + edit button
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    product.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: Colors.black87,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => Get.toNamed(
-                                    AppRoutes.editProduct,
-                                    arguments: product.id,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: Icon(
-                                      Icons.edit_outlined,
-                                      size: 16,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              product.categoryName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            // Harga
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text(
-                                  CurrencyFormatter.format(
-                                    summary.mainPriceValue,
-                                  ),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                if (summary.additionalPriceCount > 0) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '+${summary.additionalPriceCount} harga lain',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-
-                        // Badge varian + stok — di bawah, nempel ke gambar
-                        if (variants.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                _Badge(
-                                  icon: Icons.layers_outlined,
-                                  label: '${variants.length} varian',
-                                  type: _BadgeType.neutral,
-                                ),
-                                _StockBadge(stock: summary.totalStock),
-                              ],
-                            ),
-                          ),
-                      ],
+                    child: _ProductInfo(
+                      product: product,
+                      summary: summary,
+                      variantCount: variantCount,
                     ),
                   ),
                 ],
@@ -155,8 +62,7 @@ class ProductCard extends StatelessWidget {
   }
 }
 
-// ── Internal widgets ──────────────────────────────────────────────────────────
-
+// ── Product image — Obx sendiri, hanya rebuild saat imageC berubah ────────────
 class _ProductImage extends StatelessWidget {
   final String productId;
   final ProductImageController imageC;
@@ -184,7 +90,7 @@ class _ProductImage extends StatelessWidget {
                 width: 90,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  width: 80,
+                  width: 90,
                   color: Colors.grey.shade100,
                   child: Icon(
                     Icons.broken_image_outlined,
@@ -198,7 +104,113 @@ class _ProductImage extends StatelessWidget {
   }
 }
 
-// ── Badge types ───────────────────────────────────────────────────────────────
+// ── Product info — pure display, tidak ada Obx di sini ───────────────────────
+class _ProductInfo extends StatelessWidget {
+  final ProductData product;
+  final ProductSummary summary;
+  final int variantCount;
+
+  const _ProductInfo({
+    required this.product,
+    required this.summary,
+    required this.variantCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Get.toNamed(
+                    AppRoutes.editProduct,
+                    arguments: product.id,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              product.categoryName,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  CurrencyFormatter.format(summary.mainPriceValue),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+                if (summary.additionalPriceCount > 0) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    '+${summary.additionalPriceCount} harga lain',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+        if (variantCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                _Badge(
+                  icon: Icons.layers_outlined,
+                  label: '$variantCount varian',
+                  type: _BadgeType.neutral,
+                ),
+                _StockBadge(stock: summary.totalStock),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Badge ─────────────────────────────────────────────────────────────────────
 
 enum _BadgeType { neutral, success, warning, danger }
 

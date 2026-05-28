@@ -27,9 +27,20 @@ class ProductImageController extends GetxController {
     super.onClose();
   }
 
+  // ===================== CACHE =====================
   void clearAllCache() {
     allProductImages.clear();
     allProductImages.refresh();
+  }
+
+  // Replace semua cache sekaligus — atomic, tidak ada flicker
+  void replaceAllCache(Map<String, List<ProductImageData>> newCache) {
+    allProductImages.assignAll(newCache);
+    allProductImages.refresh();
+  }
+
+  List<ProductImageData> getImagesForProduct(String productId) {
+    return allProductImages[productId] ?? [];
   }
 
   // ===================== FETCH =====================
@@ -66,16 +77,6 @@ class ProductImageController extends GetxController {
           .map((e) => ProductImageData.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (_) {}
-  }
-
-  // Replace semua cache sekaligus — atomic, tidak ada flicker
-  void replaceAllCache(Map<String, List<ProductImageData>> newCache) {
-    allProductImages.assignAll(newCache);
-    allProductImages.refresh();
-  }
-
-  List<ProductImageData> getImagesForProduct(String productId) {
-    return allProductImages[productId] ?? [];
   }
 
   // ===================== DELETE IMAGE =====================
@@ -130,72 +131,10 @@ class ProductImageController extends GetxController {
     allProductImages.refresh();
   }
 
-  // ===================== PICK FOR EDIT =====================
-  Future<void> pickImageForEditProduct({
-    ImageSource source = ImageSource.gallery,
-    required String productId,
-  }) async {
-    final existingCount = getImagesForProduct(productId).length;
-    if (existingCount + pendingEditImages.length >= maxImages) {
-      AppToast.show('Maksimal $maxImages gambar per produk');
-      return;
-    }
-
-    try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      if (pickedFile == null) return;
-
-      final ext = pickedFile.name.split('.').last.toLowerCase();
-      if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-        AppToast.show('Gunakan JPEG, PNG, atau WEBP');
-        return;
-      }
-
-      pendingEditImages.add(pickedFile);
-      Get.find<ProductController>().checkDirty();
-    } catch (e) {
-      AppToast.show('Gagal memilih gambar');
-    }
-  }
-
-  // ===================== UPLOAD PENDING EDIT =====================
-  Future<void> uploadPendingEditImages(String productId) async {
-    if (pendingEditImages.isEmpty) return;
-
-    int failCount = 0;
-
-    for (var image in List<XFile>.from(pendingEditImages)) {
-      try {
-        final bytes = await image.readAsBytes();
-        final res = await ProductService.uploadProductImage(
-          productId: productId,
-          imageBytes: bytes,
-          fileName: image.name,
-        );
-
-        if (ApiHelper.isNetworkError(res)) {
-          AppToast.show(ApiHelper.parseError(res.body));
-          break;
-        } else if (res.statusCode != 200 && res.statusCode != 201) {
-          failCount++;
-        }
-      } catch (e) {
-        failCount++;
-      }
-    }
-
-    pendingEditImages.clear();
-    isUploadingImage.value = false;
-
-    if (failCount > 0) {
-      AppToast.show('$failCount gambar gagal diupload');
-    }
+  // ===================== PENDING HELPERS =====================
+  void removePendingImage(int index) {
+    if (index < 0 || index >= pendingImages.length) return;
+    pendingImages.removeAt(index);
   }
 
   void removePendingEditImage(int index) {
@@ -203,7 +142,6 @@ class ProductImageController extends GetxController {
     pendingEditImages.removeAt(index);
   }
 
-  // ===================== PENDING AS IMAGE DATA =====================
   List<ProductImageData> getPendingAsImageData() {
     return pendingImages.asMap().entries.map((entry) {
       return ProductImageData(
@@ -230,16 +168,17 @@ class ProductImageController extends GetxController {
     }).toList();
   }
 
-  void removePendingImage(int index) {
-    if (index < 0 || index >= pendingImages.length) return;
-    pendingImages.removeAt(index);
-  }
-
-  // ===================== PICK FOR NEW PRODUCT =====================
-  Future<void> pickImageForNewProduct({
-    ImageSource source = ImageSource.gallery,
+  // ===================== PRIVATE SHARED LOGIC =====================
+  Future<void> _pickImage({
+    required ImageSource source,
+    required bool isEditMode,
+    String? productId,
   }) async {
-    if (pendingImages.length >= maxImages) {
+    final existingCount = isEditMode
+        ? getImagesForProduct(productId!).length + pendingEditImages.length
+        : pendingImages.length;
+
+    if (existingCount >= maxImages) {
       AppToast.show('Maksimal $maxImages gambar per produk');
       return;
     }
@@ -252,7 +191,6 @@ class ProductImageController extends GetxController {
         maxHeight: 1024,
         imageQuality: 85,
       );
-
       if (pickedFile == null) return;
 
       final ext = pickedFile.name.split('.').last.toLowerCase();
@@ -261,20 +199,24 @@ class ProductImageController extends GetxController {
         return;
       }
 
-      pendingImages.add(pickedFile);
+      if (isEditMode) {
+        pendingEditImages.add(pickedFile);
+      } else {
+        pendingImages.add(pickedFile);
+      }
+
       Get.find<ProductController>().checkDirty();
     } catch (e) {
       AppToast.show('Gagal memilih gambar');
     }
   }
 
-  // ===================== UPLOAD PENDING (add mode) =====================
-  Future<void> uploadPendingImages(String productId) async {
-    if (pendingImages.isEmpty) return;
+  Future<void> _uploadImages(List<XFile> images, String productId) async {
+    if (images.isEmpty) return;
 
     int failCount = 0;
 
-    for (var image in List<XFile>.from(pendingImages)) {
+    for (var image in List<XFile>.from(images)) {
       try {
         final bytes = await image.readAsBytes();
         final res = await ProductService.uploadProductImage(
@@ -283,12 +225,10 @@ class ProductImageController extends GetxController {
           fileName: image.name,
         );
 
-        if (res.statusCode == 200 || res.statusCode == 201) {
-          // success
-        } else if (ApiHelper.isNetworkError(res)) {
+        if (ApiHelper.isNetworkError(res)) {
           AppToast.show(ApiHelper.parseError(res.body));
           break;
-        } else {
+        } else if (res.statusCode != 200 && res.statusCode != 201) {
           failCount++;
         }
       } catch (e) {
@@ -296,11 +236,33 @@ class ProductImageController extends GetxController {
       }
     }
 
-    pendingImages.clear();
     isUploadingImage.value = false;
 
     if (failCount > 0) {
       AppToast.show('$failCount gambar gagal diupload');
     }
+  }
+
+  // ===================== PICK — PUBLIC =====================
+  Future<void> pickImageForNewProduct({
+    ImageSource source = ImageSource.gallery,
+  }) =>
+      _pickImage(source: source, isEditMode: false);
+
+  Future<void> pickImageForEditProduct({
+    ImageSource source = ImageSource.gallery,
+    required String productId,
+  }) =>
+      _pickImage(source: source, isEditMode: true, productId: productId);
+
+  // ===================== UPLOAD — PUBLIC =====================
+  Future<void> uploadPendingImages(String productId) async {
+    await _uploadImages(pendingImages, productId);
+    pendingImages.clear();
+  }
+
+  Future<void> uploadPendingEditImages(String productId) async {
+    await _uploadImages(pendingEditImages, productId);
+    pendingEditImages.clear();
   }
 }

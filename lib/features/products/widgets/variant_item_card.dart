@@ -14,7 +14,9 @@ class VariantItemCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
 
-  const VariantItemCard({
+  final _priceC = Get.find<PriceController>();
+
+  VariantItemCard({
     super.key,
     required this.variant,
     required this.mode,
@@ -25,12 +27,11 @@ class VariantItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final priceC = Get.find<PriceController>();
     final barcode = variant['barcode']?.toString() ?? '';
     final name = variant['name']?.toString() ?? '';
     final stockQty = variant['stock_qty']?.toString() ?? '0';
     final unitName = variant['unit_name']?.toString() ?? '';
-    final prices = priceC.sortPricesByMaster(
+    final prices = _priceC.sortPricesByMaster(
       variant['prices'] as List? ?? [],
     );
 
@@ -107,7 +108,7 @@ class VariantItemCard extends StatelessWidget {
               child: Column(
                 children: prices.map((p) {
                   final priceName =
-                      priceC.priceListMaster
+                      _priceC.priceListMaster
                           .firstWhereOrNull(
                             (pl) => pl.id == p['price_list_id']?.toString(),
                           )

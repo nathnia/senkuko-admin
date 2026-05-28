@@ -17,16 +17,31 @@ import 'package:senkukoadmin/features/products/widgets/filter_bottom_sheet.dart'
 import 'package:senkukoadmin/features/products/widgets/product_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class ProductPage extends StatelessWidget {
-  ProductPage({super.key}) {
-    controller.resetPageState();
-    connectivityService.onReconnect = () => controller.loadInitialData();
-  }
+class ProductPage extends StatefulWidget {
+  const ProductPage({super.key});
 
+  @override
+  State<ProductPage> createState() => _ProductPageState();
+}
+
+class _ProductPageState extends State<ProductPage> {
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
   final priceC = Get.find<PriceController>();
   final connectivityService = Get.find<ConnectivityService>();
+
+  @override
+  void initState() {
+    super.initState();
+    controller.resetPageState();
+    connectivityService.onReconnect = () => controller.loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    connectivityService.onReconnect = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +87,6 @@ class ProductPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // ── Category tabs — all visible, horizontally scrollable ──
           Obx(() => AppFilterChips(
                 items: controller.tabs
                     .map((t) => FilterChipItem(label: t))
@@ -80,50 +94,7 @@ class ProductPage extends StatelessWidget {
                 selectedLabel: controller.selectedTab.value,
                 onChipTap: controller.changeTab,
               )),
-
-          // ── Active filter chips ──
-          Obx(() {
-            final chips = <Widget>[];
-
-            if (controller.selectedSort.value.isNotEmpty) {
-              chips.add(AppActiveFilterChip(
-                label: 'Urutan: ${controller.sortLabel}',
-                onRemove: () => controller.selectedSort.value = '',
-              ));
-            }
-            if (controller.minPrice.value != null ||
-                controller.maxPrice.value != null) {
-              chips.add(AppActiveFilterChip(
-                label: 'Harga: ${controller.priceRangeLabel}',
-                onRemove: controller.clearPriceRange,
-              ));
-            }
-            if (controller.showLowStockOnly.value) {
-              chips.add(AppActiveFilterChip(
-                label: 'Stok Menipis',
-                onRemove: () => controller.showLowStockOnly.value = false,
-              ));
-            }
-            if (controller.showOutOfStockOnly.value) {
-              chips.add(AppActiveFilterChip(
-                label: 'Stok Habis',
-                onRemove: () => controller.showOutOfStockOnly.value = false,
-              ));
-            }
-
-            if (chips.isEmpty) return const SizedBox.shrink();
-
-            return SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: chips,
-              ),
-            );
-          }),
-
-          // ── Product list ──
+          _ActiveFilterChips(controller: controller),
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
@@ -199,5 +170,51 @@ class ProductPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ActiveFilterChips extends StatelessWidget {
+  final ProductController controller;
+
+  const _ActiveFilterChips({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final chips = <Widget>[
+        if (controller.selectedSort.value.isNotEmpty)
+          AppActiveFilterChip(
+            label: 'Urutan: ${controller.sortLabel}',
+            onRemove: () => controller.selectedSort.value = '',
+          ),
+        if (controller.minPrice.value != null ||
+            controller.maxPrice.value != null)
+          AppActiveFilterChip(
+            label: 'Harga: ${controller.priceRangeLabel}',
+            onRemove: controller.clearPriceRange,
+          ),
+        if (controller.showLowStockOnly.value)
+          AppActiveFilterChip(
+            label: 'Stok Menipis',
+            onRemove: () => controller.showLowStockOnly.value = false,
+          ),
+        if (controller.showOutOfStockOnly.value)
+          AppActiveFilterChip(
+            label: 'Stok Habis',
+            onRemove: () => controller.showOutOfStockOnly.value = false,
+          ),
+      ];
+
+      if (chips.isEmpty) return const SizedBox.shrink();
+
+      return SizedBox(
+        height: 36,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: chips,
+        ),
+      );
+    });
   }
 }

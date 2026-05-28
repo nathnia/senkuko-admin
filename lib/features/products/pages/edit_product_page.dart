@@ -14,12 +14,31 @@ import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.da
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class EditProductPage extends StatelessWidget {
-  EditProductPage({super.key});
+class EditProductPage extends StatefulWidget {
+  const EditProductPage({super.key});
 
+  @override
+  State<EditProductPage> createState() => _EditProductPageState();
+}
+
+class _EditProductPageState extends State<EditProductPage> {
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
   final imageC = Get.find<ProductImageController>();
+
+  String? _productId;
+
+  @override
+  void initState() {
+    super.initState();
+    _productId = Get.arguments as String?;
+    if (_productId != null) {
+      // initState dipanggil SEKALI — aman, tidak ada double-load
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.loadEditData(_productId!);
+      });
+    }
+  }
 
   Future<bool> _confirmLeave() async {
     if (!controller.isDirty.value) return true;
@@ -28,17 +47,11 @@ class EditProductPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? productId = Get.arguments as String?;
-
-    if (productId == null) {
+    if (_productId == null) {
       return const Scaffold(
         body: Center(child: Text('ID Produk tidak ditemukan')),
       );
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.loadEditData(productId);
-    });
 
     return PopScope(
       canPop: false,
@@ -73,7 +86,7 @@ class EditProductPage extends StatelessWidget {
                 isDisabled: !controller.isDirty.value,
                 onTap: () async {
                   await controller.updateFullProduct();
-                  await controller.loadProductDetail(productId);
+                  await controller.loadProductDetail(_productId!);
                   Get.back();
                 },
               ),
@@ -86,18 +99,18 @@ class EditProductPage extends StatelessWidget {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ProductImageSection(
                   controller: controller,
-                  productId: productId,
+                  productId: _productId!,
                 ),
                 const SizedBox(height: 12),
                 ProductInfoForm(controller: controller),
                 const SizedBox(height: 12),
-                _variantSection(productId),
+                _variantSection(_productId!),
                 const SizedBox(height: 16),
               ],
             ),
@@ -142,20 +155,17 @@ class EditProductPage extends StatelessWidget {
               }).toList(),
             );
           }),
-          _addVariantRow(isEditMode: true),
+          _addVariantRow(),
         ],
       ),
     );
   }
 
-  Widget _addVariantRow({required bool isEditMode}) {
+  Widget _addVariantRow() {
     return GestureDetector(
       onTap: () {
         variantC.clearVariantForm();
-        Get.toNamed(
-          AppRoutes.variantForm,
-          arguments: {'isEditMode': isEditMode},
-        );
+        Get.toNamed(AppRoutes.variantForm, arguments: {'isEditMode': true});
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),

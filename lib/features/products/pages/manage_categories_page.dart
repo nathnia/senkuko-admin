@@ -103,7 +103,8 @@ class ManageCategoriesPage extends StatelessWidget {
     BuildContext context,
     CategoryData category,
   ) async {
-    final hasChildren = _categoryC.getSubCategories(category.id).isNotEmpty;
+    final children = _categoryC.getSubCategories(category.id);
+    final hasChildren = children.isNotEmpty;
 
     final confirmed = await AppDialog.confirm(
       title: 'Hapus Kategori',
@@ -115,10 +116,11 @@ class ManageCategoriesPage extends StatelessWidget {
 
     if (!confirmed) return;
 
+    // Parallel delete children dulu, baru parent
     if (hasChildren) {
-      for (final child in _categoryC.getSubCategories(category.id)) {
-        await _categoryC.deleteCategory(child.id);
-      }
+      await Future.wait(
+        children.map((child) => _categoryC.deleteCategory(child.id)),
+      );
     }
 
     await _categoryC.deleteCategory(category.id);

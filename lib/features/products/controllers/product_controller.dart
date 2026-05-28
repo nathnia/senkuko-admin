@@ -151,7 +151,6 @@ class ProductController extends GetxController {
           .toList();
     }
 
-
     if (selectedTab.value != 'Semua') {
       products = products.where((p) {
         if (p.categoryName.isEmpty) return false;
@@ -431,8 +430,10 @@ class ProductController extends GetxController {
 
   // ===================== LOAD EDIT DATA =====================
   Future<void> loadEditData(String productId) async {
+    if (isLoadingDetail.value) return;
+
     isDirty.value = false;
-    hasDirtyVariants.value = false; // ADDED
+    hasDirtyVariants.value = false;
     selectedProduct.value = null;
     nameC.clear();
     skuC.clear();
