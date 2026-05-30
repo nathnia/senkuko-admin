@@ -78,11 +78,11 @@ class TransactionData {
   final String id;
   final String invoiceNumber;
   final String status;
-  final double subtotal;       // ← double, bukan String
-  final double totalDiscount;  // ← double, bukan String
-  final double grandTotal;     // ← double, bukan String
-  final double paidAmount;     // ← double, bukan String
-  final double changeAmount;   // ← double, bukan String
+  final double subtotal; // ← double, bukan String
+  final double totalDiscount; // ← double, bukan String
+  final double grandTotal; // ← double, bukan String
+  final double paidAmount; // ← double, bukan String
+  final double changeAmount; // ← double, bukan String
   final String paymentMethod;
   final DateTime transactedAt;
   final DateTime createdAt;
@@ -115,8 +115,8 @@ class TransactionData {
         paidAmount: double.parse(json['paid_amount'].toString()),
         changeAmount: double.parse(json['change_amount'].toString()),
         paymentMethod: json['payment_method'],
-        transactedAt: DateTime.parse(json['transacted_at']),
-        createdAt: DateTime.parse(json['created_at']),
+        transactedAt: DateTime.parse(json['transacted_at']).toLocal(),
+        createdAt: DateTime.parse(json['created_at']).toLocal(),
         customerName: json['customer_name'],
       );
 

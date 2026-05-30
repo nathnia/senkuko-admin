@@ -56,13 +56,19 @@ class TransactionController extends GetxController {
             t.transactedAt.month == now.month &&
             t.transactedAt.day == now.day;
       } else if (selectedQuickDate.value == '7 Hari') {
-        matchDate = t.transactedAt.isAfter(
-          now.subtract(const Duration(days: 7)),
-        );
+        final from = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 6));
+        matchDate = !t.transactedAt.isBefore(from);
       } else if (selectedQuickDate.value == '30 Hari') {
-        matchDate = t.transactedAt.isAfter(
-          now.subtract(const Duration(days: 30)),
-        );
+        final from = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 29));
+        matchDate = !t.transactedAt.isBefore(from);
       } else if (selectedQuickDate.value == 'Custom') {
         final range = selectedDateRange.value;
         if (range != null) {

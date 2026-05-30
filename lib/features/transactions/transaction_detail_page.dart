@@ -26,7 +26,7 @@ class TransactionDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-              backgroundColor: AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: AppBackButton(onTap: () => Get.back()),
@@ -44,13 +44,12 @@ class TransactionDetailPage extends StatelessWidget {
         if (controller.isLoadingDetail.value) {
           return const Center(child: CircularProgressIndicator());
         }
-         if (controller.hasDetailError.value) {
-    return AppErrorState(
-      message: controller.detailErrorMessage.value,
-      onRetry: () => controller.fetchTransactionById(id),
-    );
-  }
-
+        if (controller.hasDetailError.value) {
+          return AppErrorState(
+            message: controller.detailErrorMessage.value,
+            onRetry: () => controller.fetchTransactionById(id),
+          );
+        }
 
         final data = controller.selectedTransaction.value;
         if (data == null) {
@@ -60,8 +59,9 @@ class TransactionDetailPage extends StatelessWidget {
         final items = data['items'] as List? ?? [];
         final promotions = data['promotions'] as List? ?? [];
 
-        final totalDiscount =
-            double.parse((data['total_discount'] ?? '0').toString());
+        final totalDiscount = double.parse(
+          (data['total_discount'] ?? '0').toString(),
+        );
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -86,7 +86,9 @@ class TransactionDetailPage extends StatelessWidget {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8FAF3),
                             borderRadius: BorderRadius.circular(6),
@@ -106,7 +108,10 @@ class TransactionDetailPage extends StatelessWidget {
                     _infoRow(
                       'Tanggal',
                       DateFormatter.formatDateTimeRaw(
-                          data['transacted_at'] ?? ''),
+                        DateTime.parse(
+                          data['transacted_at'],
+                        ).toLocal().toString(),
+                      ),
                     ),
                     _infoRow(
                       'Pelanggan',
@@ -134,8 +139,8 @@ class TransactionDetailPage extends StatelessWidget {
                         border: isLast
                             ? null
                             : const Border(
-                                bottom:
-                                    BorderSide(color: Color(0xFFF0F0F0))),
+                                bottom: BorderSide(color: Color(0xFFF0F0F0)),
+                              ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,14 +161,15 @@ class TransactionDetailPage extends StatelessWidget {
                                 Text(
                                   '${item['price_list_name']} • ${CurrencyFormatter.format(item['unit_price'] ?? '0')} x ${item['qty']}',
                                   style: const TextStyle(
-                                      fontSize: 11, color: Colors.grey),
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                           Text(
-                            CurrencyFormatter.format(
-                                item['subtotal'] ?? '0'),
+                            CurrencyFormatter.format(item['subtotal'] ?? '0'),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -191,7 +197,9 @@ class TransactionDetailPage extends StatelessWidget {
                           Text(
                             p['promo_name'] ?? p['voucher_code'] ?? '-',
                             style: const TextStyle(
-                                fontSize: 13, color: Colors.grey),
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
                           ),
                           Text(
                             '- ${CurrencyFormatter.format(p['discount_amount']?.toString() ?? '0')}',
@@ -257,81 +265,79 @@ class TransactionDetailPage extends StatelessWidget {
   }
 
   Widget _card({required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100),
-        ),
-        child: child,
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade100),
+    ),
+    child: child,
+  );
 
   Widget _sectionLabel(String label) => Padding(
-        padding: const EdgeInsets.only(left: 2, bottom: 8),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey,
-            letterSpacing: 0.3,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(left: 2, bottom: 8),
+    child: Text(
+      label,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Colors.grey,
+        letterSpacing: 0.3,
+      ),
+    ),
+  );
 
   Widget _infoRow(String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 80,
-              child: Text(label,
-                  style:
-                      const TextStyle(fontSize: 12, color: Colors.grey)),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1A1A2E),
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
         ),
-      );
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1A2E),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _summaryRow(
     String label,
     String value, {
     bool isBold = false,
     Color? valueColor,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: isBold ? const Color(0xFF1A1A2E) : Colors.grey,
-                fontWeight:
-                    isBold ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight:
-                    isBold ? FontWeight.w600 : FontWeight.w500,
-                color: valueColor ?? const Color(0xFF1A1A2E),
-              ),
-            ),
-          ],
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: isBold ? const Color(0xFF1A1A2E) : Colors.grey,
+            fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+          ),
         ),
-      );
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
+            color: valueColor ?? const Color(0xFF1A1A2E),
+          ),
+        ),
+      ],
+    ),
+  );
 }
