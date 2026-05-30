@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
-import 'package:senkukoadmin/features/promotions/voucher_model.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_model.dart';
 
 class VoucherCard extends StatelessWidget {
   final VoucherData voucher;

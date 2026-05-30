@@ -51,6 +51,38 @@ class PromotionData {
     this.rewards = const [],
   });
 
+  PromotionData copyWith({
+    String? id,
+    String? name,
+    String? code,
+    String? type,
+    String? description,
+    DateTime? validFrom,
+    DateTime? validTo,
+    int? usageLimit,
+    int? usageCount,
+    bool? isActive,
+    bool? stackable,
+    DateTime? createdAt,
+    List<PromotionCondition>? conditions,
+    List<PromotionReward>? rewards,
+  }) => PromotionData(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    code: code ?? this.code,
+    type: type ?? this.type,
+    description: description ?? this.description,
+    validFrom: validFrom ?? this.validFrom,
+    validTo: validTo ?? this.validTo,
+    usageLimit: usageLimit ?? this.usageLimit,
+    usageCount: usageCount ?? this.usageCount,
+    isActive: isActive ?? this.isActive,
+    stackable: stackable ?? this.stackable,
+    createdAt: createdAt ?? this.createdAt,
+    conditions: conditions ?? this.conditions,
+    rewards: rewards ?? this.rewards,
+  );
+
   factory PromotionData.fromJson(Map<String, dynamic> json) => PromotionData(
     id: json['id'],
     name: json['name'],
@@ -63,7 +95,7 @@ class PromotionData {
     usageCount: json['usage_count'],
     isActive: json['is_active'] == 1 || json['is_active'] == true,
     stackable: json['stackable'] == 1 || json['stackable'] == true,
-    createdAt: DateTime.parse(json['created_at']),
+    createdAt: DateTime.parse(json['created_at']).toLocal(),
     conditions:
         (json['conditions'] as List<dynamic>?)
             ?.map((e) => PromotionCondition.fromJson(e))

@@ -329,8 +329,7 @@ class DashboardPage extends StatelessWidget {
                 icon: Icons.confirmation_number_rounded,
                 label: 'Voucher',
                 sub: 'Kode kupon',
-                onTap: () =>
-                    AppToast.show('Fitur voucher sedang dalam pengembangan'),
+                onTap: () => Get.toNamed(AppRoutes.vouchers),
               ),
             ),
             const SizedBox(width: 8),

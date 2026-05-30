@@ -94,7 +94,7 @@ class PromotionController extends GetxController {
     rewardType.value = '';
     discountMode.value = '';
     discountValueC.clear();
-    maxDiscountC.text = '';
+    maxDiscountC.text = '0';
     freeVariantIdC.clear();
     freeQtyC.text = '1';
   }
@@ -212,6 +212,14 @@ class PromotionController extends GetxController {
       AppToast.show('Periode berlaku harus diisi');
       return false;
     }
+    if (selectedType.value.isEmpty) {
+      AppToast.show('Tipe promosi harus dipilih');
+      return false;
+    }
+    if (validFrom.value!.isAfter(validTo.value!)) {
+      AppToast.show('Tanggal mulai tidak boleh setelah tanggal berakhir');
+      return false;
+    }
     isSubmitting.value = true;
     try {
       final res = await PromotionService.createPromotion(_buildPayload());
@@ -297,33 +305,54 @@ class PromotionController extends GetxController {
 
   // ===================== TOGGLE ACTIVE =====================
   Future<void> toggleActive(PromotionData promo) async {
+    final idx = promotionList.indexWhere((p) => p.id == promo.id);
+    if (idx == -1) return;
+
+    // optimistic update — langsung update UI
+    promotionList[idx] = promo.copyWith(isActive: !promo.isActive);
+    _applyFilter();
+
     try {
       final res = await PromotionService.updatePromotion(promo.id, {
         'name': promo.name,
         'code': promo.code,
         'type': promo.type,
         'description': promo.description ?? '',
-        'valid_from': _formatDate(promo.validFrom),
-        'valid_to': _formatDate(promo.validTo),
+        'valid_from': _formatDateFrom(promo.validFrom),
+        'valid_to': _formatDateTo(promo.validTo),
         'usage_limit': promo.usageLimit,
         'is_active': !promo.isActive,
         'stackable': promo.stackable,
       });
+
       if (res.statusCode == 200) {
-        await fetchPromotions();
         AppToast.show(
           promo.isActive ? 'Promosi dinonaktifkan' : 'Promosi diaktifkan',
         );
       } else {
+        // rollback kalau gagal
+        promotionList[idx] = promo;
+        _applyFilter();
         AppToast.show(_parseError(res.body));
       }
     } catch (e) {
+      // rollback
+      promotionList[idx] = promo;
+      _applyFilter();
       AppToast.show('Gagal mengubah status promosi');
     }
   }
 
   // ===================== CONDITIONS =====================
   Future<bool> addCondition(String promotionId) async {
+    if (conditionType.value.isEmpty) {
+      AppToast.show('Tipe syarat harus dipilih');
+      return false;
+    }
+    if (conditionOperator.value.isEmpty) {
+      AppToast.show('Operator harus dipilih');
+      return false;
+    }
     if (conditionValueC.text.trim().isEmpty) {
       AppToast.show('Value harus diisi');
       return false;
@@ -385,26 +414,39 @@ class PromotionController extends GetxController {
   }
 
   // ===================== REWARDS =====================
+  // SESUDAH
   Future<bool> addReward(String promotionId) async {
-    isSubmitting.value = true;
+    // validasi dulu sebelum isSubmitting
+    if (rewardType.value.isEmpty) {
+      AppToast.show('Tipe reward harus dipilih');
+      return false;
+    }
+    if (rewardType.value == 'free_item') {
+      if (freeVariantIdC.text.trim().isEmpty) {
+        AppToast.show('Variant ID harus diisi');
+        return false;
+      }
+    } else {
+      if (discountValueC.text.trim().isEmpty) {
+        AppToast.show('Nilai diskon harus diisi');
+        return false;
+      }
+      if (discountMode.value.isEmpty) {
+        AppToast.show('Mode diskon harus dipilih');
+        return false;
+      }
+    }
+
+    isSubmitting.value = true; // ← baru set di sini
     try {
       final Map<String, dynamic> payload;
-
       if (rewardType.value == 'free_item') {
-        if (freeVariantIdC.text.trim().isEmpty) {
-          AppToast.show('Variant ID harus diisi');
-          return false;
-        }
         payload = {
           'reward_type': rewardType.value,
           'free_variant_id': freeVariantIdC.text.trim(),
           'free_qty': int.tryParse(freeQtyC.text) ?? 1,
         };
       } else {
-        if (discountValueC.text.trim().isEmpty) {
-          AppToast.show('Nilai diskon harus diisi');
-          return false;
-        }
         payload = {
           'reward_type': rewardType.value,
           'discount_value': double.tryParse(discountValueC.text) ?? 0,
@@ -477,29 +519,36 @@ class PromotionController extends GetxController {
     if (r.rewardType == 'free_item') {
       var text = 'Qty: ${r.freeQty}';
       if ((r.freeVariantId ?? '').isNotEmpty) {
-        text += ' • Variant: ${r.freeVariantId}';
+        final shortId = r.freeVariantId!.length > 8
+            ? '${r.freeVariantId!.substring(0, 8)}...'
+            : r.freeVariantId!;
+        text += ' • Variant: $shortId';
       }
       return text;
     }
     var text = '${r.discountValue} • ${r.discountModeLabel}';
     final maxDisc = r.maxDiscountAmount ?? 0;
-    if (maxDisc > 0) text += ' • maks Rp$maxDisc';
+    if (maxDisc > 0) text += ' • maks Rp${maxDisc.toStringAsFixed(0)}';
     return text;
   }
 
   // ===================== PRIVATE =====================
 
-  String _formatDate(DateTime d) =>
+  String _formatDateFrom(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')} 12:00:00';
+      '${d.day.toString().padLeft(2, '0')} 00:00:00';
 
+  String _formatDateTo(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')} 23:59:59';
+      
   Map<String, dynamic> _buildPayload() => {
     'name': nameC.text.trim(),
     'code': codeC.text.trim().toUpperCase(),
     'type': selectedType.value,
     'description': descC.text.trim(),
-    'valid_from': _formatDate(validFrom.value!),
-    'valid_to': _formatDate(validTo.value!),
+    'valid_from': _formatDateFrom(validFrom.value!),
+    'valid_to': _formatDateTo(validTo.value!),
     'usage_limit': int.tryParse(usageLimitC.text) ?? 0,
     'is_active': isActive.value,
     'stackable': stackable.value,

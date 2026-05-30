@@ -4,8 +4,8 @@ import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
-import 'package:senkukoadmin/features/promotions/voucher_card.dart';
-import 'package:senkukoadmin/features/promotions/voucher_controller.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_card.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class VoucherPage extends StatelessWidget {
@@ -17,9 +17,9 @@ class VoucherPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final String? promotionId = Get.arguments as String?;
 
+    // voucher_page.dart
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.resetPageState(promotionId: promotionId);
-      controller.fetchVouchers();
+      controller.initPage(promotionId);
     });
 
     return Scaffold(
@@ -40,8 +40,11 @@ class VoucherPage extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded,
-                size: 20, color: Colors.black54),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 20,
+              color: Colors.black54,
+            ),
             onPressed: controller.fetchVouchers,
           ),
         ],
@@ -58,25 +61,25 @@ class VoucherPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Obx(() => AppFilterChips(
-                items: const [
-                  FilterChipItem(label: 'Semua'),
-                  FilterChipItem(label: 'Aktif'),
-                  FilterChipItem(label: 'Tidak Aktif'),
-                  FilterChipItem(label: 'Habis'),
-                ],
-                selectedLabel: controller.selectedFilter.value,
-                onChipTap: controller.updateFilter,
-              )),
+          Obx(
+            () => AppFilterChips(
+              items: const [
+                FilterChipItem(label: 'Semua'),
+                FilterChipItem(label: 'Aktif'),
+                FilterChipItem(label: 'Tidak Aktif'),
+                FilterChipItem(label: 'Habis'),
+              ],
+              selectedLabel: controller.selectedFilter.value,
+              onChipTap: controller.updateFilter,
+            ),
+          ),
           Expanded(child: _voucherList(promotionId)),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
-        onPressed: () => Get.toNamed(
-          AppRoutes.voucherForm,
-          arguments: promotionId,
-        ),
+        onPressed: () =>
+            Get.toNamed(AppRoutes.voucherForm, arguments: promotionId),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'Terbitkan Voucher',
@@ -99,8 +102,11 @@ class VoucherPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.confirmation_number_outlined,
-                  size: 48, color: Colors.grey.shade300),
+              Icon(
+                Icons.confirmation_number_outlined,
+                size: 48,
+                color: Colors.grey.shade300,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Belum ada voucher',

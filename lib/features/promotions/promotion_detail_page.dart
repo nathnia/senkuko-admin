@@ -95,7 +95,7 @@ class PromotionDetailPage extends StatelessWidget {
               const SizedBox(height: 12),
               _rewardsSection(id, promo),
               const SizedBox(height: 12),
-              // _voucherButton(id),
+              _voucherSection(id),
               const SizedBox(height: 12),
               _deleteButton(id, promo.name),
               const SizedBox(height: 24),
@@ -195,27 +195,28 @@ class PromotionDetailPage extends StatelessWidget {
 
   // ── Bottom buttons ─────────────────────────────────────────────────────────
 
-  // Widget _voucherButton(String id) {
-  //   return SizedBox(
-  //     width: double.infinity,
-  //     child: OutlinedButton.icon(
-  //       onPressed: () =>
-  //           Get.toNamed(AppRoutes.vouchers, arguments: id),
-  //       style: OutlinedButton.styleFrom(
-  //         foregroundColor: AppColors.primary,
-  //         side: BorderSide(color: AppColors.primary),
-  //         shape: RoundedRectangleBorder(
-  //             borderRadius: BorderRadius.circular(10)),
-  //         padding: const EdgeInsets.symmetric(vertical: 12),
-  //       ),
-  //       icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-  //       label: const Text(
-  //         'Lihat & Kelola Voucher',
-  //         style: TextStyle(fontWeight: FontWeight.w600),
-  //       ),
-  //     ),
-  //   );
-  // }
+  // tambah method ini
+  Widget _voucherSection(String id) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => Get.toNamed(AppRoutes.vouchers, arguments: id),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: BorderSide(color: AppColors.primary),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+        label: const Text(
+          'Lihat & Kelola Voucher',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
 
   Widget _deleteButton(String id, String name) {
     return SizedBox(

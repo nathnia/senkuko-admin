@@ -5,8 +5,8 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
-import 'package:senkukoadmin/features/promotions/voucher_controller.dart';
-import 'package:senkukoadmin/features/promotions/voucher_model.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_model.dart';
 
 /// arguments:
 ///   null                          → create (standalone)
@@ -60,7 +60,19 @@ class VoucherFormPage extends StatelessWidget {
               if (success) Get.back();
             });
       } else {
-        AppToast.show('Fitur terbitkan voucher sedang dalam pengembangan');
+        if (promotionIdC.text.trim().isEmpty) {
+          AppToast.show('Promotion ID harus diisi');
+          return;
+        }
+        controller
+            .createVoucher({
+              'promotion_id': promotionIdC.text.trim(),
+              'code': codeC.text.trim().toUpperCase(),
+              'usage_limit': int.tryParse(usageLimitC.text) ?? 1,
+            })
+            .then((success) {
+              if (success) Get.back();
+            });
       }
     }
 

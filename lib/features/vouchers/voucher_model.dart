@@ -43,17 +43,43 @@ class VoucherData {
     this.promotionType,
   });
 
+  // voucher_model.dart — tambah di class VoucherData
+  VoucherData copyWith({
+    String? id,
+    String? promotionId,
+    String? code,
+    String? status,
+    int? usageLimit,
+    int? usageCount,
+    DateTime? createdAt,
+    String? promotionName,
+    String? promotionType,
+  }) => VoucherData(
+    id: id ?? this.id,
+    promotionId: promotionId ?? this.promotionId,
+    code: code ?? this.code,
+    status: status ?? this.status,
+    usageLimit: usageLimit ?? this.usageLimit,
+    usageCount: usageCount ?? this.usageCount,
+    createdAt: createdAt ?? this.createdAt,
+    promotionName: promotionName ?? this.promotionName,
+    promotionType: promotionType ?? this.promotionType,
+  );
+
   factory VoucherData.fromJson(Map<String, dynamic> json) => VoucherData(
-        id: json['id'],
-        promotionId: json['promotion_id'],
-        code: json['code'],
-        status: json['status'],
-        usageLimit: json['usage_limit'],
-        usageCount: json['usage_count'],
-        createdAt: DateTime.parse(json['created_at']),
-        promotionName: json['promotion_name'],
-        promotionType: json['promotion_type'],
-      );
+    id: json['id'],
+    promotionId: json['promotion_id'],
+    code: json['code'],
+    status: json['status'],
+    usageLimit: json['usage_limit'],
+    usageCount: json['usage_count'],
+    // FIX
+    createdAt: json['created_at'] != null
+        ? DateTime.parse(json['created_at']).toLocal()
+        : DateTime.now(),
+    promotionName: json['promotion_name'],
+    promotionType: json['promotion_type'], // tetap, sudah nullable
+  );
 
   bool get isActive => status == 'active';
   bool get isUsed => usageCount >= usageLimit && usageLimit != 0;

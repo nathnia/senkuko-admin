@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:senkukoadmin/features/promotions/voucher_controller.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 
 class VoucherBinding extends Bindings {
   @override

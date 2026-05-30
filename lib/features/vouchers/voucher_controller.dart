@@ -4,8 +4,8 @@ import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
-import 'package:senkukoadmin/features/promotions/voucher_model.dart';
-import 'package:senkukoadmin/features/promotions/voucher_service.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_model.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_service.dart';
 
 class VoucherController extends GetxController {
   // ===================== STATE =====================
@@ -27,6 +27,19 @@ class VoucherController extends GetxController {
     super.onInit();
     fetchVouchers();
   }
+
+  // voucher_controller.dart — tambah field
+  bool _initialized = false;
+
+  void initPage(String? promotionId) {
+    if (_initialized) return;
+    _initialized = true;
+    resetPageState(promotionId: promotionId);
+    fetchVouchers();
+  }
+
+  // reset flag saat halaman di-dispose atau manual reset
+  void resetInit() => _initialized = false;
 
   // ===================== FILTER =====================
   void _applyFilter() {
@@ -71,15 +84,16 @@ class VoucherController extends GetxController {
     isLoading.value = true;
     try {
       final res = await VoucherService.getAllVouchers();
+      print('VOUCHER STATUS: ${res.statusCode}'); // ← tambah ini
+      print('VOUCHER BODY: ${res.body}'); // ← tambah ini
       if (res.statusCode == 200) {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
         _applyFilter();
-      } else if (ApiHelper.isNetworkError(res)) {
-        AppToast.show(ApiHelper.parseError(res.body));
       } else {
         AppToast.show('Gagal memuat daftar voucher');
       }
     } catch (e) {
+      print('VOUCHER ERROR: $e'); // ← tambah ini
       AppToast.show('Terjadi kesalahan saat memuat voucher');
     } finally {
       isLoading.value = false;
@@ -166,23 +180,39 @@ class VoucherController extends GetxController {
   }
 
   // ===================== TOGGLE STATUS =====================
+  // voucher_controller.dart — ganti toggleStatus()
   Future<void> toggleStatus(VoucherData voucher) async {
+    final idx = voucherList.indexWhere((v) => v.id == voucher.id);
+    if (idx == -1) return;
+
+    final newStatus = voucher.isActive ? 'inactive' : 'active';
+
+    // optimistic update
+    voucherList[idx] = voucher.copyWith(status: newStatus);
+    _applyFilter();
+
     try {
-      final newStatus = voucher.isActive ? 'inactive' : 'active';
       final res = await VoucherService.updateVoucher(voucher.id, {
         'code': voucher.code,
         'status': newStatus,
         'usage_limit': voucher.usageLimit,
       });
       if (res.statusCode == 200) {
-        await fetchVouchers();
         AppToast.show(
-          newStatus == 'active' ? 'Voucher diaktifkan' : 'Voucher dinonaktifkan',
+          newStatus == 'active'
+              ? 'Voucher diaktifkan'
+              : 'Voucher dinonaktifkan',
         );
       } else {
+        // rollback
+        voucherList[idx] = voucher;
+        _applyFilter();
         AppToast.show(_parseError(res.body));
       }
     } catch (e) {
+      // rollback
+      voucherList[idx] = voucher;
+      _applyFilter();
       AppToast.show('Gagal mengubah status voucher');
     }
   }
