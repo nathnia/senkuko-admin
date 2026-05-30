@@ -8,20 +8,34 @@ import 'package:senkukoadmin/features/vouchers/voucher_card.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class VoucherPage extends StatelessWidget {
-  VoucherPage({super.key});
+class VoucherPage extends StatefulWidget {
+  const VoucherPage({super.key});
 
+  @override
+  State<VoucherPage> createState() => _VoucherPageState();
+}
+
+class _VoucherPageState extends State<VoucherPage> {
   final controller = Get.find<VoucherController>();
+  late final String? _promotionId;
+
+  @override
+  void initState() {
+    super.initState();
+    _promotionId = Get.arguments as String?;
+    // initPage is idempotent and safe to call synchronously
+    controller.initPage(_promotionId);
+  }
+
+  @override
+  void dispose() {
+    // Reset the init flag so re-navigating to this page works correctly
+    controller.resetInit();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String? promotionId = Get.arguments as String?;
-
-    // voucher_page.dart
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.initPage(promotionId);
-    });
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -30,7 +44,7 @@ class VoucherPage extends StatelessWidget {
         scrolledUnderElevation: 0,
         leading: const AppBackButton(),
         title: Text(
-          promotionId != null ? 'Voucher Promo' : 'Semua Voucher',
+          _promotionId != null ? 'Voucher Promo' : 'Semua Voucher',
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -38,20 +52,10 @@ class VoucherPage extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.refresh_rounded,
-              size: 20,
-              color: Colors.black54,
-            ),
-            onPressed: controller.fetchVouchers,
-          ),
-        ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
+          preferredSize: const Size.fromHeight(40),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: AppSearchBar(
               hintText: 'Cari kode voucher...',
               onChanged: controller.updateSearch,
@@ -73,13 +77,13 @@ class VoucherPage extends StatelessWidget {
               onChipTap: controller.updateFilter,
             ),
           ),
-          Expanded(child: _voucherList(promotionId)),
+          Expanded(child: _voucherList()),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () =>
-            Get.toNamed(AppRoutes.voucherForm, arguments: promotionId),
+            Get.toNamed(AppRoutes.voucherForm, arguments: _promotionId),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'Terbitkan Voucher',
@@ -89,7 +93,7 @@ class VoucherPage extends StatelessWidget {
     );
   }
 
-  Widget _voucherList(String? promotionId) {
+  Widget _voucherList() {
     return Obx(() {
       if (controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -125,7 +129,7 @@ class VoucherPage extends StatelessWidget {
         color: AppColors.primary,
         onRefresh: controller.fetchVouchers,
         child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           itemCount: list.length,
           itemBuilder: (_, i) {
             final voucher = list[i];

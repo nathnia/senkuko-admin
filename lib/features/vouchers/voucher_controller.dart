@@ -84,8 +84,6 @@ class VoucherController extends GetxController {
     isLoading.value = true;
     try {
       final res = await VoucherService.getAllVouchers();
-      print('VOUCHER STATUS: ${res.statusCode}'); // ← tambah ini
-      print('VOUCHER BODY: ${res.body}'); // ← tambah ini
       if (res.statusCode == 200) {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
         _applyFilter();
@@ -93,7 +91,6 @@ class VoucherController extends GetxController {
         AppToast.show('Gagal memuat daftar voucher');
       }
     } catch (e) {
-      print('VOUCHER ERROR: $e'); // ← tambah ini
       AppToast.show('Terjadi kesalahan saat memuat voucher');
     } finally {
       isLoading.value = false;

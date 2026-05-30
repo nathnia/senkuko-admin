@@ -9,15 +9,29 @@ import 'package:senkukoadmin/features/promotions/promotion_card.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class PromotionPage extends StatelessWidget {
-  PromotionPage({super.key});
+class PromotionPage extends StatefulWidget {
+  const PromotionPage({super.key});
 
+  @override
+  State<PromotionPage> createState() => _PromotionPageState();
+}
+
+class _PromotionPageState extends State<PromotionPage> {
   final controller = Get.find<PromotionController>();
 
   @override
-  Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {});
+  void initState() {
+    super.initState();
+    // Safe to call here — controller.onInit() already ran fetchPromotions().
+    // Only re-fetch if the list is empty (e.g. first navigation after controller
+    // was kept alive via fenix:true but list was cleared).
+    if (controller.promotionList.isEmpty && !controller.isLoading.value) {
+      controller.fetchPromotions();
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -80,7 +94,6 @@ class PromotionPage extends StatelessWidget {
         return const Center(child: CircularProgressIndicator());
       }
 
-      // ADD THIS
       if (controller.hasError.value) {
         return AppErrorState(
           message: controller.errorMessage.value,
@@ -123,8 +136,10 @@ class PromotionPage extends StatelessWidget {
             final promo = list[i];
             return PromotionCard(
               promotion: promo,
-              onTap: () =>
-                  Get.toNamed(AppRoutes.promotionDetail, arguments: promo.id),
+              onTap: () => Get.toNamed(
+                AppRoutes.promotionDetail,
+                arguments: promo.id,
+              ),
               onToggleActive: () => controller.toggleActive(promo),
               onDelete: () => controller.confirmDelete(promo.id, promo.name),
             );

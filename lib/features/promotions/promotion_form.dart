@@ -7,25 +7,36 @@ import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class PromotionFormPage extends StatelessWidget {
-  PromotionFormPage({super.key});
+class PromotionFormPage extends StatefulWidget {
+  const PromotionFormPage({super.key});
 
+  @override
+  State<PromotionFormPage> createState() => _PromotionFormPageState();
+}
+
+class _PromotionFormPageState extends State<PromotionFormPage> {
   final controller = Get.find<PromotionController>();
+
+  late final bool _isEdit;
+  late final String? _editId;
+
+  @override
+  void initState() {
+    super.initState();
+    _editId = Get.arguments as String?;
+    _isEdit = _editId != null;
+
+    // Populate / reset synchronously — no callback needed
+    if (_isEdit) {
+      final promo = controller.selectedPromotion.value;
+      if (promo != null) controller.loadFormFromPromotion(promo);
+    } else {
+      controller.resetForm();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String? editId = Get.arguments as String?;
-    final bool isEdit = editId != null;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (isEdit) {
-        final promo = controller.selectedPromotion.value;
-        if (promo != null) controller.loadFormFromPromotion(promo);
-      } else {
-        controller.resetForm();
-      }
-    });
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -34,7 +45,7 @@ class PromotionFormPage extends StatelessWidget {
         scrolledUnderElevation: 0,
         leading: const AppBackButton(),
         title: Text(
-          isEdit ? 'Edit Promosi' : 'Buat Promosi',
+          _isEdit ? 'Edit Promosi' : 'Buat Promosi',
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -50,11 +61,11 @@ class PromotionFormPage extends StatelessWidget {
           children: [
             _card(title: 'INFORMASI PROMOSI', child: _infoFields()),
             const SizedBox(height: 12),
-            _card(title: 'PERIODE & BATAS', child: _periodFields(context)),
+            _card(title: 'PERIODE & BATAS', child: _periodFields()),
             const SizedBox(height: 12),
             _card(title: 'PENGATURAN', child: _settingsFields()),
             const SizedBox(height: 24),
-            _submitButton(isEdit, editId),
+            _submitButton(),
             const SizedBox(height: 24),
           ],
         ),
@@ -62,7 +73,7 @@ class PromotionFormPage extends StatelessWidget {
     );
   }
 
-  // ===================== SECTIONS =====================
+  // ── Sections ──────────────────────────────────────────────────────────────
 
   Widget _infoFields() {
     return Column(
@@ -98,8 +109,10 @@ class PromotionFormPage extends StatelessWidget {
         hint: 'Tipe Promosi',
         items: labels.entries
             .map(
-              (e) =>
-                  DropdownMenuItem<String>(value: e.key, child: Text(e.value)),
+              (e) => DropdownMenuItem<String>(
+                value: e.key,
+                child: Text(e.value),
+              ),
             )
             .toList(),
         onChanged: (val) {
@@ -109,7 +122,7 @@ class PromotionFormPage extends StatelessWidget {
     );
   }
 
-  Widget _periodFields(BuildContext context) {
+  Widget _periodFields() {
     return Column(
       children: [
         AppTextField(
@@ -123,10 +136,9 @@ class PromotionFormPage extends StatelessWidget {
             Expanded(
               child: Obx(
                 () => _datePicker(
-                  context: context,
                   hint: 'Berlaku Dari',
                   date: controller.validFrom.value,
-                  onTap: () => _pickDate(context, isFrom: true),
+                  onTap: () => _pickDate(isFrom: true),
                 ),
               ),
             ),
@@ -134,10 +146,9 @@ class PromotionFormPage extends StatelessWidget {
             Expanded(
               child: Obx(
                 () => _datePicker(
-                  context: context,
                   hint: 'Berlaku Hingga',
                   date: controller.validTo.value,
-                  onTap: () => _pickDate(context, isFrom: false),
+                  onTap: () => _pickDate(isFrom: false),
                 ),
               ),
             ),
@@ -171,7 +182,7 @@ class PromotionFormPage extends StatelessWidget {
     );
   }
 
-  Widget _submitButton(bool isEdit, String? editId) {
+  Widget _submitButton() {
     return Obx(
       () => SizedBox(
         width: double.infinity,
@@ -187,16 +198,17 @@ class PromotionFormPage extends StatelessWidget {
           onPressed: controller.isSubmitting.value
               ? null
               : () async {
-                  final success = isEdit
-                      ? await controller.updatePromotion(editId!)
+                  final success = _isEdit
+                      ? await controller.updatePromotion(_editId!)
                       : await controller.createPromotion();
-                  // SEBELUM
+                  if (!mounted) return;
                   if (success) {
-                    if (isEdit) {
+                    if (_isEdit) {
                       Get.back();
                     } else {
                       Get.until(
-                        (route) => route.settings.name == AppRoutes.promotions,
+                        (route) =>
+                            route.settings.name == AppRoutes.promotions,
                       );
                     }
                   }
@@ -211,7 +223,7 @@ class PromotionFormPage extends StatelessWidget {
                   ),
                 )
               : Text(
-                  isEdit ? 'Simpan Perubahan' : 'Buat Promosi',
+                  _isEdit ? 'Simpan Perubahan' : 'Buat Promosi',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -223,9 +235,9 @@ class PromotionFormPage extends StatelessWidget {
     );
   }
 
-  // ===================== HELPERS =====================
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
-  Future<void> _pickDate(BuildContext context, {required bool isFrom}) async {
+  Future<void> _pickDate({required bool isFrom}) async {
     final current = isFrom
         ? controller.validFrom.value ?? DateTime.now()
         : controller.validTo.value ?? DateTime.now();
@@ -253,102 +265,103 @@ class PromotionFormPage extends StatelessWidget {
     }
   }
 
-  // ── UI building blocks ────────────────────────────────────────────────────
-
   Widget _card({required String title, required Widget child}) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.grey.shade100, width: 0.5),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.black54,
-            letterSpacing: 0.5,
-          ),
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade100, width: 0.5),
         ),
-        const SizedBox(height: 12),
-        child,
-      ],
-    ),
-  );
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Colors.black54,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
+      );
 
   Widget _datePicker({
-    required BuildContext context,
     required String hint,
     required DateTime? date,
     required VoidCallback onTap,
-  }) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_today_outlined,
-            size: 13,
-            color: AppColors.subtext,
+  }) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 6),
-          Text(
-            date != null ? '${date.day}/${date.month}/${date.year}' : hint,
-            style: TextStyle(
-              fontSize: 13,
-              color: date != null
-                  ? const Color(0xFF1A1A2E)
-                  : Colors.grey.shade400,
-            ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 13,
+                color: AppColors.subtext,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                date != null
+                    ? '${date.day}/${date.month}/${date.year}'
+                    : hint,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: date != null
+                      ? const Color(0xFF1A1A2E)
+                      : Colors.grey.shade400,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   Widget _toggleTile({
     required String label,
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
-  }) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+  }) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
               ),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ],
-          ),
+            ),
+            Switch.adaptive(
+              value: value,
+              onChanged: onChanged,
+              activeColor: AppColors.primary,
+            ),
+          ],
         ),
-        Switch.adaptive(
-          value: value,
-          onChanged: onChanged,
-          activeColor: AppColors.primary,
-        ),
-      ],
-    ),
-  );
+      );
 }

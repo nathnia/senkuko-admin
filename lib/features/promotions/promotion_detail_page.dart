@@ -7,22 +7,32 @@ import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class PromotionDetailPage extends StatelessWidget {
-  PromotionDetailPage({super.key});
+class PromotionDetailPage extends StatefulWidget {
+  const PromotionDetailPage({super.key});
 
+  @override
+  State<PromotionDetailPage> createState() => _PromotionDetailPageState();
+}
+
+class _PromotionDetailPageState extends State<PromotionDetailPage> {
   final controller = Get.find<PromotionController>();
+  late final String? _id;
+
+  @override
+  void initState() {
+    super.initState();
+    _id = Get.arguments as String?;
+    // Fetch is called once, synchronously at mount — no callback hack needed
+    if (_id != null && _id.isNotEmpty) {
+      controller.fetchPromotionById(_id);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String? id = Get.arguments as String?;
-
-    if (id == null || id.isEmpty) {
+    if (_id == null || _id.isEmpty) {
       return const Scaffold(body: Center(child: Text('ID tidak ditemukan')));
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.fetchPromotionById(id);
-    });
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,10 +52,12 @@ class PromotionDetailPage extends StatelessWidget {
         centerTitle: true,
         actions: [
           GestureDetector(
-            onTap: () => Get.toNamed(AppRoutes.promotionForm, arguments: id),
+            onTap: () =>
+                Get.toNamed(AppRoutes.promotionForm, arguments: _id),
             child: Container(
               margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
@@ -75,7 +87,7 @@ class PromotionDetailPage extends StatelessWidget {
         if (controller.hasDetailError.value) {
           return AppErrorState(
             message: controller.detailErrorMessage.value,
-            onRetry: () => controller.fetchPromotionById(id),
+            onRetry: () => controller.fetchPromotionById(_id),
           );
         }
         final promo = controller.selectedPromotion.value;
@@ -83,28 +95,37 @@ class PromotionDetailPage extends StatelessWidget {
           return const Center(child: Text('Data tidak ditemukan'));
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionLabel('Informasi Promosi'),
-              _infoCard(promo),
-              const SizedBox(height: 12),
-              _conditionsSection(id, promo),
-              const SizedBox(height: 12),
-              _rewardsSection(id, promo),
-              const SizedBox(height: 12),
-              _voucherSection(id),
-              const SizedBox(height: 12),
-              _deleteButton(id, promo.name),
-              const SizedBox(height: 24),
-            ],
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () => controller.fetchPromotionById(_id),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StatusBanner(promo: promo),
+                const SizedBox(height: 12),
+                _sectionLabel('INFORMASI PROMOSI'),
+                _infoCard(promo),
+                const SizedBox(height: 12),
+                _conditionsSection(_id, promo),
+                const SizedBox(height: 12),
+                _rewardsSection(_id, promo),
+                const SizedBox(height: 12),
+                _voucherSection(_id),
+                const SizedBox(height: 12),
+                _deleteButton(_id, promo.name),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         );
       }),
     );
   }
+
+  // ── Status banner ──────────────────────────────────────────────────────────
 
   // ── Info card ──────────────────────────────────────────────────────────────
 
@@ -120,7 +141,7 @@ class PromotionDetailPage extends StatelessWidget {
           _infoRow('Berlaku', controller.detailValidPeriod),
           _infoRow('Batas Pakai', controller.detailUsageDisplay),
           _infoRow('Stackable', controller.detailStackableLabel),
-          _infoRow('Status', controller.detailStatusLabel),
+          _infoRow('Status', controller.detailStatusLabel, isLast: true),
         ],
       ),
     );
@@ -134,7 +155,7 @@ class PromotionDetailPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader(
-          'Syarat (${conditions.length})',
+          'SYARAT (${conditions.length})',
           onAdd: () =>
               Get.toNamed(AppRoutes.promotionConditionForm, arguments: id),
         ),
@@ -167,7 +188,7 @@ class PromotionDetailPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader(
-          'Reward (${rewards.length})',
+          'REWARD (${rewards.length})',
           onAdd: () =>
               Get.toNamed(AppRoutes.promotionRewardForm, arguments: id),
         ),
@@ -193,9 +214,8 @@ class PromotionDetailPage extends StatelessWidget {
     );
   }
 
-  // ── Bottom buttons ─────────────────────────────────────────────────────────
+  // ── Bottom actions ────────────────────────────────────────────────────────
 
-  // tambah method ini
   Widget _voucherSection(String id) {
     return SizedBox(
       width: double.infinity,
@@ -240,7 +260,7 @@ class PromotionDetailPage extends StatelessWidget {
     );
   }
 
-  // ── Tiles ──────────────────────────────────────────────────────────────────
+  // ── Tiles ─────────────────────────────────────────────────────────────────
 
   Widget _conditionTile(
     PromotionCondition c, {
@@ -361,37 +381,22 @@ class PromotionDetailPage extends StatelessWidget {
     );
   }
 
-  // ── Shared widgets ─────────────────────────────────────────────────────────
+  // ── Shared widgets ────────────────────────────────────────────────────────
 
   Widget _card({required Widget child}) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.grey.shade100, width: 0.5),
-    ),
-    child: child,
-  );
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade100, width: 0.5),
+        ),
+        child: child,
+      );
 
   Widget _sectionLabel(String label) => Padding(
-    padding: const EdgeInsets.only(left: 2, bottom: 8),
-    child: Text(
-      label,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: Colors.black54,
-        letterSpacing: 0.5,
-      ),
-    ),
-  );
-
-  Widget _sectionHeader(String label, {required VoidCallback onAdd}) => Padding(
-    padding: const EdgeInsets.only(left: 2, bottom: 8),
-    child: Row(
-      children: [
-        Text(
+        padding: const EdgeInsets.only(left: 2, bottom: 8),
+        child: Text(
           label,
           style: const TextStyle(
             fontSize: 11,
@@ -400,101 +405,186 @@ class PromotionDetailPage extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        const Spacer(),
-        GestureDetector(
-          onTap: onAdd,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.add_rounded, size: 13, color: Colors.white),
-                SizedBox(width: 4),
-                Text(
-                  'Tambah',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 
-  Widget _infoRow(String label, String value, {bool mono = false}) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 90,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF1A1A2E),
-              fontFamily: mono ? 'monospace' : null,
+  Widget _sectionHeader(String label, {required VoidCallback onAdd}) =>
+      Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 8),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Colors.black54,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
+            const Spacer(),
+            GestureDetector(
+              onTap: onAdd,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.add_rounded, size: 13, color: Colors.white),
+                    SizedBox(width: 4),
+                    Text(
+                      'Tambah',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
+
+  Widget _infoRow(String label, String value,
+      {bool mono = false, bool isLast = false}) =>
+      Padding(
+        padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 90,
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF1A1A2E),
+                  fontFamily: mono ? 'monospace' : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _emptyState(
     String message,
     String subtitle, {
     bool isWarning = false,
-  }) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: isWarning
-          ? Colors.orange.withAlpha(15)
-          : Colors.grey.withAlpha(15),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          isWarning ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
-          size: 16,
-          color: isWarning ? Colors.orange : Colors.grey,
+  }) =>
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isWarning
+              ? Colors.orange.withAlpha(15)
+              : Colors.grey.withAlpha(15),
+          borderRadius: BorderRadius.circular(8),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                message,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
+        child: Row(
+          children: [
+            Icon(
+              isWarning
+                  ? Icons.warning_amber_rounded
+                  : Icons.info_outline_rounded,
+              size: 16,
+              color: isWarning ? Colors.orange : Colors.grey,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
               ),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ],
+            ),
+          ],
+        ),
+      );
+}
+
+// ── Status Banner (extracted widget for clarity) ───────────────────────────
+
+class _StatusBanner extends StatelessWidget {
+  final PromotionData promo;
+
+  const _StatusBanner({required this.promo});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    final String label;
+    final IconData icon;
+
+    if (!promo.isActive) {
+      color = Colors.grey;
+      label = 'Promosi tidak aktif';
+      icon = Icons.pause_circle_outline_rounded;
+    } else if (promo.isExpired) {
+      color = Colors.orange;
+      label = 'Promosi telah kedaluwarsa';
+      icon = Icons.timer_off_outlined;
+    } else {
+      color = const Color(0xFF2DC98E);
+      label = 'Promosi sedang berjalan';
+      icon = Icons.check_circle_outline_rounded;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withAlpha(40)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+          const Spacer(),
+          if (!promo.isExpired)
+            Text(
+              promo.isActive ? 'Aktif' : 'Nonaktif',
+              style: TextStyle(
+                fontSize: 11,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
