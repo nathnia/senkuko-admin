@@ -5,12 +5,13 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
+import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/promotions/promotion_picker_sheet.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 
 /// arguments:
-///   null                              → create (standalone)
-///   String promotionId                → create pre-filled from promotion detail
+///   null                              → create (standalone, user picks promotion)
+///   PromotionData                     → create pre-filled from promotion detail
 ///   {'id': String, 'isEdit': true}    → edit existing voucher
 class VoucherFormPage extends StatefulWidget {
   const VoucherFormPage({super.key});
@@ -24,7 +25,8 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
 
   late final bool _isEdit;
   late final String? _editId;
-  late final String? _prefilledPromotionId;
+  /// Non-null when navigated from a promotion detail page.
+  late final PromotionData? _prefilledPromotion;
 
   @override
   void initState() {
@@ -33,7 +35,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     final args = Get.arguments;
     _isEdit = args is Map && args['isEdit'] == true;
     _editId = _isEdit ? args['id'] as String? : null;
-    _prefilledPromotionId = _isEdit ? null : (args is String ? args : null);
+    _prefilledPromotion = _isEdit ? null : (args is PromotionData ? args : null);
 
     if (_isEdit && _editId != null) {
       final existing = controller.voucherList.firstWhereOrNull(
@@ -44,8 +46,9 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
       }
     } else {
       controller.resetForm();
-      if (_prefilledPromotionId != null) {
-        controller.promotionIdC.text = _prefilledPromotionId;
+      if (_prefilledPromotion != null) {
+        controller.promotionIdC.text = _prefilledPromotion.id;
+        controller.selectedPromotionObs.value = _prefilledPromotion;
       }
     }
   }
@@ -109,15 +112,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Promotion picker (create mode only) ──────────────
-                    if (!_isEdit)
-                      _prefilledPromotionId != null
-                          // Pre-filled from promotion detail → read-only chip
-                          ? _readonlyField(
-                              label: 'Promotion ID',
-                              value: _prefilledPromotionId,
-                            )
-                          // Standalone create → tap-to-pick bottom sheet
-                          : _promotionPickerField(),
+                    if (!_isEdit) _promotionPickerField(),
 
                     // ── Kode Voucher ──────────────────────────────────────
                     AppTextField(
@@ -221,6 +216,9 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
   // ── Promotion picker field ────────────────────────────────────────────────
 
   Widget _promotionPickerField() {
+    // When opened from promotion detail the promotion is pre-filled and locked.
+    final bool isLocked = _prefilledPromotion != null;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
@@ -238,7 +236,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
           Obx(() {
             final selected = controller.selectedPromotionObs.value;
             return GestureDetector(
-              onTap: _openPromotionPicker,
+              onTap: isLocked ? null : _openPromotionPicker,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -249,7 +247,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: selected != null
+                    color: selected != null && !isLocked
                         ? AppColors.primary.withAlpha(80)
                         : Colors.transparent,
                     width: 1,
@@ -315,18 +313,25 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          // Ganti / clear
-                          GestureDetector(
-                            onTap: () {
-                              controller.selectedPromotionObs.value = null;
-                              controller.promotionIdC.clear();
-                            },
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 16,
+                          // Show lock icon when pre-filled, clear button otherwise
+                          if (isLocked)
+                            Icon(
+                              Icons.lock_outline_rounded,
+                              size: 14,
                               color: Colors.grey.shade400,
+                            )
+                          else
+                            GestureDetector(
+                              onTap: () {
+                                controller.selectedPromotionObs.value = null;
+                                controller.promotionIdC.clear();
+                              },
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 16,
+                                color: Colors.grey.shade400,
+                              ),
                             ),
-                          ),
                         ],
                       ),
               ),
@@ -339,40 +344,6 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  Widget _readonlyField({required String label, required String value}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.subtext,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
 
   Widget _card({required Widget child}) => Container(
     width: double.infinity,

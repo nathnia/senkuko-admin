@@ -20,6 +20,12 @@ class VoucherController extends GetxController {
   final voucherList = <VoucherData>[].obs;
   final filteredVouchers = <VoucherData>[].obs;
 
+  // ===================== PROMOTION DETAIL PREVIEW =====================
+  /// Isolated slice for the inline voucher preview inside PromotionDetailPage.
+  /// Never shared with or mutated by VoucherPage's filter/search session.
+  final promotionVouchers = <VoucherData>[].obs;
+  String? _previewPromotionId;
+
   // ===================== PAGE STATE =====================
   final searchText = ''.obs;
   final selectedFilter = 'Semua'.obs;
@@ -107,10 +113,10 @@ class VoucherController extends GetxController {
 
   bool _initialized = false;
 
-  void initPage(String? promotionId) {
+  void initPage(PromotionData? promotion) {
     if (_initialized) return;
     _initialized = true;
-    resetPageState(promotionId: promotionId);
+    resetPageState(promotion: promotion);
     fetchVouchers();
   }
 
@@ -160,11 +166,38 @@ class VoucherController extends GetxController {
     _applyFilter();
   }
 
-  void resetPageState({String? promotionId}) {
+  void resetPageState({PromotionData? promotion}) {
     searchText.value = '';
     selectedFilter.value = 'Semua';
-    filterByPromotionId.value = promotionId;
+    filterByPromotionId.value = promotion?.id;
     _applyFilter();
+  }
+
+  // ===================== PROMOTION PREVIEW =====================
+
+  /// Called by PromotionDetailPage in initState.
+  /// Derives from already-loaded voucherList if available, otherwise fetches first.
+  Future<void> fetchVouchersForPromotion(String promotionId) async {
+    _previewPromotionId = promotionId;
+    if (voucherList.isEmpty) {
+      await fetchVouchers();
+    } else {
+      _refreshPromotionVouchers();
+    }
+  }
+
+  /// Called by PromotionDetailPage in dispose. Clears preview slice.
+  void clearPromotionVouchers() {
+    _previewPromotionId = null;
+    promotionVouchers.clear();
+  }
+
+  /// Derives promotionVouchers from voucherList. Called after every mutation.
+  void _refreshPromotionVouchers() {
+    if (_previewPromotionId == null) return;
+    promotionVouchers.assignAll(
+      voucherList.where((v) => v.promotionId == _previewPromotionId).toList(),
+    );
   }
 
   // ===================== FETCH =====================
@@ -176,6 +209,7 @@ class VoucherController extends GetxController {
       if (res.statusCode == 200) {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
         _applyFilter();
+        _refreshPromotionVouchers();
       } else {
         hasError.value = true;
         errorMessage.value = 'Gagal memuat daftar voucher';
@@ -270,6 +304,7 @@ class VoucherController extends GetxController {
       if (res.statusCode == 200) {
         voucherList.removeWhere((v) => v.id == id);
         _applyFilter();
+        _refreshPromotionVouchers();
         AppToast.show('Voucher berhasil dihapus');
         if (Get.currentRoute != '/vouchers') Get.back();
       } else if (ApiHelper.isNetworkError(res)) {
@@ -300,6 +335,7 @@ class VoucherController extends GetxController {
     // optimistic update
     voucherList[idx] = voucher.copyWith(status: newStatus);
     _applyFilter();
+    _refreshPromotionVouchers();
 
     try {
       final res = await VoucherService.updateVoucher(voucher.id, {
@@ -317,12 +353,14 @@ class VoucherController extends GetxController {
         // rollback
         voucherList[idx] = voucher;
         _applyFilter();
+        _refreshPromotionVouchers();
         AppToast.show(_parseError(res.body));
       }
     } catch (e) {
       // rollback
       voucherList[idx] = voucher;
       _applyFilter();
+      _refreshPromotionVouchers();
       AppToast.show('Gagal mengubah status voucher');
     }
   }

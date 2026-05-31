@@ -5,6 +5,7 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
+import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_card.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -18,13 +19,13 @@ class VoucherPage extends StatefulWidget {
 
 class _VoucherPageState extends State<VoucherPage> {
   final controller = Get.find<VoucherController>();
-  late final String? _promotionId;
+  late final PromotionData? _promotion;
 
   @override
   void initState() {
     super.initState();
-    _promotionId = Get.arguments as String?;
-    controller.initPage(_promotionId);
+    _promotion = Get.arguments as PromotionData?;
+    controller.initPage(_promotion);
   }
 
   @override
@@ -43,7 +44,7 @@ class _VoucherPageState extends State<VoucherPage> {
         scrolledUnderElevation: 0,
         leading: const AppBackButton(),
         title: Text(
-          _promotionId != null ? 'Voucher Promo' : 'Semua Voucher',
+          _promotion != null ? 'Voucher Promo' : 'Semua Voucher',
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -82,7 +83,7 @@ class _VoucherPageState extends State<VoucherPage> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () =>
-            Get.toNamed(AppRoutes.voucherForm, arguments: _promotionId),
+            Get.toNamed(AppRoutes.voucherForm, arguments: _promotion),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'Terbitkan Voucher',

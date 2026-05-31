@@ -5,6 +5,8 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_card.dart';
+import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class PromotionDetailPage extends StatefulWidget {
@@ -16,16 +18,25 @@ class PromotionDetailPage extends StatefulWidget {
 
 class _PromotionDetailPageState extends State<PromotionDetailPage> {
   final controller = Get.find<PromotionController>();
+  late final VoucherController _voucherController;
   late final String? _id;
 
   @override
   void initState() {
     super.initState();
     _id = Get.arguments as String?;
+    _voucherController = Get.find<VoucherController>();
     // Fetch is called once, synchronously at mount — no callback hack needed
     if (_id != null && _id.isNotEmpty) {
       controller.fetchPromotionById(_id);
+      _voucherController.fetchVouchersForPromotion(_id);
     }
+  }
+
+  @override
+  void dispose() {
+    _voucherController.clearPromotionVouchers();
+    super.dispose();
   }
 
   @override
@@ -113,7 +124,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
                 const SizedBox(height: 12),
                 _rewardsSection(_id, promo),
                 const SizedBox(height: 12),
-                _voucherSection(_id),
+                _voucherSection(promo),
                 const SizedBox(height: 12),
                 _deleteButton(_id, promo.name),
                 const SizedBox(height: 24),
@@ -216,25 +227,104 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
 
   // ── Bottom actions ────────────────────────────────────────────────────────
 
-  Widget _voucherSection(String id) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => Get.toNamed(AppRoutes.vouchers, arguments: id),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+  static const int _voucherPreviewLimit = 5;
+
+  Widget _voucherSection(PromotionData promo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Section header: label + "+ Terbitkan" action ─────────────────
+        _sectionHeader(
+          'VOUCHER',
+          addLabel: '+ Terbitkan',
+          onAdd: () => Get.toNamed(
+            AppRoutes.voucherForm,
+            arguments: promo,
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
         ),
-        icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-        label: const Text(
-          'Lihat & Kelola Voucher',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
+
+        // ── Reactive preview ──────────────────────────────────────────────
+        Obx(() {
+          final all = _voucherController.promotionVouchers;
+          final isLoading = _voucherController.isLoading.value;
+          final preview = all.take(_voucherPreviewLimit).toList();
+          final hasMore = all.length > _voucherPreviewLimit;
+
+          // Loading on cold start (detail opened before vouchers ever fetched)
+          if (isLoading && all.isEmpty) {
+            return _card(
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          }
+
+          if (all.isEmpty) {
+            return _card(
+              child: _emptyState(
+                'Belum ada voucher',
+                'Terbitkan voucher pertama untuk promosi ini',
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              ...preview.map((voucher) => VoucherCard(
+                    voucher: voucher,
+                    showActions: false,
+                    onTap: () => Get.toNamed(
+                      AppRoutes.voucherForm,
+                      arguments: {'id': voucher.id, 'isEdit': true},
+                    ),
+                  )),
+
+              // ── "Lihat Semua (X)" row ─────────────────────────────────
+              if (hasMore)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: GestureDetector(
+                    onTap: () => Get.toNamed(
+                      AppRoutes.vouchers,
+                      arguments: promo,
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.grey.shade100),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Lihat Semua (${all.length})',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
+      ],
     );
   }
 
@@ -407,7 +497,11 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
         ),
       );
 
-  Widget _sectionHeader(String label, {required VoidCallback onAdd}) =>
+  Widget _sectionHeader(
+    String label, {
+    required VoidCallback onAdd,
+    String addLabel = 'Tambah',
+  }) =>
       Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 8),
         child: Row(
@@ -431,13 +525,13 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.add_rounded, size: 13, color: Colors.white),
-                    SizedBox(width: 4),
+                    const Icon(Icons.add_rounded, size: 13, color: Colors.white),
+                    const SizedBox(width: 4),
                     Text(
-                      'Tambah',
-                      style: TextStyle(
+                      addLabel,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,

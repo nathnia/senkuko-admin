@@ -5,15 +5,20 @@ import 'package:senkukoadmin/features/vouchers/voucher_model.dart';
 class VoucherCard extends StatelessWidget {
   final VoucherData voucher;
   final VoidCallback onTap;
-  final VoidCallback onToggleStatus;
-  final VoidCallback onDelete;
+  final VoidCallback? onToggleStatus;
+  final VoidCallback? onDelete;
+
+  /// When false the action footer (toggle + delete) is hidden.
+  /// Use in read-only preview contexts such as PromotionDetailPage.
+  final bool showActions;
 
   const VoucherCard({
     super.key,
     required this.voucher,
     required this.onTap,
-    required this.onToggleStatus,
-    required this.onDelete,
+    this.onToggleStatus,
+    this.onDelete,
+    this.showActions = true,
   });
 
   Color get _statusColor {
@@ -124,39 +129,41 @@ class VoucherCard extends StatelessWidget {
             ),
 
             // ── Footer ────────────────────────────────────────────────────
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(14)),
-                border: Border(top: BorderSide(color: Colors.grey.shade100)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  GestureDetector(
-                    onTap: onToggleStatus,
-                    child: Icon(
-                      voucher.isActive
-                          ? Icons.toggle_on_rounded
-                          : Icons.toggle_off_rounded,
-                      size: 28,
-                      color: voucher.isActive
-                          ? AppColors.primary
-                          : Colors.grey.shade400,
+            if (showActions)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(14)),
+                  border:
+                      Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: onToggleStatus,
+                      child: Icon(
+                        voucher.isActive
+                            ? Icons.toggle_on_rounded
+                            : Icons.toggle_off_rounded,
+                        size: 28,
+                        color: voucher.isActive
+                            ? AppColors.primary
+                            : Colors.grey.shade400,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: onDelete,
-                    child: Icon(Icons.delete_outline_rounded,
-                        size: 18, color: Colors.red.shade400),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: onDelete,
+                      child: Icon(Icons.delete_outline_rounded,
+                          size: 18, color: Colors.red.shade400),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
