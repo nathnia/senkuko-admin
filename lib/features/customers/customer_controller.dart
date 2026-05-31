@@ -61,8 +61,8 @@ class CustomerController extends GetxController {
   }
 
   // ===================== FILTER =====================
-  // Filter jalan sekali, hasilnya disimpan di filteredCustomers (RxList)
-  // UI tidak recompute setiap rebuild — hanya rebuild saat filteredCustomers berubah
+
+
   void _applyFilter() {
     final lower = searchText.value.toLowerCase();
 
@@ -92,12 +92,16 @@ class CustomerController extends GetxController {
       case 'Aktif':
         statusFilter.value = CustomerStatus.active;
         break;
+
       case 'Nonaktif':
         statusFilter.value = CustomerStatus.inactive;
         break;
+
       default:
         statusFilter.value = null;
+        break;
     }
+
     _applyFilter();
   }
 
@@ -105,37 +109,39 @@ class CustomerController extends GetxController {
     switch (statusFilter.value) {
       case CustomerStatus.active:
         return 'Aktif';
+
       case CustomerStatus.inactive:
         return 'Nonaktif';
+
       default:
         return 'Semua';
     }
   }
 
   // ===================== FETCH =====================
- Future<void> fetchCustomers() async {
-  if (isLoading.value) return;
-  isLoading.value = true;
-  hasError.value = false;
-  errorMessage.value = '';
-  try {
-    final res = await CustomerService.getAllCustomers();
-    if (res.statusCode == 200) {
-      customerList.assignAll(customerModelFromJson(res.body).data);
-      _applyFilter();
-    } else {
+  Future<void> fetchCustomers() async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+    hasError.value = false;
+    errorMessage.value = '';
+    try {
+      final res = await CustomerService.getAllCustomers();
+      if (res.statusCode == 200) {
+        customerList.assignAll(customerModelFromJson(res.body).data);
+        _applyFilter();
+      } else {
+        hasError.value = true;
+        errorMessage.value = ApiHelper.isNetworkError(res)
+            ? ApiHelper.parseError(res.body)
+            : 'Gagal memuat daftar pelanggan.';
+      }
+    } catch (e) {
       hasError.value = true;
-      errorMessage.value = ApiHelper.isNetworkError(res)
-          ? ApiHelper.parseError(res.body)
-          : 'Gagal memuat daftar pelanggan.';
+      errorMessage.value = 'Gagal memuat data.';
+    } finally {
+      isLoading.value = false;
     }
-  } catch (e) {
-    hasError.value = true;
-    errorMessage.value = 'Gagal memuat data.';
-  } finally {
-    isLoading.value = false;
   }
-}
 
   Future<void> fetchCustomerById(String id) async {
     isLoading.value = true;

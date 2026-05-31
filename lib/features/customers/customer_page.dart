@@ -50,30 +50,31 @@ class CustomerPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Obx(
-            () => Row(
-              children: [
-                Expanded(
-                  child: AppFilterChips(
+          Row(
+            children: [
+              Expanded(
+                child: Obx(
+                  () => AppFilterChips(
                     items: const [
+                      FilterChipItem(label: 'Semua'),
                       FilterChipItem(label: 'Aktif'),
                       FilterChipItem(label: 'Nonaktif'),
-                      FilterChipItem(label: 'Semua'),
                     ],
                     selectedLabel: controller.statusFilterLabel,
                     onChipTap: controller.setStatusFilter,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
 
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value && controller.customerList.isEmpty) {
+              if (controller.isLoading.value &&
+                  controller.customerList.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-            
+
               // ADD THIS
               if (controller.hasError.value) {
                 return AppErrorState(
@@ -81,7 +82,7 @@ class CustomerPage extends StatelessWidget {
                   onRetry: controller.fetchCustomers,
                 );
               }
-            
+
               final list = controller.filteredCustomers;
               if (list.isEmpty) {
                 return const Center(

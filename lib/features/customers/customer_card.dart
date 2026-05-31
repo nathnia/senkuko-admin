@@ -92,6 +92,24 @@ class CustomerCard extends StatelessWidget {
 
               const SizedBox(width: 10),
 
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEEEEE),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  customer.customerGroup.label,
+                  style: const TextStyle(
+                    color: Color(0xFF757575),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+
               // STATUS PILL — menggantikan Switch
               _StatusPill(isActive: isActive, onTap: onToggleStatus),
             ],
