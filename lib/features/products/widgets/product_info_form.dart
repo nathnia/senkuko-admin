@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
@@ -332,43 +333,16 @@ class _CategorySelectorSheetState extends State<_CategorySelectorSheet> {
     );
   }
 
-  // FILE: lib/features/products/widgets/product_info_form.dart
-  // Hanya _buildBody di _CategorySelectorSheetState yang berubah
-
   Widget _buildBody(ScrollController scrollController) {
     return Obx(() {
       if (widget.categoryC.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
 
-      // Network error — inline, tidak full page karena ini sheet
       if (widget.categoryC.hasError.value) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.cloud_off_rounded,
-                size: 36,
-                color: Colors.grey.shade300,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Gagal memuat kategori',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: widget.categoryC.fetchCategories,
-                icon: const Icon(Icons.refresh_rounded, size: 14),
-                label: const Text('Coba Lagi'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  textStyle: const TextStyle(fontSize: 13),
-                ),
-              ),
-            ],
-          ),
+        return AppErrorState(
+          message: 'Gagal memuat kategori',
+          onRetry: widget.categoryC.fetchCategories,
         );
       }
 
@@ -567,8 +541,7 @@ class _CategoryGroup extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SELECTABLE TILE — flat tap target, selected + disabled states
-// Used for category children and search results.
+// SELECTABLE TILE
 // ═══════════════════════════════════════════════════════════════
 class _SelectableTile extends StatelessWidget {
   final String label;

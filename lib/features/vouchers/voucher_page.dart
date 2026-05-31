@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_card.dart';
@@ -23,13 +24,11 @@ class _VoucherPageState extends State<VoucherPage> {
   void initState() {
     super.initState();
     _promotionId = Get.arguments as String?;
-    // initPage is idempotent and safe to call synchronously
     controller.initPage(_promotionId);
   }
 
   @override
   void dispose() {
-    // Reset the init flag so re-navigating to this page works correctly
     controller.resetInit();
     super.dispose();
   }
@@ -97,6 +96,13 @@ class _VoucherPageState extends State<VoucherPage> {
     return Obx(() {
       if (controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
+      }
+
+      if (controller.hasError.value) {
+        return AppErrorState(
+          message: controller.errorMessage.value,
+          onRetry: controller.fetchVouchers,
+        );
       }
 
       final list = controller.filteredVouchers;

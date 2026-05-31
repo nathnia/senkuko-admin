@@ -5,6 +5,7 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
+import 'package:senkukoadmin/features/promotions/promotion_picker_sheet.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 
 /// arguments:
@@ -54,6 +55,13 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     return UnsavedChangesDialog.show(title: 'Voucher belum disimpan');
   }
 
+  Future<void> _openPromotionPicker() async {
+    final picked = await PromotionPickerSheet.show(context);
+    if (picked == null) return;
+    controller.promotionIdC.text = picked.id;
+    controller.selectedPromotionObs.value = picked;
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -100,20 +108,18 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Promotion ID (create mode only) ──────────────────────
+                    // ── Promotion picker (create mode only) ──────────────
                     if (!_isEdit)
                       _prefilledPromotionId != null
+                          // Pre-filled from promotion detail → read-only chip
                           ? _readonlyField(
                               label: 'Promotion ID',
                               value: _prefilledPromotionId,
                             )
-                          : AppTextField(
-                              label: 'Promotion ID',
-                              hint: 'cth: uuid-promotion',
-                              controller: controller.promotionIdC,
-                            ),
+                          // Standalone create → tap-to-pick bottom sheet
+                          : _promotionPickerField(),
 
-                    // ── Kode Voucher ──────────────────────────────────────────
+                    // ── Kode Voucher ──────────────────────────────────────
                     AppTextField(
                       label: 'Kode Voucher',
                       hint: 'cth: VOUCHER-SPESIAL-001',
@@ -121,7 +127,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                       textCapitalization: TextCapitalization.characters,
                     ),
 
-                    // ── Batas Pemakaian ───────────────────────────────────────
+                    // ── Batas Pemakaian ───────────────────────────────────
                     AppTextField(
                       label: 'Batas Pemakaian',
                       hint: 'cth: 1',
@@ -139,7 +145,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                       ),
                     ),
 
-                    // ── Status (edit mode only) ───────────────────────────────
+                    // ── Status (edit mode only) ───────────────────────────
                     if (_isEdit)
                       Obx(
                         () => AppDropdown<String>(
@@ -174,7 +180,8 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                       ),
                       elevation: 0,
                     ),
-                    onPressed: controller.isSubmitting.value ||
+                    onPressed:
+                        controller.isSubmitting.value ||
                             !controller.isDirty.value
                         ? null
                         : () async {
@@ -211,6 +218,125 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     );
   }
 
+  // ── Promotion picker field ────────────────────────────────────────────────
+
+  Widget _promotionPickerField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Promosi',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.subtext,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Obx(() {
+            final selected = controller.selectedPromotionObs.value;
+            return GestureDetector(
+              onTap: _openPromotionPicker,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: selected != null
+                        ? AppColors.primary.withAlpha(80)
+                        : Colors.transparent,
+                    width: 1,
+                  ),
+                ),
+                child: selected == null
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Pilih promosi...',
+                              style: TextStyle(
+                                color: AppColors.subtext,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_drop_down_rounded,
+                            color: Colors.grey.shade400,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.local_offer_rounded,
+                              size: 15,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  selected.name,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1A1A2E),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  selected.code,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Ganti / clear
+                          GestureDetector(
+                            onTap: () {
+                              controller.selectedPromotionObs.value = null;
+                              controller.promotionIdC.clear();
+                            },
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   Widget _readonlyField({required String label, required String value}) =>
@@ -230,8 +356,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
             const SizedBox(height: 5),
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(10),
@@ -250,13 +375,13 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
       );
 
   Widget _card({required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100, width: 0.5),
-        ),
-        child: child,
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade100, width: 0.5),
+    ),
+    child: child,
+  );
 }

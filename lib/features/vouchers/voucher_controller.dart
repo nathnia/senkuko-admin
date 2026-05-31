@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_model.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_service.dart';
 
@@ -12,6 +13,8 @@ class VoucherController extends GetxController {
   // ===================== STATE =====================
   final isLoading = false.obs;
   final isSubmitting = false.obs;
+  final hasError = false.obs;
+  final errorMessage = ''.obs;
 
   // ===================== DATA =====================
   final voucherList = <VoucherData>[].obs;
@@ -27,6 +30,10 @@ class VoucherController extends GetxController {
   final promotionIdC = TextEditingController();
   final usageLimitC = TextEditingController(text: '0');
   final status = 'active'.obs;
+
+  /// Holds the full [PromotionData] selected via the promotion picker sheet.
+  /// Only used in standalone create mode (no pre-filled promotionId).
+  final selectedPromotionObs = Rxn<PromotionData>();
 
   // ===================== DIRTY TRACKING =====================
   final isDirty = false.obs;
@@ -45,7 +52,8 @@ class VoucherController extends GetxController {
   }
 
   void _checkDirtyCreate() {
-    isDirty.value = codeC.text.trim().isNotEmpty;
+    isDirty.value = codeC.text.trim().isNotEmpty &&
+        promotionIdC.text.trim().isNotEmpty;
   }
 
   void resetForm() {
@@ -54,14 +62,17 @@ class VoucherController extends GetxController {
     usageLimitC.text = '1';
     status.value = 'active';
     isDirty.value = false;
+    selectedPromotionObs.value = null;
 
     _statusWorker?.dispose();
     codeC.removeListener(_checkDirty);
     codeC.removeListener(_checkDirtyCreate);
     usageLimitC.removeListener(_checkDirty);
+    promotionIdC.removeListener(_checkDirtyCreate);
 
-    // create mode — dirty as soon as code is filled
+    // create mode — dirty only when both code and promotionId are filled
     codeC.addListener(_checkDirtyCreate);
+    promotionIdC.addListener(_checkDirtyCreate);
   }
 
   void loadFromVoucher(VoucherData v, {String? prefilledPromotionId}) {
@@ -70,6 +81,7 @@ class VoucherController extends GetxController {
     usageLimitC.text = v.usageLimit.toString();
     status.value = v.status;
     isDirty.value = false;
+    selectedPromotionObs.value = null;
 
     _snapCode = codeC.text;
     _snapUsageLimit = usageLimitC.text;
@@ -79,6 +91,7 @@ class VoucherController extends GetxController {
     codeC.removeListener(_checkDirty);
     codeC.removeListener(_checkDirtyCreate);
     usageLimitC.removeListener(_checkDirty);
+    promotionIdC.removeListener(_checkDirtyCreate);
 
     codeC.addListener(_checkDirty);
     usageLimitC.addListener(_checkDirty);
@@ -109,6 +122,7 @@ class VoucherController extends GetxController {
     codeC.removeListener(_checkDirty);
     codeC.removeListener(_checkDirtyCreate);
     usageLimitC.removeListener(_checkDirty);
+    promotionIdC.removeListener(_checkDirtyCreate);
     codeC.dispose();
     promotionIdC.dispose();
     usageLimitC.dispose();
@@ -156,16 +170,19 @@ class VoucherController extends GetxController {
   // ===================== FETCH =====================
   Future<void> fetchVouchers() async {
     isLoading.value = true;
+    hasError.value = false;
     try {
       final res = await VoucherService.getAllVouchers();
       if (res.statusCode == 200) {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
         _applyFilter();
       } else {
-        AppToast.show('Gagal memuat daftar voucher');
+        hasError.value = true;
+        errorMessage.value = 'Gagal memuat daftar voucher';
       }
     } catch (e) {
-      AppToast.show('Terjadi kesalahan saat memuat voucher');
+      hasError.value = true;
+      errorMessage.value = 'Terjadi kesalahan saat memuat voucher';
     } finally {
       isLoading.value = false;
     }
@@ -178,7 +195,7 @@ class VoucherController extends GetxController {
       return false;
     }
     if (promotionIdC.text.trim().isEmpty) {
-      AppToast.show('Promotion ID harus diisi');
+      AppToast.show('Pilih promosi terlebih dahulu');
       return false;
     }
 
