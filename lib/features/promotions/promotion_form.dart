@@ -4,6 +4,7 @@ import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
+import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
@@ -26,7 +27,6 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
     _editId = Get.arguments as String?;
     _isEdit = _editId != null;
 
-    // Populate / reset synchronously — no callback needed
     if (_isEdit) {
       final promo = controller.selectedPromotion.value;
       if (promo != null) controller.loadFormFromPromotion(promo);
@@ -35,39 +35,55 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
     }
   }
 
+  Future<bool> _confirmLeave() async {
+    if (!controller.isDirty.value) return true;
+    return UnsavedChangesDialog.show(title: 'Promosi belum disimpan');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (await _confirmLeave()) Get.back();
+      },
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: const AppBackButton(),
-        title: Text(
-          _isEdit ? 'Edit Promosi' : 'Buat Promosi',
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: AppBackButton(
+            onTap: () async {
+              if (await _confirmLeave()) Get.back();
+            },
           ),
+          title: Text(
+            _isEdit ? 'Edit Promosi' : 'Buat Promosi',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _card(title: 'INFORMASI PROMOSI', child: _infoFields()),
-            const SizedBox(height: 12),
-            _card(title: 'PERIODE & BATAS', child: _periodFields()),
-            const SizedBox(height: 12),
-            _card(title: 'PENGATURAN', child: _settingsFields()),
-            const SizedBox(height: 24),
-            _submitButton(),
-            const SizedBox(height: 24),
-          ],
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _card(title: 'INFORMASI PROMOSI', child: _infoFields()),
+              const SizedBox(height: 12),
+              _card(title: 'PERIODE & BATAS', child: _periodFields()),
+              const SizedBox(height: 12),
+              _card(title: 'PENGATURAN', child: _settingsFields()),
+              const SizedBox(height: 24),
+              _submitButton(),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -78,15 +94,21 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
   Widget _infoFields() {
     return Column(
       children: [
-        AppTextField(hint: 'Nama Promosi', controller: controller.nameC),
         AppTextField(
-          hint: 'Kode Promo',
+          label: 'Nama Promosi',
+          hint: 'cth: Promo Lebaran 2025',
+          controller: controller.nameC,
+        ),
+        AppTextField(
+          label: 'Kode Promo',
+          hint: 'cth: LEBARAN25',
           controller: controller.codeC,
           textCapitalization: TextCapitalization.characters,
         ),
         _typeSelector(),
         AppTextField(
-          hint: 'Deskripsi (opsional)',
+          label: 'Deskripsi',
+          hint: 'Deskripsi singkat promosi (opsional)',
           controller: controller.descC,
           maxLines: 2,
         ),
@@ -106,13 +128,12 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
         value: controller.selectedType.value.isEmpty
             ? null
             : controller.selectedType.value,
-        hint: 'Tipe Promosi',
+        label: 'Tipe Promosi', // ← pakai parameter yang sudah ada
+        hint: 'Pilih tipe promosi',
         items: labels.entries
             .map(
-              (e) => DropdownMenuItem<String>(
-                value: e.key,
-                child: Text(e.value),
-              ),
+              (e) =>
+                  DropdownMenuItem<String>(value: e.key, child: Text(e.value)),
             )
             .toList(),
         onChanged: (val) {
@@ -126,7 +147,8 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
     return Column(
       children: [
         AppTextField(
-          hint: 'Batas Pemakaian (0 = unlimited)',
+          label: 'Batas Pemakaian',
+          hint: 'cth: 100 (0 = unlimited)',
           controller: controller.usageLimitC,
           keyboardType: TextInputType.number,
         ),
@@ -136,7 +158,8 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
             Expanded(
               child: Obx(
                 () => _datePicker(
-                  hint: 'Berlaku Dari',
+                  label: 'Berlaku Dari', // ← tambah
+                  hint: 'Pilih tanggal',
                   date: controller.validFrom.value,
                   onTap: () => _pickDate(isFrom: true),
                 ),
@@ -146,7 +169,8 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
             Expanded(
               child: Obx(
                 () => _datePicker(
-                  hint: 'Berlaku Hingga',
+                  label: 'Berlaku Hingga', // ← tambah
+                  hint: 'Pilih tanggal',
                   date: controller.validTo.value,
                   onTap: () => _pickDate(isFrom: false),
                 ),
@@ -195,8 +219,8 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
             ),
             elevation: 0,
           ),
-          onPressed: controller.isSubmitting.value
-              ? null
+          onPressed: controller.isSubmitting.value || !controller.isDirty.value
+              ? null 
               : () async {
                   final success = _isEdit
                       ? await controller.updatePromotion(_editId!)
@@ -207,8 +231,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
                       Get.back();
                     } else {
                       Get.until(
-                        (route) =>
-                            route.settings.name == AppRoutes.promotions,
+                        (route) => route.settings.name == AppRoutes.promotions,
                       );
                     }
                   }
@@ -258,44 +281,53 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
       ),
     );
     if (picked == null) return;
-    if (isFrom) {
-      controller.validFrom.value = picked;
-    } else {
-      controller.validTo.value = picked;
-    }
+    controller.setDate(picked, isFrom: isFrom);
   }
 
   Widget _card({required String title, required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100, width: 0.5),
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade100, width: 0.5),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.black54,
+            letterSpacing: 0.5,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Colors.black54,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
-        ),
-      );
+        const SizedBox(height: 12),
+        child,
+      ],
+    ),
+  );
 
   Widget _datePicker({
+    required String label, // ← tambah
     required String hint,
     required DateTime? date,
     required VoidCallback onTap,
-  }) =>
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        // ← label text, sama style AppTextField
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: AppColors.subtext,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 5),
       GestureDetector(
         onTap: onTap,
         child: Container(
@@ -313,9 +345,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
               ),
               const SizedBox(width: 6),
               Text(
-                date != null
-                    ? '${date.day}/${date.month}/${date.year}'
-                    : hint,
+                date != null ? '${date.day}/${date.month}/${date.year}' : hint,
                 style: TextStyle(
                   fontSize: 13,
                   color: date != null
@@ -326,42 +356,43 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
             ],
           ),
         ),
-      );
+      ),
+    ],
+  );
 
   Widget _toggleTile({
     required String label,
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            Switch.adaptive(
-              value: value,
-              onChanged: onChanged,
-              activeColor: AppColors.primary,
-            ),
-          ],
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
-      );
+        Switch.adaptive(
+          value: value,
+          onChanged: onChanged,
+          activeColor: AppColors.primary,
+        ),
+      ],
+    ),
+  );
 }

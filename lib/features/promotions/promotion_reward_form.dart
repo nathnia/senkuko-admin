@@ -70,8 +70,8 @@ class PromotionRewardFormPage extends StatelessWidget {
                     () => controller.rewardType.value.isEmpty
                         ? const SizedBox()
                         : controller.rewardType.value != 'free_item'
-                            ? _discountFields(controller)
-                            : _freeItemFields(controller),
+                        ? _discountFields(controller)
+                        : _freeItemFields(controller),
                   ),
                 ],
               ),
@@ -89,7 +89,9 @@ class PromotionRewardFormPage extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: controller.isSubmitting.value
+                  onPressed:
+                      controller.isSubmitting.value ||
+                          !controller.isRewardFormDirty.value
                       ? null
                       : () async {
                           final ok = await controller.addReward(promotionId);
@@ -122,68 +124,71 @@ class PromotionRewardFormPage extends StatelessWidget {
   }
 
   Widget _discountFields(PromotionController controller) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Obx(
-            () => AppTextField(
-              hint: controller.rewardType.value == 'discount_percent'
-                  ? 'Contoh: 10 (artinya 10%)'
-                  : 'Contoh: 10000',
-              controller: controller.discountValueC,
-              keyboardType: TextInputType.number,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Obx(
+        () => AppTextField(
+          label: controller.rewardType.value == 'discount_percent'
+              ? 'Nilai Diskon (%)'
+              : 'Nilai Diskon (Rp)',
+          hint: controller.rewardType.value == 'discount_percent'
+              ? 'cth: 10 (artinya 10%)'
+              : 'cth: 10000',
+          controller: controller.discountValueC,
+          keyboardType: TextInputType.number,
+        ),
+      ),
+      Obx(
+        () => AppDropdown<String>(
+          label: 'Mode Diskon',
+          hint: 'Pilih mode diskon',
+          value: controller.discountMode.value.isEmpty
+              ? null
+              : controller.discountMode.value,
+          items: const [
+            DropdownMenuItem(
+              value: 'per_transaction',
+              child: Text('Per Transaksi'),
             ),
-          ),
-          Obx(
-            () => AppDropdown<String>(
-              label: 'Mode Diskon',
-              hint: 'Pilih mode diskon',
-              value: controller.discountMode.value.isEmpty
-                  ? null
-                  : controller.discountMode.value,
-              items: const [
-                DropdownMenuItem(
-                  value: 'per_transaction',
-                  child: Text('Per Transaksi'),
-                ),
-                DropdownMenuItem(
-                  value: 'per_item',
-                  child: Text('Per Item'),
-                ),
-              ],
-              onChanged: (v) => controller.discountMode.value = v!,
-            ),
-          ),
-          AppTextField(
-            hint: 'Maks diskon, isi 0 jika tidak ada batas',
-            controller: controller.maxDiscountC,
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      );
+            DropdownMenuItem(value: 'per_item', child: Text('Per Item')),
+          ],
+          onChanged: (v) => controller.discountMode.value = v!,
+        ),
+      ),
+      AppTextField(
+        label: 'Maks Diskon',
+        hint: 'cth: 50000 (isi 0 jika tidak ada batas)',
+        controller: controller.maxDiscountC,
+        keyboardType: TextInputType.number,
+      ),
+    ],
+  );
 
   Widget _freeItemFields(PromotionController controller) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppTextField(
-            hint: 'UUID variant produk',
-            controller: controller.freeVariantIdC,
-          ),
-          AppTextField(
-            hint: 'Jumlah item gratis, contoh: 1',
-            controller: controller.freeQtyC,
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      AppTextField(
+        label: 'Variant ID',
+        hint: 'cth: uuid-variant-produk',
+        controller: controller.freeVariantIdC,
+      ),
+      AppTextField(
+        label: 'Jumlah Item Gratis',
+        hint: 'cth: 1',
+        controller: controller.freeQtyC,
+        keyboardType: TextInputType.number,
+      ),
+    ],
+  );
 
   Widget _card({required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100, width: 0.5),
-        ),
-        child: child,
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade100, width: 0.5),
+    ),
+    child: child,
+  );
 }

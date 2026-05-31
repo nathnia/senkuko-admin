@@ -51,6 +51,10 @@ class PromotionController extends GetxController {
     selectedType.value = ''; // ← kosong
     isActive.value = true;
     stackable.value = false;
+
+    isDirty.value = false; // ← reset flag
+    _takeSnapshot(); // ← snapshot state kosong
+    _listenFormChanges();
   }
 
   // Load dari existing promotion
@@ -64,6 +68,10 @@ class PromotionController extends GetxController {
     selectedType.value = p.type; // ini tetap pakai data existing
     isActive.value = p.isActive;
     stackable.value = p.stackable;
+
+    isDirty.value = false; // ← reset flag
+    _takeSnapshot(); // ← snapshot data existing
+    _listenFormChanges();
   }
 
   // ===================== CONDITION FORM =====================
@@ -75,12 +83,12 @@ class PromotionController extends GetxController {
   bool conditionNeedsTargetId(String type) =>
       type == 'specific_product' || type == 'specific_category';
 
-  void resetConditionForm() {
-    conditionType.value = '';
-    conditionOperator.value = '';
-    conditionValueC.clear();
-    conditionTargetIdC.clear();
-  }
+  // void resetConditionForm() {
+  //   conditionType.value = '';
+  //   conditionOperator.value = '';
+  //   conditionValueC.clear();
+  //   conditionTargetIdC.clear();
+  // }
 
   // ===================== REWARD FORM =====================
   final rewardType = ''.obs;
@@ -90,14 +98,14 @@ class PromotionController extends GetxController {
   final freeVariantIdC = TextEditingController();
   final freeQtyC = TextEditingController(text: '1');
 
-  void resetRewardForm() {
-    rewardType.value = '';
-    discountMode.value = '';
-    discountValueC.clear();
-    maxDiscountC.text = '0';
-    freeVariantIdC.clear();
-    freeQtyC.text = '1';
-  }
+  // void resetRewardForm() {
+  //   rewardType.value = '';
+  //   discountMode.value = '';
+  //   discountValueC.clear();
+  //   maxDiscountC.text = '0';
+  //   freeVariantIdC.clear();
+  //   freeQtyC.text = '1';
+  // }
 
   // ===================== LIFECYCLE =====================
   @override
@@ -108,17 +116,106 @@ class PromotionController extends GetxController {
 
   @override
   void onClose() {
-    nameC.dispose();
-    codeC.dispose();
-    descC.dispose();
-    usageLimitC.dispose();
+    for (final c in [nameC, codeC, descC, usageLimitC]) {
+      c.removeListener(checkDirty);
+      c.dispose();
+    }
+    _typeWorker?.dispose();
+    _validFromWorker?.dispose();
+    _validToWorker?.dispose();
+    _isActiveWorker?.dispose();
+    _stackableWorker?.dispose();
+    _rewardTypeWorker?.dispose();
+    _discountModeWorker?.dispose();
+    _conditionTypeWorker?.dispose();
+    _conditionOperatorWorker?.dispose();
+
+    discountValueC.removeListener(_checkRewardDirty);
+    freeVariantIdC.removeListener(_checkRewardDirty);
+    conditionValueC.removeListener(_checkConditionDirty);
+
+    // ← ini yang missing, perlu di-dispose
+    discountValueC.dispose();
+    freeVariantIdC.dispose();
     conditionValueC.dispose();
     conditionTargetIdC.dispose();
-    discountValueC.dispose();
     maxDiscountC.dispose();
-    freeVariantIdC.dispose();
     freeQtyC.dispose();
+
     super.onClose();
+  }
+
+  // Di PromotionController
+  final isRewardFormDirty = false.obs;
+  final isConditionFormDirty = false.obs;
+
+  void _checkRewardDirty() {
+    if (rewardType.value.isEmpty) {
+      isRewardFormDirty.value = false;
+      return;
+    }
+    isRewardFormDirty.value = rewardType.value == 'free_item'
+        ? freeVariantIdC.text.trim().isNotEmpty
+        : discountValueC.text.trim().isNotEmpty ||
+              discountMode.value.isNotEmpty;
+  }
+
+  void _checkConditionDirty() {
+    isConditionFormDirty.value =
+        conditionType.value.isNotEmpty ||
+        conditionOperator.value.isNotEmpty ||
+        conditionValueC.text.trim().isNotEmpty;
+  }
+
+  // Update resetRewardForm & resetConditionForm
+  void resetRewardForm() {
+    rewardType.value = '';
+    discountMode.value = '';
+    discountValueC.clear();
+    maxDiscountC.text = '0';
+    freeVariantIdC.clear();
+    freeQtyC.text = '1';
+    isRewardFormDirty.value = false; // ← reset
+    _listenRewardFormChanges(); // ← mulai listen
+  }
+
+  void resetConditionForm() {
+    conditionType.value = '';
+    conditionOperator.value = '';
+    conditionValueC.clear();
+    conditionTargetIdC.clear();
+    isConditionFormDirty.value = false; // ← reset
+    _listenConditionFormChanges(); // ← mulai listen
+  }
+
+  Worker? _rewardTypeWorker;
+  Worker? _discountModeWorker;
+  Worker? _conditionTypeWorker;
+  Worker? _conditionOperatorWorker;
+
+  void _listenRewardFormChanges() {
+    discountValueC.removeListener(_checkRewardDirty);
+    freeVariantIdC.removeListener(_checkRewardDirty);
+    discountValueC.addListener(_checkRewardDirty);
+    freeVariantIdC.addListener(_checkRewardDirty);
+
+    _rewardTypeWorker?.dispose();
+    _discountModeWorker?.dispose();
+    _rewardTypeWorker = ever(rewardType, (_) => _checkRewardDirty());
+    _discountModeWorker = ever(discountMode, (_) => _checkRewardDirty());
+  }
+
+  void _listenConditionFormChanges() {
+    conditionValueC.removeListener(_checkConditionDirty);
+    conditionValueC.addListener(_checkConditionDirty);
+
+    _conditionTypeWorker?.dispose();
+    _conditionOperatorWorker?.dispose();
+    _conditionTypeWorker = ever(conditionType, (_) => _checkConditionDirty());
+    _conditionOperatorWorker = ever(
+      conditionOperator,
+      (_) => _checkConditionDirty(),
+    );
   }
 
   // ===================== FILTER =====================
@@ -532,6 +629,14 @@ class PromotionController extends GetxController {
     return text;
   }
 
+  void setDate(DateTime date, {required bool isFrom}) {
+    if (isFrom) {
+      validFrom.value = date;
+    } else {
+      validTo.value = date;
+    }
+  }
+
   // ===================== PRIVATE =====================
 
   String _formatDateFrom(DateTime d) =>
@@ -541,7 +646,7 @@ class PromotionController extends GetxController {
   String _formatDateTo(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')} 23:59:59';
-      
+
   Map<String, dynamic> _buildPayload() => {
     'name': nameC.text.trim(),
     'code': codeC.text.trim().toUpperCase(),
@@ -561,4 +666,83 @@ class PromotionController extends GetxController {
       return 'Terjadi kesalahan';
     }
   }
+
+  // ===================== DIRTY TRACKING =====================
+  final isDirty = false.obs;
+
+  String _snapName = '';
+  String _snapCode = '';
+  String _snapDesc = '';
+  String _snapUsageLimit = '';
+  String _snapType = '';
+  DateTime? _snapValidFrom;
+  DateTime? _snapValidTo;
+  bool _snapIsActive = true;
+  bool _snapStackable = false;
+
+  Worker? _typeWorker;
+  Worker? _validFromWorker;
+  Worker? _validToWorker;
+  Worker? _isActiveWorker;
+  Worker? _stackableWorker;
+
+  void _takeSnapshot() {
+    _snapName = nameC.text;
+    _snapCode = codeC.text;
+    _snapDesc = descC.text;
+    _snapUsageLimit = usageLimitC.text;
+    _snapType = selectedType.value;
+    _snapValidFrom = validFrom.value;
+    _snapValidTo = validTo.value;
+    _snapIsActive = isActive.value;
+    _snapStackable = stackable.value;
+  }
+
+  void checkDirty() {
+    isDirty.value =
+        nameC.text != _snapName ||
+        codeC.text != _snapCode ||
+        descC.text != _snapDesc ||
+        usageLimitC.text != _snapUsageLimit ||
+        selectedType.value != _snapType ||
+        validFrom.value != _snapValidFrom ||
+        validTo.value != _snapValidTo ||
+        isActive.value != _snapIsActive ||
+        stackable.value != _snapStackable;
+  }
+
+  void _listenFormChanges() {
+    for (final c in [nameC, codeC, descC, usageLimitC]) {
+      c.removeListener(checkDirty);
+      c.addListener(checkDirty);
+    }
+
+    _typeWorker?.dispose();
+    _validFromWorker?.dispose();
+    _validToWorker?.dispose();
+    _isActiveWorker?.dispose();
+    _stackableWorker?.dispose();
+
+    _typeWorker = ever(selectedType, (_) => checkDirty());
+    _validFromWorker = ever(validFrom, (_) => checkDirty());
+    _validToWorker = ever(validTo, (_) => checkDirty());
+    _isActiveWorker = ever(isActive, (_) => checkDirty());
+    _stackableWorker = ever(stackable, (_) => checkDirty());
+  }
+
+  // ===================== REWARD FORM DIRTY =====================
+  bool get isRewardDirty {
+    if (rewardType.value.isEmpty) return false;
+    if (rewardType.value == 'free_item') {
+      return freeVariantIdC.text.trim().isNotEmpty;
+    }
+    return discountValueC.text.trim().isNotEmpty ||
+        discountMode.value.isNotEmpty;
+  }
+
+  // ===================== CONDITION FORM DIRTY =====================
+  bool get isConditionDirty =>
+      conditionType.value.isNotEmpty ||
+      conditionOperator.value.isNotEmpty ||
+      conditionValueC.text.trim().isNotEmpty;
 }

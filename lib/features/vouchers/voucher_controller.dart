@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
@@ -21,6 +22,69 @@ class VoucherController extends GetxController {
   final selectedFilter = 'Semua'.obs;
   final filterByPromotionId = Rxn<String>();
 
+  // ===================== FORM =====================
+  final codeC = TextEditingController();
+  final promotionIdC = TextEditingController();
+  final usageLimitC = TextEditingController(text: '0');
+  final status = 'active'.obs;
+
+  // ===================== DIRTY TRACKING =====================
+  final isDirty = false.obs;
+
+  String _snapCode = '';
+  String _snapUsageLimit = '';
+  String _snapStatus = '';
+
+  Worker? _statusWorker;
+
+  void _checkDirty() {
+    isDirty.value =
+        codeC.text != _snapCode ||
+        usageLimitC.text != _snapUsageLimit ||
+        status.value != _snapStatus;
+  }
+
+  void _checkDirtyCreate() {
+    isDirty.value = codeC.text.trim().isNotEmpty;
+  }
+
+  void resetForm() {
+    codeC.clear();
+    promotionIdC.clear();
+    usageLimitC.text = '1';
+    status.value = 'active';
+    isDirty.value = false;
+
+    _statusWorker?.dispose();
+    codeC.removeListener(_checkDirty);
+    codeC.removeListener(_checkDirtyCreate);
+    usageLimitC.removeListener(_checkDirty);
+
+    // create mode — dirty as soon as code is filled
+    codeC.addListener(_checkDirtyCreate);
+  }
+
+  void loadFromVoucher(VoucherData v, {String? prefilledPromotionId}) {
+    codeC.text = v.code;
+    promotionIdC.text = v.promotionId;
+    usageLimitC.text = v.usageLimit.toString();
+    status.value = v.status;
+    isDirty.value = false;
+
+    _snapCode = codeC.text;
+    _snapUsageLimit = usageLimitC.text;
+    _snapStatus = status.value;
+
+    _statusWorker?.dispose();
+    codeC.removeListener(_checkDirty);
+    codeC.removeListener(_checkDirtyCreate);
+    usageLimitC.removeListener(_checkDirty);
+
+    codeC.addListener(_checkDirty);
+    usageLimitC.addListener(_checkDirty);
+    _statusWorker = ever(status, (_) => _checkDirty());
+  }
+
   // ===================== LIFECYCLE =====================
   @override
   void onInit() {
@@ -28,7 +92,6 @@ class VoucherController extends GetxController {
     fetchVouchers();
   }
 
-  // voucher_controller.dart — tambah field
   bool _initialized = false;
 
   void initPage(String? promotionId) {
@@ -38,8 +101,19 @@ class VoucherController extends GetxController {
     fetchVouchers();
   }
 
-  // reset flag saat halaman di-dispose atau manual reset
   void resetInit() => _initialized = false;
+
+  @override
+  void onClose() {
+    _statusWorker?.dispose();
+    codeC.removeListener(_checkDirty);
+    codeC.removeListener(_checkDirtyCreate);
+    usageLimitC.removeListener(_checkDirty);
+    codeC.dispose();
+    promotionIdC.dispose();
+    usageLimitC.dispose();
+    super.onClose();
+  }
 
   // ===================== FILTER =====================
   void _applyFilter() {
@@ -98,10 +172,23 @@ class VoucherController extends GetxController {
   }
 
   // ===================== CREATE =====================
-  Future<bool> createVoucher(Map<String, dynamic> payload) async {
+  Future<bool> createVoucher() async {
+    if (codeC.text.trim().isEmpty) {
+      AppToast.show('Kode voucher harus diisi');
+      return false;
+    }
+    if (promotionIdC.text.trim().isEmpty) {
+      AppToast.show('Promotion ID harus diisi');
+      return false;
+    }
+
     isSubmitting.value = true;
     try {
-      final res = await VoucherService.createVoucher(payload);
+      final res = await VoucherService.createVoucher({
+        'promotion_id': promotionIdC.text.trim(),
+        'code': codeC.text.trim().toUpperCase(),
+        'usage_limit': int.tryParse(usageLimitC.text) ?? 1,
+      });
 
       if (ApiHelper.isNetworkError(res)) {
         AppToast.show(ApiHelper.parseError(res.body));
@@ -114,6 +201,7 @@ class VoucherController extends GetxController {
 
       AppToast.show('Voucher berhasil diterbitkan');
       await fetchVouchers();
+      resetForm();
       return true;
     } catch (e) {
       AppToast.show('Terjadi kesalahan saat menerbitkan voucher');
@@ -124,10 +212,19 @@ class VoucherController extends GetxController {
   }
 
   // ===================== UPDATE =====================
-  Future<bool> updateVoucher(String id, Map<String, dynamic> payload) async {
+  Future<bool> updateVoucher(String id) async {
+    if (codeC.text.trim().isEmpty) {
+      AppToast.show('Kode voucher harus diisi');
+      return false;
+    }
+
     isSubmitting.value = true;
     try {
-      final res = await VoucherService.updateVoucher(id, payload);
+      final res = await VoucherService.updateVoucher(id, {
+        'code': codeC.text.trim().toUpperCase(),
+        'status': status.value,
+        'usage_limit': int.tryParse(usageLimitC.text) ?? 1,
+      });
 
       if (ApiHelper.isNetworkError(res)) {
         AppToast.show(ApiHelper.parseError(res.body));
@@ -177,7 +274,6 @@ class VoucherController extends GetxController {
   }
 
   // ===================== TOGGLE STATUS =====================
-  // voucher_controller.dart — ganti toggleStatus()
   Future<void> toggleStatus(VoucherData voucher) async {
     final idx = voucherList.indexWhere((v) => v.id == voucher.id);
     if (idx == -1) return;
@@ -214,7 +310,7 @@ class VoucherController extends GetxController {
     }
   }
 
-  // ===================== PRIVATE HELPERS =====================
+  // ===================== PRIVATE =====================
   String _parseError(String body) {
     try {
       return jsonDecode(body)['message'] ?? 'Terjadi kesalahan';

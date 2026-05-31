@@ -4,9 +4,8 @@ import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
-import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
-import 'package:senkukoadmin/features/vouchers/voucher_model.dart';
 
 /// arguments:
 ///   null                              → create (standalone)
@@ -22,16 +21,9 @@ class VoucherFormPage extends StatefulWidget {
 class _VoucherFormPageState extends State<VoucherFormPage> {
   final controller = Get.find<VoucherController>();
 
-  // Controllers now safely owned by State — disposed in dispose()
-  final _codeC = TextEditingController();
-  final _promotionIdC = TextEditingController();
-  final _usageLimitC = TextEditingController(text: '1');
-  final _status = 'active'.obs;
-
   late final bool _isEdit;
   late final String? _editId;
   late final String? _prefilledPromotionId;
-  VoucherData? _existing;
 
   @override
   void initState() {
@@ -42,177 +34,178 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     _editId = _isEdit ? args['id'] as String? : null;
     _prefilledPromotionId = _isEdit ? null : (args is String ? args : null);
 
-    _existing = _isEdit
-        ? controller.voucherList.firstWhereOrNull((v) => v.id == _editId)
-        : null;
-
-    // Populate fields synchronously — no addPostFrameCallback needed
-    _codeC.text = _existing?.code ?? '';
-    _promotionIdC.text =
-        _existing?.promotionId ?? _prefilledPromotionId ?? '';
-    _usageLimitC.text = _existing?.usageLimit.toString() ?? '1';
-    _status.value = _existing?.status ?? 'active';
-  }
-
-  @override
-  void dispose() {
-    _codeC.dispose();
-    _promotionIdC.dispose();
-    _usageLimitC.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_codeC.text.trim().isEmpty) {
-      AppToast.show('Kode voucher harus diisi');
-      return;
-    }
-
     if (_isEdit && _editId != null) {
-      final success = await controller.updateVoucher(_editId, {
-        'code': _codeC.text.trim().toUpperCase(),
-        'status': _status.value,
-        'usage_limit': int.tryParse(_usageLimitC.text) ?? 1,
-      });
-      if (success) Get.back();
-      return;
+      final existing = controller.voucherList.firstWhereOrNull(
+        (v) => v.id == _editId,
+      );
+      if (existing != null) {
+        controller.loadFromVoucher(existing);
+      }
+    } else {
+      controller.resetForm();
+      if (_prefilledPromotionId != null) {
+        controller.promotionIdC.text = _prefilledPromotionId;
+      }
     }
+  }
 
-    if (_promotionIdC.text.trim().isEmpty) {
-      AppToast.show('Promotion ID harus diisi');
-      return;
-    }
-    final success = await controller.createVoucher({
-      'promotion_id': _promotionIdC.text.trim(),
-      'code': _codeC.text.trim().toUpperCase(),
-      'usage_limit': int.tryParse(_usageLimitC.text) ?? 1,
-    });
-    if (success) Get.back();
+  Future<bool> _confirmLeave() async {
+    if (!controller.isDirty.value) return true;
+    return UnsavedChangesDialog.show(title: 'Voucher belum disimpan');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (!_isEdit) {
+          Get.back();
+          return;
+        }
+        if (await _confirmLeave()) Get.back();
+      },
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: const AppBackButton(),
-        title: Text(
-          _isEdit ? 'Edit Voucher' : 'Terbitkan Voucher',
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: AppBackButton(
+            onTap: () async {
+              if (!_isEdit) {
+                Get.back();
+                return;
+              }
+              if (await _confirmLeave()) Get.back();
+            },
           ),
+          title: Text(
+            _isEdit ? 'Edit Voucher' : 'Terbitkan Voucher',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Promotion ID (create mode only) ──────────────────────
-                  if (!_isEdit) ...[
-                    const SizedBox(height: 6),
-                    _prefilledPromotionId != null
-                        ? _readonlyField(_prefilledPromotionId)
-                        : AppTextField(
-                            hint: 'UUID promotion',
-                            controller: _promotionIdC,
-                          ),
-                    const SizedBox(height: 12),
-                  ],
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Promotion ID (create mode only) ──────────────────────
+                    if (!_isEdit)
+                      _prefilledPromotionId != null
+                          ? _readonlyField(
+                              label: 'Promotion ID',
+                              value: _prefilledPromotionId,
+                            )
+                          : AppTextField(
+                              label: 'Promotion ID',
+                              hint: 'cth: uuid-promotion',
+                              controller: controller.promotionIdC,
+                            ),
 
-                  // ── Kode Voucher ─────────────────────────────────────────
-                  const SizedBox(height: 6),
-                  AppTextField(
-                    hint: 'VOUCHER-SPESIAL-001',
-                    controller: _codeC,
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                  const SizedBox(height: 12),
+                    // ── Kode Voucher ──────────────────────────────────────────
+                    AppTextField(
+                      label: 'Kode Voucher',
+                      hint: 'cth: VOUCHER-SPESIAL-001',
+                      controller: controller.codeC,
+                      textCapitalization: TextCapitalization.characters,
+                    ),
 
-                  // ── Batas Pemakaian ──────────────────────────────────────
-                  const SizedBox(height: 6),
-                  AppTextField(
-                    hint: '1',
-                    controller: _usageLimitC,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '0 = unlimited  •  1 = sekali pakai',
-                    style:
-                        TextStyle(fontSize: 11, color: AppColors.subtext),
-                  ),
-
-                  // ── Status (edit mode only) ──────────────────────────────
-                  if (_isEdit) ...[
-                    const SizedBox(height: 12),
-                    Obx(
-                      () => AppDropdown<String>(
-                        label: 'Status',
-                        value: _status.value,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'active',
-                            child: Text('Aktif'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'inactive',
-                            child: Text('Tidak Aktif'),
-                          ),
-                        ],
-                        onChanged: (v) => _status.value = v!,
+                    // ── Batas Pemakaian ───────────────────────────────────────
+                    AppTextField(
+                      label: 'Batas Pemakaian',
+                      hint: 'cth: 1',
+                      controller: controller.usageLimitC,
+                      keyboardType: TextInputType.number,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 10),
+                      child: Text(
+                        '0 = unlimited  •  1 = sekali pakai',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.subtext,
+                        ),
                       ),
                     ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Obx(
-              () => SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed:
-                      controller.isSubmitting.value ? null : _submit,
-                  child: controller.isSubmitting.value
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          _isEdit ? 'Simpan Perubahan' : 'Terbitkan',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+
+                    // ── Status (edit mode only) ───────────────────────────────
+                    if (_isEdit)
+                      Obx(
+                        () => AppDropdown<String>(
+                          label: 'Status',
+                          value: controller.status.value,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'active',
+                              child: Text('Aktif'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'inactive',
+                              child: Text('Tidak Aktif'),
+                            ),
+                          ],
+                          onChanged: (v) => controller.status.value = v!,
                         ),
+                      ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Obx(
+                () => SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: controller.isSubmitting.value ||
+                            !controller.isDirty.value
+                        ? null
+                        : () async {
+                            final success = _isEdit
+                                ? await controller.updateVoucher(_editId!)
+                                : await controller.createVoucher();
+                            if (!mounted) return;
+                            if (success) Get.back();
+                          },
+                    child: controller.isSubmitting.value
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            _isEdit ? 'Simpan Perubahan' : 'Terbitkan',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -220,21 +213,39 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  Widget _readonlyField(String value) => Container(
-        width: double.infinity,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontFamily: 'monospace',
-            color: Colors.grey.shade600,
-          ),
+  Widget _readonlyField({required String label, required String value}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.subtext,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
         ),
       );
 

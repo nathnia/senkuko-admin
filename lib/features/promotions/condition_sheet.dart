@@ -103,7 +103,8 @@ class PromotionConditionFormPage extends StatelessWidget {
                     ),
                   ),
                   AppTextField(
-                    hint: 'Contoh: 50000 atau member,reguler',
+                    label: 'Value',
+                    hint: 'cth: 50000 atau member,reguler',
                     controller: controller.conditionValueC,
                   ),
                   Obx(
@@ -112,11 +113,16 @@ class PromotionConditionFormPage extends StatelessWidget {
                           controller.conditionType.value,
                         )
                         ? AppTextField(
+                            label:
+                                controller.conditionType.value ==
+                                    'specific_product'
+                                ? 'ID Produk'
+                                : 'ID Kategori',
                             hint:
                                 controller.conditionType.value ==
                                     'specific_product'
-                                ? 'Masukkan ID produk'
-                                : 'Masukkan ID kategori',
+                                ? 'cth: uuid-produk'
+                                : 'cth: uuid-kategori',
                             controller: controller.conditionTargetIdC,
                           )
                         : const SizedBox(),
@@ -137,7 +143,9 @@ class PromotionConditionFormPage extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: controller.isSubmitting.value
+                  onPressed:
+                      controller.isSubmitting.value ||
+                          !controller.isConditionFormDirty.value
                       ? null
                       : () async {
                           final ok = await controller.addCondition(promotionId);
