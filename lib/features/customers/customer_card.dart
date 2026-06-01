@@ -11,11 +11,23 @@ class CustomerCard extends StatelessWidget {
   _MemberStyle _memberStyle(MemberType type) {
     switch (type) {
       case MemberType.vip:
-        return _MemberStyle(color: AppColors.secondary, label: 'VIP');
+        return _MemberStyle(
+          color: AppColors.warning,
+          bg: AppColors.warningBg,
+          label: 'VIP',
+        );
       case MemberType.member:
-        return _MemberStyle(color: AppColors.primary, label: 'MEMBER');
+        return _MemberStyle(
+          color: AppColors.primary,
+          bg: AppColors.primary.withAlpha(20),
+          label: 'MEMBER',
+        );
       case MemberType.regular:
-        return _MemberStyle(color: const Color(0xFF9E9E9E), label: 'REGULAR');
+        return _MemberStyle(
+          color: AppColors.subtext,
+          bg: AppColors.subtext.withAlpha(20),
+          label: 'REGULAR',
+        );
     }
   }
 
@@ -25,25 +37,25 @@ class CustomerCard extends StatelessWidget {
     final isActive = customer.isActive;
 
     return Opacity(
-      opacity: isActive ? 1.0 : 0.45,
+      opacity: isActive ? 1.0 : 0.5,
       child: Card(
         margin: const EdgeInsets.only(bottom: 8),
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey.shade100, width: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.grey.shade100, width: 0.8),
         ),
         color: Colors.white,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
               // AVATAR
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: style.color.withAlpha(20),
+                  color: style.bg,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
@@ -53,28 +65,30 @@ class CustomerCard extends StatelessWidget {
                       : '?',
                   style: TextStyle(
                     color: style.color,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
               ),
 
-              const SizedBox(width: 11),
+              const SizedBox(width: 12),
 
-              // INFO — nama + badge + kontak saja, no spending
+              // INFO
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Flexible(
                           child: Text(
                             customer.name,
                             style: const TextStyle(
                               fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A),
                               height: 1.2,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -84,7 +98,7 @@ class CustomerCard extends StatelessWidget {
                         _Badge(style: style),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     _SubInfo(customer: customer),
                   ],
                 ),
@@ -92,25 +106,7 @@ class CustomerCard extends StatelessWidget {
 
               const SizedBox(width: 10),
 
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEEEEE),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  customer.customerGroup.label,
-                  style: const TextStyle(
-                    color: Color(0xFF757575),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-
-              // STATUS PILL — menggantikan Switch
+              // STATUS PILL
               _StatusPill(isActive: isActive, onTap: onToggleStatus),
             ],
           ),
@@ -120,7 +116,7 @@ class CustomerCard extends StatelessWidget {
   }
 }
 
-// ─── Status Pill ────────────────────────────────────────────────────────────
+// ─── Status Pill ─────────────────────────────────────────────────────────────
 
 class _StatusPill extends StatelessWidget {
   final bool isActive;
@@ -130,27 +126,26 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isActive ? AppColors.primary : AppColors.danger;
-    final textColor = isActive ? AppColors.primary : AppColors.danger;
-    final dotColor = isActive ? AppColors.primary : AppColors.danger;
-    final label = isActive ? 'Aktif' : 'Dinonaktifkan';
+    final color = isActive ? AppColors.success : AppColors.danger;
+    final bg = isActive ? AppColors.successBg : AppColors.dangerBg;
+    final label = isActive ? 'Aktif' : 'Nonaktif';
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
+          color: bg,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor.withAlpha(60), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 6,
-              height: 6,
+              width: 5,
+              height: 5,
               decoration: BoxDecoration(
-                color: dotColor,
+                color: color,
                 shape: BoxShape.circle,
               ),
             ),
@@ -159,8 +154,8 @@ class _StatusPill extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: textColor,
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
             ),
           ],
@@ -170,15 +165,20 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-// ─── Member Style ────────────────────────────────────────────────────────────
+// ─── Member Style ─────────────────────────────────────────────────────────────
 
 class _MemberStyle {
   final Color color;
+  final Color bg;
   final String label;
-  const _MemberStyle({required this.color, required this.label});
+  const _MemberStyle({
+    required this.color,
+    required this.bg,
+    required this.label,
+  });
 }
 
-// ─── Badge ───────────────────────────────────────────────────────────────────
+// ─── Badge ────────────────────────────────────────────────────────────────────
 
 class _Badge extends StatelessWidget {
   final _MemberStyle style;
@@ -189,28 +189,23 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: style.color.withAlpha(18),
-        borderRadius: BorderRadius.circular(4),
+        color: style.bg,
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            style.label,
-            style: TextStyle(
-              color: style.color,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
+      child: Text(
+        style.label,
+        style: TextStyle(
+          color: style.color,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+        ),
       ),
     );
   }
 }
 
-// ─── Sub Info ────────────────────────────────────────────────────────────────
+// ─── Sub Info ─────────────────────────────────────────────────────────────────
 
 class _SubInfo extends StatelessWidget {
   final CustomerData customer;
@@ -228,7 +223,12 @@ class _SubInfo extends StatelessWidget {
     if (parts.isEmpty) return const SizedBox.shrink();
     return Text(
       parts.join('  ·  '),
-      style: const TextStyle(fontSize: 11, color: Colors.grey),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: Colors.grey.shade600,
+        height: 1.3,
+      ),
       overflow: TextOverflow.ellipsis,
     );
   }

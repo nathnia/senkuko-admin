@@ -62,22 +62,20 @@ class CustomerController extends GetxController {
 
   // ===================== FILTER =====================
 
-
   void _applyFilter() {
     final lower = searchText.value.toLowerCase();
-
     filteredCustomers.assignAll(
       customerList.where((c) {
         final matchStatus =
             statusFilter.value == null || c.status == statusFilter.value;
-
+        final matchGroup =
+            groupFilter.value == null || c.customerGroup == groupFilter.value;
         final matchSearch =
             lower.isEmpty ||
             c.name.toLowerCase().contains(lower) ||
             (c.phone?.toLowerCase().contains(lower) ?? false) ||
             (c.email?.toLowerCase().contains(lower) ?? false);
-
-        return matchStatus && matchSearch;
+        return matchStatus && matchGroup && matchSearch;
       }).toList(),
     );
   }
@@ -87,35 +85,40 @@ class CustomerController extends GetxController {
     _applyFilter();
   }
 
-  void setStatusFilter(String label) {
+  final Rxn<CustomerGroup> groupFilter = Rxn(null);
+
+  void setCombinedFilter(String label) {
     switch (label) {
       case 'Aktif':
         statusFilter.value = CustomerStatus.active;
+        groupFilter.value = null;
         break;
-
       case 'Nonaktif':
         statusFilter.value = CustomerStatus.inactive;
+        groupFilter.value = null;
         break;
-
-      default:
+      case 'Eceran':
         statusFilter.value = null;
+        groupFilter.value = CustomerGroup.general;
+        break;
+      case 'Grosir':
+        statusFilter.value = null;
+        groupFilter.value = CustomerGroup.grosir;
+        break;
+      default: // Semua
+        statusFilter.value = null;
+        groupFilter.value = null;
         break;
     }
-
     _applyFilter();
   }
 
-  String get statusFilterLabel {
-    switch (statusFilter.value) {
-      case CustomerStatus.active:
-        return 'Aktif';
-
-      case CustomerStatus.inactive:
-        return 'Nonaktif';
-
-      default:
-        return 'Semua';
-    }
+  String get combinedFilterLabel {
+    if (statusFilter.value == CustomerStatus.active) return 'Aktif';
+    if (statusFilter.value == CustomerStatus.inactive) return 'Nonaktif';
+    if (groupFilter.value == CustomerGroup.general) return 'Eceran';
+    if (groupFilter.value == CustomerGroup.grosir) return 'Grosir';
+    return 'Semua';
   }
 
   // ===================== FETCH =====================
