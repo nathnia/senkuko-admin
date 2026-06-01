@@ -7,7 +7,7 @@ import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_image_model.dart';
-import 'package:senkukoadmin/features/products/widgets/app_card.dart';
+import 'package:senkukoadmin/constant/app_card.dart';
 
 class ProductImageSection extends StatelessWidget {
   final ProductController controller;

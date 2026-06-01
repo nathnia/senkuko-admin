@@ -51,34 +51,22 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
+    setState(() { _isLoading = true; _hasError = false; });
 
-    // Reuse already-loaded list if PromotionController is registered
     if (Get.isRegistered<PromotionController>()) {
       final list = Get.find<PromotionController>().promotionList;
       if (list.isNotEmpty) {
-        setState(() {
-          _all = list.toList();
-          _filtered = _all;
-          _isLoading = false;
-        });
+        setState(() { _all = list.toList(); _filtered = _all; _isLoading = false; });
         return;
       }
     }
 
-    // Otherwise fetch directly
     try {
       final res = await PromotionService.getAllPromotions();
       if (!mounted) return;
       if (res.statusCode == 200) {
         final data = promotionListModelFromJson(res.body).data;
-        setState(() {
-          _all = data;
-          _filtered = data;
-        });
+        setState(() { _all = data; _filtered = data; });
       } else {
         setState(() => _hasError = true);
       }
@@ -94,23 +82,15 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
       _searchQuery = value.toLowerCase().trim();
       _filtered = _searchQuery.isEmpty
           ? _all
-          : _all
-              .where(
-                (p) =>
-                    p.name.toLowerCase().contains(_searchQuery) ||
-                    p.code.toLowerCase().contains(_searchQuery),
-              )
-              .toList();
+          : _all.where((p) =>
+              p.name.toLowerCase().contains(_searchQuery) ||
+              p.code.toLowerCase().contains(_searchQuery)).toList();
     });
   }
 
   void _expandSheet() {
     if (_sheetC.isAttached && _sheetC.size < 1.0) {
-      _sheetC.animateTo(
-        1.0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      _sheetC.animateTo(1.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
 
@@ -120,170 +100,131 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       controller: _sheetC,
-      initialChildSize: 0.6,
+      initialChildSize: 0.65,
       minChildSize: 0.4,
       maxChildSize: 1.0,
       snap: true,
-      snapSizes: const [0.6, 1.0],
+      snapSizes: const [0.65, 1.0],
       expand: false,
-      builder: (context, scrollController) => Container(
+      builder: (ctx, sc) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          color: Color(0xFFF6F6F6),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(child: _buildBody(scrollController)),
-          ],
-        ),
+        child: Column(children: [
+          _buildHeader(),
+          Expanded(child: _buildBody(sc)),
+        ]),
       ),
     );
   }
 
-  // ── Header ──────────────────────────────────────────────────────────────
-
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))],
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+          Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: const Color(0xFFDDDDDD), borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(height: 16),
+          const Text('Pilih Promosi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.2)),
+          const SizedBox(height: 14),
+          Container(
+            height: 44,
+            decoration: BoxDecoration(color: const Color(0xFFF2F2F2), borderRadius: BorderRadius.circular(12)),
+            child: TextField(
+              controller: _searchC,
+              onChanged: _onSearchChanged,
+              onTap: _expandSheet,
+              style: const TextStyle(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Cari nama atau kode promo...',
+                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFFBBBBBB)),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () { _searchC.clear(); _onSearchChanged(''); },
+                        child: const Icon(Icons.cancel_rounded, color: Color(0xFFBBBBBB), size: 18),
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Title
-          const Center(
-            child: Text(
-              'Pilih Promosi',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Search bar
-          TextField(
-            controller: _searchC,
-            onChanged: _onSearchChanged,
-            onTap: _expandSheet,
-            decoration: InputDecoration(
-              hintText: 'Cari nama atau kode promo...',
-              hintStyle:
-                  TextStyle(fontSize: 13, color: Colors.grey.shade400),
-              prefixIcon: Icon(
-                Icons.search_rounded,
-                color: Colors.grey.shade400,
-                size: 18,
-              ),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? GestureDetector(
-                      onTap: () {
-                        _searchC.clear();
-                        _onSearchChanged('');
-                      },
-                      child: Icon(
-                        Icons.close_rounded,
-                        color: Colors.grey.shade400,
-                        size: 16,
-                      ),
-                    )
-                  : null,
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  // ── Body ────────────────────────────────────────────────────────────────
-
-  Widget _buildBody(ScrollController scrollController) {
+  Widget _buildBody(ScrollController sc) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+        const SizedBox(height: 12),
+        const Text('Memuat promosi...', style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA))),
+      ]),
+    );
     }
 
-    if (_hasError) {
-      return AppErrorState(
-        message: 'Gagal memuat daftar promosi',
-        onRetry: _load,
-      );
-    }
+    if (_hasError) return AppErrorState(message: 'Gagal memuat daftar promosi', onRetry: _load);
 
     if (_filtered.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.local_offer_outlined,
-                size: 40, color: Colors.grey.shade300),
-            const SizedBox(height: 8),
-            Text(
-              _searchQuery.isNotEmpty
-                  ? 'Promosi tidak ditemukan'
-                  : 'Belum ada promosi',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-            ),
-          ],
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 72, height: 72,
+          decoration: const BoxDecoration(color: Color(0xFFF2F2F2), shape: BoxShape.circle),
+          child: const Icon(Icons.local_offer_outlined, size: 32, color: Color(0xFFCCCCCC)),
         ),
-      );
+        const SizedBox(height: 12),
+        Text(
+          _searchQuery.isNotEmpty ? 'Promosi tidak ditemukan' : 'Belum ada promosi',
+          style: const TextStyle(fontSize: 14, color: Color(0xFFAAAAAA)),
+        ),
+      ]),
+    );
     }
 
     return ListView.builder(
-      controller: scrollController,
+      controller: sc,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
       itemCount: _filtered.length,
-      itemBuilder: (_, i) => _PromoTile(
-        promo: _filtered[i],
-        onTap: () => _select(_filtered[i]),
-      ),
+      itemBuilder: (_, i) => _PromoCard(promo: _filtered[i], onTap: () => _select(_filtered[i])),
     );
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// PROMO TILE
-// ═══════════════════════════════════════════════════════════════
+// ─── Promotion Card ───────────────────────────────────────────────────────────
 
-class _PromoTile extends StatelessWidget {
+class _PromoCard extends StatelessWidget {
   final PromotionData promo;
   final VoidCallback onTap;
+  const _PromoCard({required this.promo, required this.onTap});
 
-  const _PromoTile({required this.promo, required this.onTap});
+  bool get _isDimmed => promo.isExpired || !promo.isActive;
 
-  Color get _typeBadgeColor {
+  Color get _typeColor {
     switch (promo.type) {
-      case 'discount_percent':
-        return Colors.purple;
-      case 'discount_fixed':
-        return Colors.teal;
-      case 'free_item':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+      case 'discount_percent': return const Color(0xFF8B5CF6);
+      case 'discount_fixed': return const Color(0xFF0D9488);
+      case 'free_item': return const Color(0xFFF97316);
+      default: return const Color(0xFF999999);
     }
   }
 
   Color get _statusColor {
-    if (!promo.isActive) return Colors.grey;
-    if (promo.isExpired) return Colors.orange;
+    if (!promo.isActive) return const Color(0xFF999999);
+    if (promo.isExpired) return const Color(0xFFF97316);
     return AppColors.primary;
   }
 
@@ -296,124 +237,128 @@ class _PromoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('dd MMM yyyy', 'id_ID');
-    final isDimmed = promo.isExpired || !promo.isActive;
     final label = _statusLabel;
 
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                // Info column
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        promo.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: isDimmed
-                              ? Colors.grey.shade400
-                              : Colors.black87,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          _badge(
-                            label: promo.code,
-                            bg: Colors.grey.shade100,
-                            fg: Colors.black87,
-                            border: Colors.grey.shade300,
-                            mono: true,
-                          ),
-                          const SizedBox(width: 5),
-                          _badge(
-                            label: promo.typeLabel,
-                            bg: _typeBadgeColor.withAlpha(20),
-                            fg: _typeBadgeColor,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 10,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${df.format(promo.validFrom)} – ${df.format(promo.validTo)}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _isDimmed ? const Color(0xFFF0F0F0) : const Color(0xFFEEEEEE)),
+        boxShadow: _isDimmed
+            ? null
+            : const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left: type icon
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: _typeColor.withAlpha(_isDimmed ? 10 : 20),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-
-                const SizedBox(width: 8),
-
-                // Right: status badge OR chevron
-                if (label != null)
-                  _badge(
-                    label: label,
-                    bg: _statusColor.withAlpha(20),
-                    fg: _statusColor,
-                  )
-                else
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: Colors.grey.shade400,
+                child: Icon(_typeIcon, size: 18, color: _isDimmed ? const Color(0xFFCCCCCC) : _typeColor),
+              ),
+              const SizedBox(width: 12),
+              // Center: info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      promo.name,
+                      style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600,
+                        color: _isDimmed ? const Color(0xFFAAAAAA) : const Color(0xFF1A1A1A),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _CodeBadge(code: promo.code),
+                        const SizedBox(width: 6),
+                        _TypeBadge(label: promo.typeLabel, color: _isDimmed ? const Color(0xFF999999) : _typeColor),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined, size: 11, color: Color(0xFFBBBBBB)),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${df.format(promo.validFrom)} – ${df.format(promo.validTo)}',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFFAAAAAA)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Right: status or chevron
+              if (label != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _statusColor.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-              ],
-            ),
+                  child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor)),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFCCCCCC)),
+                ),
+            ],
           ),
         ),
-        Divider(height: 1, color: Colors.grey.shade100),
-      ],
+      ),
     );
   }
 
-  Widget _badge({
-    required String label,
-    required Color bg,
-    required Color fg,
-    Color? border,
-    bool mono = false,
-  }) =>
-      Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(4),
-          border:
-              border != null ? Border.all(color: border, width: 0.5) : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: fg,
-            fontFamily: mono ? 'monospace' : null,
-            letterSpacing: mono ? 0.5 : null,
-          ),
-        ),
-      );
+  IconData get _typeIcon {
+    switch (promo.type) {
+      case 'discount_percent': return Icons.percent_rounded;
+      case 'discount_fixed': return Icons.remove_circle_outline_rounded;
+      case 'free_item': return Icons.card_giftcard_rounded;
+      default: return Icons.local_offer_outlined;
+    }
+  }
+}
+
+class _CodeBadge extends StatelessWidget {
+  final String code;
+  const _CodeBadge({required this.code});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF2F2F2),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: const Color(0xFFE8E8E8)),
+    ),
+    child: Text(code, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'monospace', letterSpacing: 0.5, color: Color(0xFF555555))),
+  );
+}
+
+class _TypeBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _TypeBadge({required this.label, required this.color});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(color: color.withAlpha(18), borderRadius: BorderRadius.circular(6)),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+  );
 }

@@ -10,9 +10,9 @@ import 'package:senkukoadmin/features/products/controllers/price_controller.dart
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/unit_controller.dart';
-import 'package:senkukoadmin/features/products/widgets/app_card.dart';
+import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
-import 'package:senkukoadmin/features/products/widgets/save_button.dart';
+import 'package:senkukoadmin/constant/save_button.dart';
 
 class VariantFormPage extends StatelessWidget {
   VariantFormPage({super.key});

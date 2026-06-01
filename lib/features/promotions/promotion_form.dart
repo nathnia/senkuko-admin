@@ -4,7 +4,7 @@ import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
-import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
+import 'package:senkukoadmin/constant/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 

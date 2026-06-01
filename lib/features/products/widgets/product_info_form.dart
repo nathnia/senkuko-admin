@@ -6,7 +6,7 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
-import 'package:senkukoadmin/features/products/widgets/app_card.dart';
+import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/features/products/widgets/category_picker_sheet.dart';
 
 class ProductInfoForm extends StatelessWidget {

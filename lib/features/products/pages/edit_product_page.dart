@@ -6,11 +6,11 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_image_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
-import 'package:senkukoadmin/features/products/widgets/app_card.dart';
+import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/features/products/widgets/product_image_section.dart';
 import 'package:senkukoadmin/features/products/widgets/product_info_form.dart';
-import 'package:senkukoadmin/features/products/widgets/save_button.dart';
-import 'package:senkukoadmin/features/products/widgets/unsaved_changes_dialog.dart';
+import 'package:senkukoadmin/constant/save_button.dart';
+import 'package:senkukoadmin/constant/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
