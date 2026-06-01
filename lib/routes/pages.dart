@@ -5,6 +5,7 @@ import 'package:senkukoadmin/features/customers/customer_page.dart';
 import 'package:senkukoadmin/features/products/pages/add_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/detail_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/edit_product_page.dart';
+import 'package:senkukoadmin/features/products/pages/import_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/manage_categories_page.dart';
 import 'package:senkukoadmin/features/products/pages/variant_form_page.dart';
 import 'package:senkukoadmin/features/products/product_binding.dart';
@@ -34,6 +35,10 @@ class AppPages {
     GetPage(name: AppRoutes.addProduct, page: () => AddProductPage()),
     GetPage(name: AppRoutes.editProduct, page: () => EditProductPage()),
     GetPage(name: AppRoutes.detailProduct, page: () => DetailProductPage()),
+    GetPage(
+      name: AppRoutes.importProduct,
+      page: () => const ImportProductPage(),
+    ),
     GetPage(
       name: AppRoutes.customer,
       page: () => CustomerPage(),

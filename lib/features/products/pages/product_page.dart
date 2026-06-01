@@ -61,6 +61,13 @@ class _ProductPageState extends State<ProductPage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+    IconButton(
+       icon: const Icon(Icons.upload_file_rounded, color: Colors.black87),
+       tooltip: 'Import Excel',
+       onPressed: () => Get.toNamed(AppRoutes.importProduct),
+     ),
+   ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(40),
           child: Padding(

@@ -25,4 +25,5 @@ class AppRoutes {
   static const voucherForm = '/vouchers/form';
   static const variantForm = '/variant-form';
   static const manageCategories = '/manage-categories';
+  static const importProduct = '/import-product';
 }

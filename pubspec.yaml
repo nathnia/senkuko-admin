@@ -42,6 +42,10 @@ dependencies:
   intl: ^0.20.2
   fluttertoast: ^9.0.0
   connectivity_plus: ^7.1.1
+  excel: ^4.0.6        # pure Dart, isolate-safe
+  share_plus: ^10.0.3  # OS share sheet
+  path_provider: ^2.1.5
+  file_picker: ^8.1.2
 
 dev_dependencies:
   flutter_test:
