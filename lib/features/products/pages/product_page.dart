@@ -62,12 +62,12 @@ class _ProductPageState extends State<ProductPage> {
         ),
         centerTitle: true,
         actions: [
-    IconButton(
-       icon: const Icon(Icons.upload_file_rounded, color: Colors.black87),
-       tooltip: 'Import Excel',
-       onPressed: () => Get.toNamed(AppRoutes.importProduct),
-     ),
-   ],
+          IconButton(
+            icon: const Icon(Icons.upload_file_rounded, color: Colors.black87),
+            tooltip: 'Import Excel',
+            onPressed: () => Get.toNamed(AppRoutes.importProduct),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(40),
           child: Padding(
@@ -94,13 +94,15 @@ class _ProductPageState extends State<ProductPage> {
       ),
       body: Column(
         children: [
-          Obx(() => AppFilterChips(
-                items: controller.tabs
-                    .map((t) => FilterChipItem(label: t))
-                    .toList(),
-                selectedLabel: controller.selectedTab.value,
-                onChipTap: controller.changeTab,
-              )),
+          Obx(
+            () => AppFilterChips(
+              items: controller.tabs
+                  .map((t) => FilterChipItem(label: t))
+                  .toList(),
+              selectedLabel: controller.selectedTab.value,
+              onChipTap: controller.changeTab,
+            ),
+          ),
           _ActiveFilterChips(controller: controller),
           Expanded(
             child: Obx(() {
@@ -122,8 +124,11 @@ class _ProductPageState extends State<ProductPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inventory_2_outlined,
-                          size: 48, color: Colors.grey[300]),
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 48,
+                        color: Colors.grey[300],
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         'Produk tidak ditemukan',

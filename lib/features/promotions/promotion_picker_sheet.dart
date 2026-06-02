@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
+import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/features/promotions/promotion_service.dart';
@@ -88,12 +89,6 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
     });
   }
 
-  void _expandSheet() {
-    if (_sheetC.isAttached && _sheetC.size < 1.0) {
-      _sheetC.animateTo(1.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-    }
-  }
-
   void _select(PromotionData promo) => Navigator.of(context).pop(promo);
 
   @override
@@ -108,7 +103,7 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
       expand: false,
       builder: (ctx, sc) => Container(
         decoration: const BoxDecoration(
-          color: Color(0xFFF6F6F6),
+          color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(children: [
@@ -122,43 +117,36 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40, height: 4,
-            decoration: BoxDecoration(color: const Color(0xFFDDDDDD), borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(height: 16),
-          const Text('Pilih Promosi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.2)),
-          const SizedBox(height: 14),
-          Container(
-            height: 44,
-            decoration: BoxDecoration(color: const Color(0xFFF2F2F2), borderRadius: BorderRadius.circular(12)),
-            child: TextField(
-              controller: _searchC,
-              onChanged: _onSearchChanged,
-              onTap: _expandSheet,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Cari nama atau kode promo...',
-                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFFBBBBBB)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () { _searchC.clear(); _onSearchChanged(''); },
-                        child: const Icon(Icons.cancel_rounded, color: Color(0xFFBBBBBB), size: 18),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFCCCCCC),
+              borderRadius: BorderRadius.circular(2),
             ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Pilih Promosi',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+              color: Color(0xFF111111),
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppSearchBar(
+            hintText: 'Cari nama atau kode promo...',
+            onChanged: _onSearchChanged,
+            textController: _searchC,
           ),
         ],
       ),
@@ -168,38 +156,42 @@ class _PromotionPickerSheetState extends State<PromotionPickerSheet> {
   Widget _buildBody(ScrollController sc) {
     if (_isLoading) {
       return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
-        const SizedBox(height: 12),
-        const Text('Memuat promosi...', style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA))),
-      ]),
-    );
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+          const SizedBox(height: 12),
+          Text('Memuat promosi...', style: TextStyle(fontSize: 13, color: AppColors.subtext)),
+        ]),
+      );
     }
 
     if (_hasError) return AppErrorState(message: 'Gagal memuat daftar promosi', onRetry: _load);
 
     if (_filtered.isEmpty) {
       return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 72, height: 72,
-          decoration: const BoxDecoration(color: Color(0xFFF2F2F2), shape: BoxShape.circle),
-          child: const Icon(Icons.local_offer_outlined, size: 32, color: Color(0xFFCCCCCC)),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          _searchQuery.isNotEmpty ? 'Promosi tidak ditemukan' : 'Belum ada promosi',
-          style: const TextStyle(fontSize: 14, color: Color(0xFFAAAAAA)),
-        ),
-      ]),
-    );
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64, height: 64,
+            decoration: const BoxDecoration(color: Color(0xFFEAEAEA), shape: BoxShape.circle),
+            child: const Icon(Icons.local_offer_outlined, size: 28, color: Color(0xFFCCCCCC)),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _searchQuery.isNotEmpty ? 'Promosi tidak ditemukan' : 'Belum ada promosi',
+            style: TextStyle(fontSize: 14, color: AppColors.subtext),
+          ),
+        ]),
+      );
     }
 
-    return ListView.builder(
+    return ListView.separated(
       controller: sc,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       itemCount: _filtered.length,
-      itemBuilder: (_, i) => _PromoCard(promo: _filtered[i], onTap: () => _select(_filtered[i])),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _PromoCard(
+        promo: _filtered[i],
+        onTap: () => _select(_filtered[i]),
+      ),
     );
   }
 }
@@ -218,12 +210,12 @@ class _PromoCard extends StatelessWidget {
       case 'discount_percent': return const Color(0xFF8B5CF6);
       case 'discount_fixed': return const Color(0xFF0D9488);
       case 'free_item': return const Color(0xFFF97316);
-      default: return const Color(0xFF999999);
+      default: return AppColors.subtext;
     }
   }
 
   Color get _statusColor {
-    if (!promo.isActive) return const Color(0xFF999999);
+    if (!promo.isActive) return AppColors.subtext;
     if (promo.isExpired) return const Color(0xFFF97316);
     return AppColors.primary;
   }
@@ -234,40 +226,48 @@ class _PromoCard extends StatelessWidget {
     return null;
   }
 
+  IconData get _typeIcon {
+    switch (promo.type) {
+      case 'discount_percent': return Icons.percent_rounded;
+      case 'discount_fixed': return Icons.remove_circle_outline_rounded;
+      case 'free_item': return Icons.card_giftcard_rounded;
+      default: return Icons.local_offer_outlined;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('dd MMM yyyy', 'id_ID');
     final label = _statusLabel;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _isDimmed ? const Color(0xFFF0F0F0) : const Color(0xFFEEEEEE)),
-        boxShadow: _isDimmed
-            ? null
-            : const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
       ),
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left: type icon
+              // Type icon
               Container(
-                width: 40, height: 40,
+                width: 38, height: 38,
                 decoration: BoxDecoration(
-                  color: _typeColor.withAlpha(_isDimmed ? 10 : 20),
-                  borderRadius: BorderRadius.circular(11),
+                  color: (_isDimmed ? AppColors.subtext : _typeColor).withAlpha(15),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(_typeIcon, size: 18, color: _isDimmed ? const Color(0xFFCCCCCC) : _typeColor),
+                child: Icon(
+                  _typeIcon,
+                  size: 17,
+                  color: _isDimmed ? const Color(0xFFCCCCCC) : _typeColor,
+                ),
               ),
               const SizedBox(width: 12),
-              // Center: info
+              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,8 +275,9 @@ class _PromoCard extends StatelessWidget {
                     Text(
                       promo.name,
                       style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600,
-                        color: _isDimmed ? const Color(0xFFAAAAAA) : const Color(0xFF1A1A1A),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _isDimmed ? AppColors.subtext : const Color(0xFF1A1A1A),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -286,17 +287,20 @@ class _PromoCard extends StatelessWidget {
                       children: [
                         _CodeBadge(code: promo.code),
                         const SizedBox(width: 6),
-                        _TypeBadge(label: promo.typeLabel, color: _isDimmed ? const Color(0xFF999999) : _typeColor),
+                        _TypeBadge(
+                          label: promo.typeLabel,
+                          color: _isDimmed ? AppColors.subtext : _typeColor,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined, size: 11, color: Color(0xFFBBBBBB)),
+                        const Icon(Icons.calendar_today_outlined, size: 11, color: Color(0xFFCCCCCC)),
                         const SizedBox(width: 5),
                         Text(
                           '${df.format(promo.validFrom)} – ${df.format(promo.validTo)}',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFFAAAAAA)),
+                          style: TextStyle(fontSize: 11, color: AppColors.subtext),
                         ),
                       ],
                     ),
@@ -304,15 +308,18 @@ class _PromoCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // Right: status or chevron
+              // Status or chevron
               if (label != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _statusColor.withAlpha(20),
+                    color: _statusColor.withAlpha(18),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor)),
+                  child: Text(
+                    label,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor),
+                  ),
                 )
               else
                 const Padding(
@@ -325,29 +332,31 @@ class _PromoCard extends StatelessWidget {
       ),
     );
   }
-
-  IconData get _typeIcon {
-    switch (promo.type) {
-      case 'discount_percent': return Icons.percent_rounded;
-      case 'discount_fixed': return Icons.remove_circle_outline_rounded;
-      case 'free_item': return Icons.card_giftcard_rounded;
-      default: return Icons.local_offer_outlined;
-    }
-  }
 }
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
 
 class _CodeBadge extends StatelessWidget {
   final String code;
   const _CodeBadge({required this.code});
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
     decoration: BoxDecoration(
-      color: const Color(0xFFF2F2F2),
+      color: AppColors.background,
       borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: const Color(0xFFE8E8E8)),
     ),
-    child: Text(code, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'monospace', letterSpacing: 0.5, color: Color(0xFF555555))),
+    child: Text(
+      code,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        fontFamily: 'monospace',
+        letterSpacing: 0.5,
+        color: AppColors.subtitle,
+      ),
+    ),
   );
 }
 
@@ -355,10 +364,17 @@ class _TypeBadge extends StatelessWidget {
   final String label;
   final Color color;
   const _TypeBadge({required this.label, required this.color});
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-    decoration: BoxDecoration(color: color.withAlpha(18), borderRadius: BorderRadius.circular(6)),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    decoration: BoxDecoration(
+      color: color.withAlpha(18),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+    ),
   );
 }

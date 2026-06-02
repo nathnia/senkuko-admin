@@ -1,9 +1,8 @@
-// ignore_for_file: unrelated_type_equality_checks
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
+import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_model.dart';
 
@@ -51,12 +50,19 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() { _isLoading = true; _hasError = false; });
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
 
     if (Get.isRegistered<ProductController>()) {
       final list = Get.find<ProductController>().productList;
       if (list.isNotEmpty) {
-        setState(() { _all = list.toList(); _filtered = _all; _isLoading = false; });
+        setState(() {
+          _all = list.toList();
+          _filtered = _all;
+          _isLoading = false;
+        });
         return;
       }
     }
@@ -69,7 +75,10 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
         setState(() => _hasError = true);
       } else {
         final list = ctrl.productList;
-        setState(() { _all = list.toList(); _filtered = _all; });
+        setState(() {
+          _all = list.toList();
+          _filtered = _all;
+        });
       }
     } catch (_) {
       if (mounted) setState(() => _hasError = true);
@@ -83,16 +92,14 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
       _searchQuery = value.toLowerCase().trim();
       _filtered = _searchQuery.isEmpty
           ? _all
-          : _all.where((p) =>
-              p.name.toLowerCase().contains(_searchQuery) ||
-              p.skuCode.toLowerCase().contains(_searchQuery)).toList();
+          : _all
+                .where(
+                  (p) =>
+                      p.name.toLowerCase().contains(_searchQuery) ||
+                      p.skuCode.toLowerCase().contains(_searchQuery),
+                )
+                .toList();
     });
-  }
-
-  void _expandSheet() {
-    if (_sheetC.isAttached && _sheetC.size < 1.0) {
-      _sheetC.animateTo(1.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-    }
   }
 
   void _select(ProductData product) => Navigator.of(context).pop(product);
@@ -109,13 +116,15 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
       expand: false,
       builder: (ctx, sc) => Container(
         decoration: const BoxDecoration(
-          color: Color(0xFFF6F6F6),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Column(children: [
-          _buildHeader(),
-          Expanded(child: _buildBody(sc)),
-        ]),
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(child: _buildBody(sc)),
+          ],
+        ),
       ),
     );
   }
@@ -123,43 +132,44 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))],
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Drag handle
           Container(
-            width: 40, height: 4,
-            decoration: BoxDecoration(color: const Color(0xFFDDDDDD), borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(height: 16),
-          const Text('Pilih Produk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.2)),
-          const SizedBox(height: 14),
-          Container(
-            height: 44,
-            decoration: BoxDecoration(color: const Color(0xFFF2F2F2), borderRadius: BorderRadius.circular(12)),
-            child: TextField(
-              controller: _searchC,
-              onChanged: _onSearchChanged,
-              onTap: _expandSheet,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Cari nama atau SKU...',
-                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFFBBBBBB)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () { _searchC.clear(); _onSearchChanged(''); },
-                        child: const Icon(Icons.cancel_rounded, color: Color(0xFFBBBBBB), size: 18),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E0E0),
+              borderRadius: BorderRadius.circular(2),
             ),
+          ),
+          const SizedBox(height: 14),
+          // Title centered, close button absolute-style via Stack
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              const Text(
+                'Pilih Produk',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111111),
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Search bar
+          AppSearchBar(
+            hintText: 'Cari nama atau SKU...',
+            onChanged: _onSearchChanged,
+            textController: _searchC,
           ),
         ],
       ),
@@ -169,36 +179,63 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
   Widget _buildBody(ScrollController sc) {
     if (_isLoading) {
       return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
-        const SizedBox(height: 12),
-        const Text('Memuat produk...', style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA))),
-      ]),
-    );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 2.5,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Memuat produk...',
+              style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+            ),
+          ],
+        ),
+      );
     }
 
-    if (_hasError) return AppErrorState(message: 'Gagal memuat daftar produk', onRetry: _load);
+    if (_hasError) {
+      return AppErrorState(
+        message: 'Gagal memuat daftar produk',
+        onRetry: _load,
+      );
+    }
 
     if (_filtered.isEmpty) {
       return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 72, height: 72,
-          decoration: const BoxDecoration(color: Color(0xFFF2F2F2), shape: BoxShape.circle),
-          child: const Icon(Icons.inventory_2_outlined, size: 32, color: Color(0xFFCCCCCC)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2F2F2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                size: 32,
+                color: Color(0xFFCCCCCC),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'Produk tidak ditemukan'
+                  : 'Belum ada produk',
+              style: const TextStyle(fontSize: 14, color: Color(0xFFAAAAAA)),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        Text(
-          _searchQuery.isNotEmpty ? 'Produk tidak ditemukan' : 'Belum ada produk',
-          style: const TextStyle(fontSize: 14, color: Color(0xFFAAAAAA)),
-        ),
-      ]),
-    );
+      );
     }
 
     return ListView.builder(
       controller: sc,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
       itemCount: _filtered.length,
       itemBuilder: (_, i) => _ProductCard(
         product: _filtered[i],
@@ -208,86 +245,101 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
   }
 }
 
-// ─── Product Card ─────────────────────────────────────────────────────────────
+// ─── Product Card ──────────────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
   final ProductData product;
   final VoidCallback onTap;
   const _ProductCard({required this.product, required this.onTap});
 
-  bool get _isActive => product.isActive == true;
+  String? get _firstImageUrl {
+    final imgs = product.images;
+    if (imgs == null || imgs.isEmpty) return null;
+    final primary = imgs.where((i) => i.isPrimary).firstOrNull;
+    return primary?.imageUrl ?? imgs.first.imageUrl;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: _isActive ? Colors.white : const Color(0xFFFAFAFA),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _isActive ? const Color(0xFFF0F0F0) : const Color(0xFFEEEEEE)),
-        boxShadow: _isActive
-            ? const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))]
-            : null,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: IntrinsicHeight(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Icon/avatar
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: _isActive ? AppColors.primary.withAlpha(12) : const Color(0xFFF0F0F0),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(
-                  Icons.inventory_2_outlined,
-                  size: 18,
-                  color: _isActive ? AppColors.primary : const Color(0xFFCCCCCC),
-                ),
-              ),
+              _buildThumbnail(),
               const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _isActive ? const Color(0xFF1A1A1A) : const Color(0xFFAAAAAA),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        _SkuBadge(sku: product.skuCode),
-                        if (product.categoryName.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          _CategoryBadge(name: product.categoryName),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Status or chevron
-              if (!_isActive)
-                _StatusBadge(label: 'Nonaktif')
-              else
-                const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFCCCCCC)),
+              Expanded(child: _buildInfo()),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildThumbnail() {
+    final url = _firstImageUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: 72,
+        child: url != null && url.isNotEmpty
+            ? Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _placeholder(),
+                loadingBuilder: (_, child, progress) =>
+                    progress == null ? child : _placeholder(),
+              )
+            : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 72,
+      color: AppColors.background,
+      child: Icon(Icons.image_outlined, color: AppColors.subtext, size: 22),
+    );
+  }
+
+  Widget _buildInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              product.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              product.categoryName,
+              style: TextStyle(fontSize: 12, color: AppColors.subtext),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _SkuBadge(sku: product.skuCode),
+      ],
     );
   }
 }
@@ -295,50 +347,21 @@ class _ProductCard extends StatelessWidget {
 class _SkuBadge extends StatelessWidget {
   final String sku;
   const _SkuBadge({required this.sku});
+
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
     decoration: BoxDecoration(
-      color: const Color(0xFFF2F2F2),
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: const Color(0xFFE8E8E8)),
+      color: AppColors.background,
+      borderRadius: BorderRadius.circular(20),
     ),
     child: Text(
       sku,
-      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'monospace', letterSpacing: 0.5, color: Color(0xFF555555)),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: AppColors.subtext,
+      ),
     ),
-  );
-}
-
-class _CategoryBadge extends StatelessWidget {
-  final String name;
-  const _CategoryBadge({required this.name});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-    decoration: BoxDecoration(
-      color: AppColors.primary.withAlpha(15),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Text(
-      name,
-      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    ),
-  );
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String label;
-  const _StatusBadge({required this.label});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF2F2F2),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFAAAAAA))),
   );
 }

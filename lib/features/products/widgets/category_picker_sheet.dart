@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
+import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/models/category_model.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -10,7 +11,10 @@ class CategoryPickerSheet extends StatefulWidget {
   final bool showManageLink;
   const CategoryPickerSheet({super.key, this.showManageLink = false});
 
-  static Future<CategoryData?> show(BuildContext context, {bool showManageLink = false}) {
+  static Future<CategoryData?> show(
+    BuildContext context, {
+    bool showManageLink = false,
+  }) {
     return showModalBottomSheet<CategoryData>(
       context: context,
       isScrollControlled: true,
@@ -54,16 +58,12 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
   }
 
   void _toggleGroup(String parentId) => setState(() {
-    _collapsed.contains(parentId) ? _collapsed.remove(parentId) : _collapsed.add(parentId);
+    _collapsed.contains(parentId)
+        ? _collapsed.remove(parentId)
+        : _collapsed.add(parentId);
   });
 
   void _select(CategoryData cat) => Navigator.of(context).pop(cat);
-
-  void _expandSheet() {
-    if (_sheetC.isAttached && _sheetC.size < 1.0) {
-      _sheetC.animateTo(1.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,77 +75,93 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
       snap: true,
       snapSizes: const [0.65, 1.0],
       expand: false,
-      builder: (ctx, sc) => _SheetShell(
-        header: _buildHeader(),
-        body: _buildBody(sc),
-      ),
+      builder: (ctx, sc) =>
+          _SheetShell(header: _buildHeader(), body: _buildBody(sc)),
     );
   }
 
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background, // matches sheet background
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Drag handle
           Container(
-            width: 40, height: 4,
-            decoration: BoxDecoration(color: const Color(0xFFDDDDDD), borderRadius: BorderRadius.circular(2)),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFCCCCCC),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          // Title row
           Stack(
             alignment: Alignment.center,
             children: [
-              const Center(child: Text('Pilih Kategori', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.2))),
+              const Center(
+                child: Text(
+                  'Pilih Kategori',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
               if (widget.showManageLink)
                 Positioned(
                   right: 0,
                   child: GestureDetector(
-                    onTap: () { Get.back(); Get.toNamed(AppRoutes.manageCategories); },
+                    onTap: () {
+                      Get.back();
+                      Get.toNamed(AppRoutes.manageCategories);
+                    },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withAlpha(12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.settings_outlined, size: 12, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Text('Kelola', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
-                      ]),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.settings_outlined,
+                            size: 12,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Kelola',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 14),
-          Container(
-            height: 44,
-            decoration: BoxDecoration(color: const Color(0xFFF2F2F2), borderRadius: BorderRadius.circular(12)),
-            child: TextField(
-              controller: _searchC,
-              onChanged: _onSearchChanged,
-              onTap: _expandSheet,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Cari kategori...',
-                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFFBBBBBB)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () { _searchC.clear(); _onSearchChanged(''); },
-                        child: const Icon(Icons.cancel_rounded, color: Color(0xFFBBBBBB), size: 18),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
+          const SizedBox(height: 12),
+          // Search bar — white on grey background pops nicely
+          AppSearchBar(
+            hintText: 'Cari kategori...',
+            onChanged: _onSearchChanged,
+            textController: _searchC,
           ),
         ],
       ),
@@ -155,10 +171,20 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
   Widget _buildBody(ScrollController sc) {
     return Obx(() {
       if (_categoryC.isLoading.value) return const _LoadingState();
-      if (_categoryC.hasError.value) return AppErrorState(message: 'Gagal memuat daftar kategori', onRetry: _categoryC.fetchCategories);
+      if (_categoryC.hasError.value) {
+        return AppErrorState(
+          message: 'Gagal memuat daftar kategori',
+          onRetry: _categoryC.fetchCategories,
+        );
+      }
 
       final parents = _categoryC.parentCategories;
-      if (parents.isEmpty) return const _EmptyState(icon: Icons.folder_off_outlined, message: 'Belum ada kategori');
+      if (parents.isEmpty) {
+        return const _EmptyState(
+          icon: Icons.folder_off_outlined,
+          message: 'Belum ada kategori',
+        );
+      }
 
       if (_searchQuery.isNotEmpty) return _buildSearchResults(sc);
       return _buildGroupedList(sc, parents);
@@ -171,30 +197,41 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
           (c.parentName?.toLowerCase().contains(_searchQuery) ?? false);
     }).toList();
 
-    if (results.isEmpty) return const _EmptyState(icon: Icons.search_off_rounded, message: 'Kategori tidak ditemukan');
+    if (results.isEmpty) {
+      return const _EmptyState(
+        icon: Icons.search_off_rounded,
+        message: 'Kategori tidak ditemukan',
+      );
+    }
 
-    return ListView.builder(
+    // Search results: single white card, items separated by dividers
+    return ListView(
       controller: sc,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
-      itemCount: results.length,
-      itemBuilder: (_, i) {
-        final cat = results[i];
-        final isSelectable = _categoryC.getSubCategories(cat.id).isEmpty;
-        return _CategoryTile(
-          label: cat.parentName != null ? '${cat.parentName} › ${cat.name}' : cat.name,
-          isSelectable: isSelectable,
-          hasParentLabel: cat.parentName != null,
-          onTap: isSelectable ? () => _select(cat) : null,
-        );
-      },
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+      children: [
+        _WhiteCard(
+          children: results.map((cat) {
+            final isSelectable = _categoryC.getSubCategories(cat.id).isEmpty;
+            return _CategoryTile(
+              label: cat.parentName != null
+                  ? '${cat.parentName} › ${cat.name}'
+                  : cat.name,
+              isSelectable: isSelectable,
+              hasParentLabel: cat.parentName != null,
+              onTap: isSelectable ? () => _select(cat) : null,
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
   Widget _buildGroupedList(ScrollController sc, List<CategoryData> parents) {
-    return ListView.builder(
+    return ListView.separated(
       controller: sc,
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       itemCount: parents.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final parent = parents[i];
         final children = _categoryC.getSubCategories(parent.id);
@@ -202,67 +239,174 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
         final isCollapsed = _collapsed.contains(parent.id);
 
         if (!hasChildren) {
-          // Standalone category — no children
-          return _StandaloneCategory(
-            name: parent.name,
-            onTap: () => _select(parent),
+          // Standalone — single-row white card
+          return _WhiteCard(
+            children: [
+              _StandaloneRow(name: parent.name, onTap: () => _select(parent)),
+            ],
           );
         }
 
-        return _GroupSection(
-          label: parent.name,
-          count: children.length,
-          isCollapsed: isCollapsed,
-          onToggle: () => _toggleGroup(parent.id),
-          children: children.map((c) => _CategoryTile(
-            label: c.name,
-            isSelectable: true,
-            onTap: () => _select(c),
-          )).toList(),
+        return _WhiteCard(
+          children: [
+            // Parent row (collapsible header)
+            _ParentRow(
+              name: parent.name,
+              isCollapsed: isCollapsed,
+              onTap: () => _toggleGroup(parent.id),
+            ),
+            // Children — animated show/hide
+            AnimatedCrossFade(
+              firstChild: Column(
+                children: _withDividers(
+                  children
+                      .map(
+                        (c) => _CategoryTile(
+                          label: c.name,
+                          isSelectable: true,
+                          onTap: () => _select(c),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              secondChild: const SizedBox.shrink(),
+              crossFadeState: isCollapsed
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
         );
       },
     );
   }
+
+  List<Widget> _withDividers(List<Widget> items) {
+    final r = <Widget>[];
+    for (int i = 0; i < items.length; i++) {
+      r.add(
+        const Divider(
+          height: 1,
+          indent: 16,
+          endIndent: 16,
+          color: Color(0xFFF2F2F2),
+        ),
+      );
+      r.add(items[i]);
+    }
+    return r;
+  }
 }
 
-// ─── Category-specific tiles ──────────────────────────────────────────────────
+// ─── White Card container (no border, no shadow) ──────────────────────────────
 
-class _StandaloneCategory extends StatelessWidget {
-  final String name;
-  final VoidCallback onTap;
-  const _StandaloneCategory({required this.name, required this.onTap});
+class _WhiteCard extends StatelessWidget {
+  final List<Widget> children;
+  const _WhiteCard({required this.children});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-          child: Row(
-            children: [
-              Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(color: AppColors.primary.withAlpha(12), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.folder_outlined, size: 16, color: AppColors.primary),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+}
+
+// ─── Parent row (collapsible header inside card) ──────────────────────────────
+
+class _ParentRow extends StatelessWidget {
+  final String name;
+  final bool isCollapsed;
+  final VoidCallback onTap;
+  const _ParentRow({
+    required this.name,
+    required this.isCollapsed,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: isCollapsed ? -0.25 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: AppColors.subtext,
               ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)))),
-              const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFCCCCCC)),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.subtitle,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+// ─── Standalone row (no children) ────────────────────────────────────────────
+
+class _StandaloneRow extends StatelessWidget {
+  final String name;
+  final VoidCallback onTap;
+  const _StandaloneRow({required this.name, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.subtitle,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: Color(0xFFCCCCCC),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Category Tile (child item) ───────────────────────────────────────────────
 
 class _CategoryTile extends StatelessWidget {
   final String label;
@@ -282,29 +426,27 @@ class _CategoryTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
-            Container(
-              width: 6, height: 6,
-              decoration: BoxDecoration(
-                color: isSelectable ? AppColors.primary.withAlpha(120) : const Color(0xFFDDDDDD),
-                shape: BoxShape.circle,
-              ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: Color(0xFFCCCCCC),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isSelectable ? const Color(0xFF1A1A1A) : const Color(0xFFBBBBBB),
+                  fontWeight: FontWeight.w400,
+                  color: isSelectable
+                      ? AppColors.subtitle
+                      : AppColors.subtext,
                 ),
               ),
             ),
-            if (isSelectable)
-              const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFCCCCCC)),
           ],
         ),
       ),
@@ -312,99 +454,47 @@ class _CategoryTile extends StatelessWidget {
   }
 }
 
-// ─── Shared widgets (duplicated for standalone file) ─────────────────────────
+// ─── Sheet Shell ──────────────────────────────────────────────────────────────
 
 class _SheetShell extends StatelessWidget {
   final Widget header;
   final Widget body;
   const _SheetShell({required this.header, required this.body});
+
   @override
   Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(color: Color(0xFFF6F6F6), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    child: Column(children: [header, Expanded(child: body)]),
+    decoration: const BoxDecoration(
+      // Grey background — white cards "float" on it without any shadow/border
+      color: AppColors.background,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: Column(
+      children: [
+        header,
+        Expanded(child: body),
+      ],
+    ),
   );
 }
 
-class _GroupSection extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool isCollapsed;
-  final VoidCallback onToggle;
-  final List<Widget> children;
-
-  const _GroupSection({required this.label, required this.count, required this.isCollapsed, required this.onToggle, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: onToggle,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(children: [
-                    Text(label.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF999999), letterSpacing: 0.8)),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                      decoration: BoxDecoration(color: AppColors.primary.withAlpha(15), borderRadius: BorderRadius.circular(20)),
-                      child: Text('$count', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                    ),
-                  ]),
-                ),
-                AnimatedRotation(
-                  turns: isCollapsed ? -0.25 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFFBBBBBB)),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedCrossFade(
-          firstChild: Container(
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Column(children: _withDividers(children)),
-            ),
-          ),
-          secondChild: const SizedBox.shrink(),
-          crossFadeState: isCollapsed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 200),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _withDividers(List<Widget> items) {
-    final r = <Widget>[];
-    for (int i = 0; i < items.length; i++) {
-      r.add(items[i]);
-      if (i < items.length - 1) r.add(const Divider(height: 1, indent: 34, endIndent: 16, color: Color(0xFFF5F5F5)));
-    }
-    return r;
-  }
-}
+// ─── States ───────────────────────────────────────────────────────────────────
 
 class _LoadingState extends StatelessWidget {
   const _LoadingState();
+
   @override
   Widget build(BuildContext context) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
-      const SizedBox(height: 12),
-      const Text('Memuat data...', style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA))),
-    ]),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+        const SizedBox(height: 12),
+        const Text(
+          'Memuat data...',
+          style: TextStyle(fontSize: 13, color: AppColors.subtext),
+        ),
+      ],
+    ),
   );
 }
 
@@ -412,16 +502,27 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
   const _EmptyState({required this.icon, required this.message});
+
   @override
   Widget build(BuildContext context) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(
-        width: 72, height: 72,
-        decoration: const BoxDecoration(color: Color(0xFFF2F2F2), shape: BoxShape.circle),
-        child: Icon(icon, size: 32, color: const Color(0xFFCCCCCC)),
-      ),
-      const SizedBox(height: 12),
-      Text(message, style: const TextStyle(fontSize: 14, color: Color(0xFFAAAAAA))),
-    ]),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 28, color: const Color(0xFFCCCCCC)),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          style: const TextStyle(fontSize: 14, color: AppColors.subtext),
+        ),
+      ],
+    ),
   );
 }
