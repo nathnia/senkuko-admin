@@ -9,29 +9,17 @@ import 'package:senkukoadmin/features/promotions/promotion_card.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class PromotionPage extends StatefulWidget {
+class PromotionPage extends StatelessWidget {
   const PromotionPage({super.key});
 
   @override
-  State<PromotionPage> createState() => _PromotionPageState();
-}
+  Widget build(BuildContext context) {
+    final controller = Get.find<PromotionController>();
 
-class _PromotionPageState extends State<PromotionPage> {
-  final controller = Get.find<PromotionController>();
-
-  @override
-  void initState() {
-    super.initState();
-    // Safe to call here — controller.onInit() already ran fetchPromotions().
-    // Only re-fetch if the list is empty (e.g. first navigation after controller
-    // was kept alive via fenix:true but list was cleared).
     if (controller.promotionList.isEmpty && !controller.isLoading.value) {
       controller.fetchPromotions();
     }
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -73,22 +61,18 @@ class _PromotionPageState extends State<PromotionPage> {
               onChipTap: controller.updateFilter,
             ),
           ),
-          Expanded(child: _promotionList()),
+          Expanded(child: _promotionList(controller)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () => Get.toNamed(AppRoutes.promotionForm),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Buat Promo',
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }
 
-  Widget _promotionList() {
+  Widget _promotionList(PromotionController controller) {
     return Obx(() {
       if (controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -136,12 +120,8 @@ class _PromotionPageState extends State<PromotionPage> {
             final promo = list[i];
             return PromotionCard(
               promotion: promo,
-              onTap: () => Get.toNamed(
-                AppRoutes.promotionDetail,
-                arguments: promo.id,
-              ),
-              onToggleActive: () => controller.toggleActive(promo),
-              onDelete: () => controller.confirmDelete(promo.id, promo.name),
+              onTap: () =>
+                  Get.toNamed(AppRoutes.promotionDetail, arguments: promo.id),
             );
           },
         ),

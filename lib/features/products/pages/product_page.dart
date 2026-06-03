@@ -163,23 +163,14 @@ class _ProductPageState extends State<ProductPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
           controller.resetForAddProduct();
           variantC.initPriceControllers();
           Get.toNamed(AppRoutes.addProduct);
         },
         backgroundColor: AppColors.primary,
-        elevation: 3,
-        icon: const Icon(Icons.add_rounded, size: 20, color: Colors.white),
-        label: const Text(
-          'Tambah',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }

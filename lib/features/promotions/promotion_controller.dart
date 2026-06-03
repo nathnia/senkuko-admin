@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
+import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
+import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
 import 'package:senkukoadmin/features/promotions/promotion_service.dart';
 
@@ -287,6 +290,8 @@ class PromotionController extends GetxController {
         selectedPromotion.value = PromotionData.fromJson(
           jsonDecode(res.body)['data'],
         );
+        // Ensure product, category, variant names are available for tiles
+        resolveConditionNames();
       } else {
         hasDetailError.value = true;
         detailErrorMessage.value = 'Gagal memuat detail promosi. Coba lagi.';
@@ -745,4 +750,17 @@ class PromotionController extends GetxController {
       conditionType.value.isNotEmpty ||
       conditionOperator.value.isNotEmpty ||
       conditionValueC.text.trim().isNotEmpty;
+
+  // Di PromotionController, tambah method:
+  Future<void> resolveConditionNames() async {
+    final productC = Get.find<ProductController>();
+    final categoryC = Get.find<CategoryController>();
+    final variantC = Get.find<ProductVariantController>();
+ 
+    await Future.wait([
+      if (productC.productList.isEmpty) productC.fetchProducts(),
+      if (categoryC.categoryList.isEmpty) categoryC.fetchCategories(),
+      if (variantC.allVariants.isEmpty) variantC.fetchAllVariants(),
+    ]);
+  }
 }

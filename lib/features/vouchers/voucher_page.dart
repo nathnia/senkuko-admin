@@ -80,15 +80,11 @@ class _VoucherPageState extends State<VoucherPage> {
           Expanded(child: _voucherList()),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () =>
             Get.toNamed(AppRoutes.voucherForm, arguments: _promotion),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Terbitkan Voucher',
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }
@@ -146,9 +142,6 @@ class _VoucherPageState extends State<VoucherPage> {
                 AppRoutes.voucherForm,
                 arguments: {'id': voucher.id, 'isEdit': true},
               ),
-              onToggleStatus: () => controller.toggleStatus(voucher),
-              onDelete: () =>
-                  controller.confirmDelete(voucher.id, voucher.code),
             );
           },
         ),

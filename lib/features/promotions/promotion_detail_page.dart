@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
+import 'package:senkukoadmin/features/promotions/promotion_condition_tile.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/features/promotions/promotion_model.dart';
+import 'package:senkukoadmin/features/promotions/promotion_reward_tile.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_card.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -17,25 +20,24 @@ class PromotionDetailPage extends StatefulWidget {
 }
 
 class _PromotionDetailPageState extends State<PromotionDetailPage> {
-  final controller = Get.find<PromotionController>();
-  late final VoucherController _voucherController;
+  final _ctrl = Get.find<PromotionController>();
+  late final VoucherController _voucherCtrl;
   late final String? _id;
 
   @override
   void initState() {
     super.initState();
     _id = Get.arguments as String?;
-    _voucherController = Get.find<VoucherController>();
-    // Fetch is called once, synchronously at mount — no callback hack needed
+    _voucherCtrl = Get.find<VoucherController>();
     if (_id != null && _id.isNotEmpty) {
-      controller.fetchPromotionById(_id);
-      _voucherController.fetchVouchersForPromotion(_id);
+      _ctrl.fetchPromotionById(_id);
+      _voucherCtrl.fetchVouchersForPromotion(_id);
     }
   }
 
   @override
   void dispose() {
-    _voucherController.clearPromotionVouchers();
+    _voucherCtrl.clearPromotionVouchers();
     super.dispose();
   }
 
@@ -63,8 +65,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
         centerTitle: true,
         actions: [
           GestureDetector(
-            onTap: () =>
-                Get.toNamed(AppRoutes.promotionForm, arguments: _id),
+            onTap: () => Get.toNamed(AppRoutes.promotionForm, arguments: _id),
             child: Container(
               margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
               padding:
@@ -92,42 +93,38 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
         ],
       ),
       body: Obx(() {
-        if (controller.isLoadingDetail.value) {
+        if (_ctrl.isLoadingDetail.value) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (controller.hasDetailError.value) {
+        if (_ctrl.hasDetailError.value) {
           return AppErrorState(
-            message: controller.detailErrorMessage.value,
-            onRetry: () => controller.fetchPromotionById(_id),
+            message: _ctrl.detailErrorMessage.value,
+            onRetry: () => _ctrl.fetchPromotionById(_id),
           );
         }
-        final promo = controller.selectedPromotion.value;
+        final promo = _ctrl.selectedPromotion.value;
         if (promo == null) {
           return const Center(child: Text('Data tidak ditemukan'));
         }
 
         return RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: () => controller.fetchPromotionById(_id),
+          onRefresh: () => _ctrl.fetchPromotionById(_id),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _StatusBanner(promo: promo),
-                const SizedBox(height: 12),
-                _sectionLabel('INFORMASI PROMOSI'),
+                const SizedBox(height: 16),
                 _infoCard(promo),
                 const SizedBox(height: 12),
-                _conditionsSection(_id, promo),
+                _conditionsSection(promo),
                 const SizedBox(height: 12),
-                _rewardsSection(_id, promo),
+                _rewardsSection(promo),
                 const SizedBox(height: 12),
                 _voucherSection(promo),
-                const SizedBox(height: 12),
-                _deleteButton(_id, promo.name),
-                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -136,23 +133,62 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
     );
   }
 
-  // ── Status banner ──────────────────────────────────────────────────────────
-
-  // ── Info card ──────────────────────────────────────────────────────────────
+  // ── Info card ─────────────────────────────────────────────────────────────
 
   Widget _infoCard(PromotionData promo) {
+    final df = DateFormat('dd MMM yyyy', 'id_ID');
     return _card(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _infoRow('Nama', promo.name),
-          _infoRow('Kode', promo.code, mono: true),
-          _infoRow('Tipe', promo.typeLabel),
-          if ((promo.description ?? '').isNotEmpty)
-            _infoRow('Deskripsi', promo.description!),
-          _infoRow('Berlaku', controller.detailValidPeriod),
-          _infoRow('Batas Pakai', controller.detailUsageDisplay),
-          _infoRow('Stackable', controller.detailStackableLabel),
-          _infoRow('Status', controller.detailStatusLabel, isLast: true),
+          Text(
+            promo.name,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _codeBadge(promo.code),
+              const SizedBox(width: 6),
+              _typeBadge(promo.type, promo.typeLabel),
+              if (promo.stackable) ...[
+                const SizedBox(width: 6),
+                _badge(
+                  'Stackable',
+                  fg: AppColors.secondary,
+                  bg: AppColors.secondary.withAlpha(18),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: Colors.grey.shade100),
+          const SizedBox(height: 12),
+          _infoRow(
+            Icons.calendar_today_outlined,
+            'Periode',
+            '${df.format(promo.validFrom)} – ${df.format(promo.validTo)}',
+          ),
+          const SizedBox(height: 8),
+          _infoRow(
+            Icons.repeat_rounded,
+            'Pemakaian',
+            promo.usageLimit == 0
+                ? 'Tidak terbatas'
+                : '${promo.usageCount} dari ${promo.usageLimit}x dipakai',
+          ),
+          if ((promo.description ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _infoRow(
+              Icons.notes_rounded,
+              'Deskripsi',
+              promo.description!,
+            ),
+          ],
         ],
       ),
     );
@@ -160,29 +196,33 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
 
   // ── Conditions section ────────────────────────────────────────────────────
 
-  Widget _conditionsSection(String id, PromotionData promo) {
-    final conditions = controller.detailConditions;
+  Widget _conditionsSection(PromotionData promo) {
+    final conditions = _ctrl.detailConditions;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader(
-          'SYARAT (${conditions.length})',
-          onAdd: () =>
-              Get.toNamed(AppRoutes.promotionConditionForm, arguments: id),
+          'SYARAT',
+          count: conditions.length,
+          onAdd: () => Get.toNamed(
+            AppRoutes.promotionConditionForm,
+            arguments: _id,
+          ),
         ),
         _card(
           child: conditions.isEmpty
               ? _emptyState(
-                  'Belum ada syarat',
-                  'Promo berlaku untuk semua transaksi',
+                  icon: Icons.checklist_rounded,
+                  message: 'Berlaku untuk semua transaksi',
+                  subtitle: 'Belum ada syarat khusus ditambahkan',
                 )
               : Column(
-                  children: conditions.asMap().entries.map((entry) {
-                    return _conditionTile(
-                      entry.value,
-                      isLast: entry.key == conditions.length - 1,
+                  children: conditions.asMap().entries.map((e) {
+                    return PromotionConditionTile(
+                      condition: e.value,
+                      isLast: e.key == conditions.length - 1,
                       onDelete: () =>
-                          controller.deleteCondition(id, entry.value.id),
+                          _ctrl.deleteCondition(_id!, e.value.id),
                     );
                   }).toList(),
                 ),
@@ -193,30 +233,34 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
 
   // ── Rewards section ───────────────────────────────────────────────────────
 
-  Widget _rewardsSection(String id, PromotionData promo) {
-    final rewards = controller.detailRewards;
+  Widget _rewardsSection(PromotionData promo) {
+    final rewards = _ctrl.detailRewards;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader(
-          'REWARD (${rewards.length})',
-          onAdd: () =>
-              Get.toNamed(AppRoutes.promotionRewardForm, arguments: id),
+          'REWARD',
+          count: rewards.length,
+          onAdd: () => Get.toNamed(
+            AppRoutes.promotionRewardForm,
+            arguments: _id,
+          ),
         ),
         _card(
           child: rewards.isEmpty
               ? _emptyState(
-                  'Belum ada reward',
-                  'Tambahkan reward agar promo dapat berfungsi',
+                  icon: Icons.card_giftcard_rounded,
+                  message: 'Belum ada reward',
+                  subtitle: 'Tambahkan reward agar promo bisa digunakan',
                   isWarning: true,
                 )
               : Column(
-                  children: rewards.asMap().entries.map((entry) {
-                    return _rewardTile(
-                      entry.value,
-                      isLast: entry.key == rewards.length - 1,
+                  children: rewards.asMap().entries.map((e) {
+                    return PromotionRewardTile(
+                      reward: e.value,
+                      isLast: e.key == rewards.length - 1,
                       onDelete: () =>
-                          controller.deleteReward(id, entry.value.id),
+                          _ctrl.deleteReward(_id!, e.value.id),
                     );
                   }).toList(),
                 ),
@@ -225,7 +269,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
     );
   }
 
-  // ── Bottom actions ────────────────────────────────────────────────────────
+  // ── Voucher section ───────────────────────────────────────────────────────
 
   static const int _voucherPreviewLimit = 5;
 
@@ -233,24 +277,17 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Section header: label + "+ Terbitkan" action ─────────────────
         _sectionHeader(
           'VOUCHER',
-          addLabel: '+ Terbitkan',
-          onAdd: () => Get.toNamed(
-            AppRoutes.voucherForm,
-            arguments: promo,
-          ),
+          addLabel: 'Terbitkan',
+          onAdd: () => Get.toNamed(AppRoutes.voucherForm, arguments: promo),
         ),
-
-        // ── Reactive preview ──────────────────────────────────────────────
         Obx(() {
-          final all = _voucherController.promotionVouchers;
-          final isLoading = _voucherController.isLoading.value;
+          final all = _voucherCtrl.promotionVouchers;
+          final isLoading = _voucherCtrl.isLoading.value;
           final preview = all.take(_voucherPreviewLimit).toList();
           final hasMore = all.length > _voucherPreviewLimit;
 
-          // Loading on cold start (detail opened before vouchers ever fetched)
           if (isLoading && all.isEmpty) {
             return _card(
               child: const Center(
@@ -265,39 +302,35 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
           if (all.isEmpty) {
             return _card(
               child: _emptyState(
-                'Belum ada voucher',
-                'Terbitkan voucher pertama untuk promosi ini',
+                icon: Icons.confirmation_number_outlined,
+                message: 'Belum ada voucher',
+                subtitle: 'Terbitkan voucher pertama untuk promosi ini',
               ),
             );
           }
 
           return Column(
             children: [
-              ...preview.map((voucher) => VoucherCard(
-                    voucher: voucher,
-                    showActions: false,
+              ...preview.map((v) => VoucherCard(
+                    voucher: v,
                     onTap: () => Get.toNamed(
                       AppRoutes.voucherForm,
-                      arguments: {'id': voucher.id, 'isEdit': true},
+                      arguments: {'id': v.id, 'isEdit': true},
                     ),
                   )),
-
-              // ── "Lihat Semua (X)" row ─────────────────────────────────
               if (hasMore)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: GestureDetector(
-                    onTap: () => Get.toNamed(
-                      AppRoutes.vouchers,
-                      arguments: promo,
-                    ),
+                    onTap: () =>
+                        Get.toNamed(AppRoutes.vouchers, arguments: promo),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF0F0F0)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -311,11 +344,8 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 14,
-                            color: AppColors.primary,
-                          ),
+                          Icon(Icons.arrow_forward_rounded,
+                              size: 14, color: AppColors.primary),
                         ],
                       ),
                     ),
@@ -328,149 +358,6 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
     );
   }
 
-  Widget _deleteButton(String id, String name) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => controller.confirmDelete(id, name),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.red,
-          side: const BorderSide(color: Colors.red),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-        icon: const Icon(Icons.delete_outline_rounded, size: 18),
-        label: const Text(
-          'Hapus Promosi',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  // ── Tiles ─────────────────────────────────────────────────────────────────
-
-  Widget _conditionTile(
-    PromotionCondition c, {
-    required bool isLast,
-    required VoidCallback onDelete,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(bottom: BorderSide(color: Color(0xFFF0F0F0))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.blue.withAlpha(20),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.rule_rounded, size: 16, color: Colors.blue),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  c.conditionTypeLabel,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  '${c.operatorLabel} ${c.value}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                if ((c.targetId ?? '').isNotEmpty)
-                  Text(
-                    'Target: ${c.targetId}',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: Colors.red.shade400,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _rewardTile(
-    PromotionReward r, {
-    required bool isLast,
-    required VoidCallback onDelete,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(bottom: BorderSide(color: Color(0xFFF0F0F0))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2DC98E).withAlpha(20),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.card_giftcard_rounded,
-              size: 16,
-              color: Color(0xFF2DC98E),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  r.rewardTypeLabel,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  controller.rewardSubtitle(r),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: Colors.red.shade400,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ── Shared widgets ────────────────────────────────────────────────────────
 
   Widget _card({required Widget child}) => Container(
@@ -478,36 +365,24 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFF0F0F0), width: 0.5),
         ),
         child: child,
-      );
-
-  Widget _sectionLabel(String label) => Padding(
-        padding: const EdgeInsets.only(left: 2, bottom: 8),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.black54,
-            letterSpacing: 0.5,
-          ),
-        ),
       );
 
   Widget _sectionHeader(
     String label, {
     required VoidCallback onAdd,
     String addLabel = 'Tambah',
+    int? count,
   }) =>
       Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 8),
         child: Row(
           children: [
             Text(
-              label,
+              count != null ? '$label ($count)' : label,
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -518,99 +393,17 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
             const Spacer(),
             GestureDetector(
               onTap: onAdd,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.add_rounded, size: 13, color: Colors.white),
-                    const SizedBox(width: 4),
-                    Text(
-                      addLabel,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-
-  Widget _infoRow(String label, String value,
-      {bool mono = false, bool isLast = false}) =>
-      Padding(
-        padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 90,
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1A1A2E),
-                  fontFamily: mono ? 'monospace' : null,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-
-  Widget _emptyState(
-    String message,
-    String subtitle, {
-    bool isWarning = false,
-  }) =>
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isWarning
-              ? Colors.orange.withAlpha(15)
-              : Colors.grey.withAlpha(15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isWarning
-                  ? Icons.warning_amber_rounded
-                  : Icons.info_outline_rounded,
-              size: 16,
-              color: isWarning ? Colors.orange : Colors.grey,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
+                  Icon(Icons.add_rounded, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 3),
                   Text(
-                    message,
-                    style: const TextStyle(
+                    addLabel,
+                    style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
@@ -618,31 +411,163 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
           ],
         ),
       );
+
+  Widget _infoRow(IconData icon, String label, String value) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 13, color: AppColors.subtext),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFFAAAAAA)),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+          ),
+        ],
+      );
+
+  Widget _emptyState({
+    required IconData icon,
+    required String message,
+    required String subtitle,
+    bool isWarning = false,
+  }) {
+    final color = isWarning ? AppColors.warning : AppColors.subtext;
+    final bg = isWarning ? AppColors.warningBg : Colors.grey.shade50;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isWarning
+                        ? AppColors.warning
+                        : const Color(0xFF1A1A2E),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                      fontSize: 11, color: Color(0xFFAAAAAA)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _codeBadge(String code) => Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: Colors.grey.shade300, width: 0.5),
+        ),
+        child: Text(
+          code,
+          style: const TextStyle(
+            fontSize: 11,
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: Color(0xFF1A1A2E),
+          ),
+        ),
+      );
+
+  Widget _typeBadge(String type, String label) {
+    Color fg;
+    Color bg;
+    switch (type) {
+      case 'discount_percent':
+      case 'discount_fixed':
+        fg = AppColors.success;
+        bg = AppColors.successBg;
+        break;
+      case 'free_item':
+        fg = AppColors.warning;
+        bg = AppColors.warningBg;
+        break;
+      default:
+        fg = AppColors.subtext;
+        bg = AppColors.subtext.withAlpha(20);
+    }
+    return _badge(label, fg: fg, bg: bg);
+  }
+
+  Widget _badge(String label, {required Color fg, required Color bg}) =>
+      Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: fg,
+          ),
+        ),
+      );
 }
 
-// ── Status Banner (extracted widget for clarity) ───────────────────────────
+// ── Status Banner ─────────────────────────────────────────────────────────────
 
 class _StatusBanner extends StatelessWidget {
   final PromotionData promo;
-
   const _StatusBanner({required this.promo});
 
   @override
   Widget build(BuildContext context) {
-    final Color color;
+    final Color fg;
+    final Color bg;
     final String label;
     final IconData icon;
 
     if (!promo.isActive) {
-      color = Colors.grey;
+      fg = AppColors.subtext;
+      bg = Colors.grey.shade100;
       label = 'Promosi tidak aktif';
       icon = Icons.pause_circle_outline_rounded;
     } else if (promo.isExpired) {
-      color = Colors.orange;
+      fg = AppColors.warning;
+      bg = AppColors.warningBg;
       label = 'Promosi telah kedaluwarsa';
       icon = Icons.timer_off_outlined;
     } else {
-      color = const Color(0xFF2DC98E);
+      fg = AppColors.primary;
+      bg = AppColors.primary.withAlpha(18);
       label = 'Promosi sedang berjalan';
       icon = Icons.check_circle_outline_rounded;
     }
@@ -651,32 +576,21 @@ class _StatusBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
+        color: bg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withAlpha(40)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 15, color: fg),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: color,
+              color: fg,
             ),
           ),
-          const Spacer(),
-          if (!promo.isExpired)
-            Text(
-              promo.isActive ? 'Aktif' : 'Nonaktif',
-              style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
         ],
       ),
     );

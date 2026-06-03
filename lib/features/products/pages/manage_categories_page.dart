@@ -76,16 +76,11 @@ class ManageCategoriesPage extends StatelessWidget {
           },
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openAddSheet(context),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
         elevation: 2,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text(
-          'Tambah',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }
