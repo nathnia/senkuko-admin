@@ -37,6 +37,7 @@ class CategoryController extends GetxController {
 
   // ===================== FETCH =====================
   Future<void> fetchCategories() async {
+    if (isLoading.value) return;
     isLoading.value = true;
     hasError.value = false;
     try {

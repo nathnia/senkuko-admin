@@ -11,6 +11,7 @@ class TransactionController extends GetxController {
   final isLoading = false.obs;
   final isLoadingDetail = false.obs;
   final transactionList = <TransactionData>[].obs;
+  final filteredTransactions = <TransactionData>[].obs;
   final selectedTransaction = Rxn<Map<String, dynamic>>();
 
   final searchText = ''.obs;
@@ -35,67 +36,71 @@ class TransactionController extends GetxController {
   }
 
   // ===================== FILTER =====================
-  List<TransactionData> get filteredTransactions {
+  void _applyFilter() {
     final now = DateTime.now();
+    final query = searchText.value.toLowerCase();
+    final quickDate = selectedQuickDate.value;
+    final range = selectedDateRange.value;
 
-    return transactionList.where((t) {
-      final matchSearch =
-          t.invoiceNumber.toLowerCase().contains(
-            searchText.value.toLowerCase(),
-          ) ||
-          (t.customerName?.toLowerCase().contains(
-                searchText.value.toLowerCase(),
-              ) ??
-              false);
+    filteredTransactions.assignAll(
+      transactionList.where((t) {
+        final matchSearch =
+            t.invoiceNumber.toLowerCase().contains(query) ||
+            (t.customerName?.toLowerCase().contains(query) ?? false);
 
-      bool matchDate = true;
+        bool matchDate = true;
 
-      if (selectedQuickDate.value == 'Hari Ini') {
-        matchDate =
-            t.transactedAt.year == now.year &&
-            t.transactedAt.month == now.month &&
-            t.transactedAt.day == now.day;
-      } else if (selectedQuickDate.value == '7 Hari') {
-        final from = DateTime(
-          now.year,
-          now.month,
-          now.day,
-        ).subtract(const Duration(days: 6));
-        matchDate = !t.transactedAt.isBefore(from);
-      } else if (selectedQuickDate.value == '30 Hari') {
-        final from = DateTime(
-          now.year,
-          now.month,
-          now.day,
-        ).subtract(const Duration(days: 29));
-        matchDate = !t.transactedAt.isBefore(from);
-      } else if (selectedQuickDate.value == 'Custom') {
-        final range = selectedDateRange.value;
-        if (range != null) {
-          final end = DateTime(
-            range.end.year,
-            range.end.month,
-            range.end.day,
-            23,
-            59,
-            59,
-          );
+        if (quickDate == 'Hari Ini') {
           matchDate =
-              t.transactedAt.isAfter(range.start) &&
-              t.transactedAt.isBefore(end);
+              t.transactedAt.year == now.year &&
+              t.transactedAt.month == now.month &&
+              t.transactedAt.day == now.day;
+        } else if (quickDate == '7 Hari') {
+          final from = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 6));
+          matchDate = !t.transactedAt.isBefore(from);
+        } else if (quickDate == '30 Hari') {
+          final from = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 29));
+          matchDate = !t.transactedAt.isBefore(from);
+        } else if (quickDate == 'Custom') {
+          if (range != null) {
+            final end = DateTime(
+              range.end.year,
+              range.end.month,
+              range.end.day,
+              23,
+              59,
+              59,
+            );
+            matchDate =
+                t.transactedAt.isAfter(range.start) &&
+                t.transactedAt.isBefore(end);
+          }
         }
-      }
-      return matchSearch && matchDate;
-    }).toList();
+
+        return matchSearch && matchDate;
+      }).toList(),
+    );
   }
 
-  void updateSearch(String value) => searchText.value = value;
+  void updateSearch(String value) {
+    searchText.value = value;
+    _applyFilter();
+  }
 
   void updateQuickDate(String value) {
     selectedQuickDate.value = value;
     if (value != 'Custom') {
       selectedDateRange.value = null;
     }
+    _applyFilter();
   }
 
   Future<void> pickDateRange(BuildContext context) async {
@@ -133,11 +138,11 @@ class TransactionController extends GetxController {
     if (picked != null) {
       selectedDateRange.value = picked;
       selectedQuickDate.value = 'Custom';
+      _applyFilter();
     }
   }
 
   // ===================== FETCH =====================
-
   Future<void> fetchTransactions() async {
     if (isLoading.value) return;
     isLoading.value = true;
@@ -147,6 +152,7 @@ class TransactionController extends GetxController {
       final res = await TransactionService.getAllTransactions();
       if (res.statusCode == 200) {
         transactionList.assignAll(transactionModelFromJson(res.body).data);
+        _applyFilter();
       } else {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
