@@ -29,21 +29,17 @@ class CategoryPickerSheet extends StatefulWidget {
 }
 
 class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
-  late final DraggableScrollableController _sheetC;
   late final TextEditingController _searchC;
   String _searchQuery = '';
-  final Set<String> _collapsed = {};
 
   @override
   void initState() {
     super.initState();
-    _sheetC = DraggableScrollableController();
     _searchC = TextEditingController();
   }
 
   @override
   void dispose() {
-    _sheetC.dispose();
     _searchC.dispose();
     super.dispose();
   }
@@ -51,29 +47,19 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
   CategoryController get _categoryC => Get.find<CategoryController>();
 
   void _onSearchChanged(String value) {
-    setState(() {
-      _searchQuery = value.toLowerCase().trim();
-      if (_searchQuery.isNotEmpty) _collapsed.clear();
-    });
+    setState(() => _searchQuery = value.toLowerCase().trim());
   }
-
-  void _toggleGroup(String parentId) => setState(() {
-    _collapsed.contains(parentId)
-        ? _collapsed.remove(parentId)
-        : _collapsed.add(parentId);
-  });
 
   void _select(CategoryData cat) => Navigator.of(context).pop(cat);
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      controller: _sheetC,
       initialChildSize: 0.65,
       minChildSize: 0.4,
-      maxChildSize: 1.0,
+      maxChildSize: 0.92,
       snap: true,
-      snapSizes: const [0.65, 1.0],
+      snapSizes: const [0.65, 0.92],
       expand: false,
       builder: (ctx, sc) =>
           _SheetShell(header: _buildHeader(), body: _buildBody(sc)),
@@ -83,7 +69,7 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.background, // matches sheet background
+        color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -157,7 +143,6 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
             ],
           ),
           const SizedBox(height: 12),
-          // Search bar — white on grey background pops nicely
           AppSearchBar(
             hintText: 'Cari kategori...',
             onChanged: _onSearchChanged,
@@ -204,7 +189,6 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
       );
     }
 
-    // Search results: single white card, items separated by dividers
     return ListView(
       controller: sc,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
@@ -217,7 +201,6 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
                   ? '${cat.parentName} › ${cat.name}'
                   : cat.name,
               isSelectable: isSelectable,
-              hasParentLabel: cat.parentName != null,
               onTap: isSelectable ? () => _select(cat) : null,
             );
           }).toList(),
@@ -229,52 +212,42 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
   Widget _buildGroupedList(ScrollController sc, List<CategoryData> parents) {
     return ListView.separated(
       controller: sc,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
       itemCount: parents.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final parent = parents[i];
         final children = _categoryC.getSubCategories(parent.id);
         final hasChildren = children.isNotEmpty;
-        final isCollapsed = _collapsed.contains(parent.id);
 
         if (!hasChildren) {
-          // Standalone — single-row white card
+          // Standalone parent — selectable, no section header
           return _WhiteCard(
             children: [
-              _StandaloneRow(name: parent.name, onTap: () => _select(parent)),
+              _StandaloneRow(
+                name: parent.name,
+                onTap: () => _select(parent),
+              ),
             ],
           );
         }
 
+        // Parent with children:
+        // - Parent label = non-tappable section header (small caps, muted)
+        // - Children = selectable tiles with trailing chevron
         return _WhiteCard(
           children: [
-            // Parent row (collapsible header)
-            _ParentRow(
-              name: parent.name,
-              isCollapsed: isCollapsed,
-              onTap: () => _toggleGroup(parent.id),
-            ),
-            // Children — animated show/hide
-            AnimatedCrossFade(
-              firstChild: Column(
-                children: _withDividers(
-                  children
-                      .map(
-                        (c) => _CategoryTile(
-                          label: c.name,
-                          isSelectable: true,
-                          onTap: () => _select(c),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              secondChild: const SizedBox.shrink(),
-              crossFadeState: isCollapsed
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 200),
+            _CardSectionHeader(name: parent.name),
+            ..._withDividers(
+              children
+                  .map(
+                    (c) => _CategoryTile(
+                      label: c.name,
+                      isSelectable: true,
+                      onTap: () => _select(c),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         );
@@ -285,21 +258,48 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
   List<Widget> _withDividers(List<Widget> items) {
     final r = <Widget>[];
     for (int i = 0; i < items.length; i++) {
-      r.add(
-        const Divider(
-          height: 1,
-          indent: 16,
-          endIndent: 16,
-          color: Color(0xFFF2F2F2),
-        ),
-      );
+      if (i > 0) {
+        r.add(
+          const Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: Color(0xFFF2F2F2),
+          ),
+        );
+      }
       r.add(items[i]);
     }
     return r;
   }
 }
 
-// ─── White Card container (no border, no shadow) ──────────────────────────────
+// ─── Section Label (non-interactive parent header) ────────────────────────────
+
+class _CardSectionHeader extends StatelessWidget {
+  final String name;
+  const _CardSectionHeader({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      // No fill — label sits flush inside the card without a background block
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Text(
+        name,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF999999),
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── White Card container ─────────────────────────────────────────────────────
 
 class _WhiteCard extends StatelessWidget {
   final List<Widget> children;
@@ -322,54 +322,7 @@ class _WhiteCard extends StatelessWidget {
   }
 }
 
-// ─── Parent row (collapsible header inside card) ──────────────────────────────
-
-class _ParentRow extends StatelessWidget {
-  final String name;
-  final bool isCollapsed;
-  final VoidCallback onTap;
-  const _ParentRow({
-    required this.name,
-    required this.isCollapsed,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            AnimatedRotation(
-              turns: isCollapsed ? -0.25 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: AppColors.subtext,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.subtitle,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Standalone row (no children) ────────────────────────────────────────────
+// ─── Standalone row (parent with no children — selectable) ───────────────────
 
 class _StandaloneRow extends StatelessWidget {
   final String name;
@@ -388,16 +341,16 @@ class _StandaloneRow extends StatelessWidget {
               child: Text(
                 name,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
                   color: AppColors.subtitle,
                 ),
               ),
             ),
             const Icon(
               Icons.chevron_right_rounded,
-              size: 18,
-              color: Color(0xFFCCCCCC),
+              size: 20,
+              color: Color(0xFFC7C7CC),
             ),
           ],
         ),
@@ -406,18 +359,16 @@ class _StandaloneRow extends StatelessWidget {
   }
 }
 
-// ─── Category Tile (child item) ───────────────────────────────────────────────
+// ─── Category Tile (child item — trailing chevron, matches screenshot) ────────
 
 class _CategoryTile extends StatelessWidget {
   final String label;
   final bool isSelectable;
-  final bool hasParentLabel;
   final VoidCallback? onTap;
 
   const _CategoryTile({
     required this.label,
     required this.isSelectable,
-    this.hasParentLabel = false,
     required this.onTap,
   });
 
@@ -429,23 +380,24 @@ class _CategoryTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: Color(0xFFCCCCCC),
-            ),
-            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
+                   fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
                   color: isSelectable
                       ? AppColors.subtitle
                       : AppColors.subtext,
                 ),
               ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: isSelectable
+                  ? const Color(0xFFC7C7CC)
+                  : const Color(0xFFE0E0E0),
             ),
           ],
         ),
@@ -464,7 +416,6 @@ class _SheetShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: const BoxDecoration(
-      // Grey background — white cards "float" on it without any shadow/border
       color: AppColors.background,
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),

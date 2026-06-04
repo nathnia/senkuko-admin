@@ -50,10 +50,7 @@ class _ProductPickerSheetState extends State<ProductPickerSheet> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
+    setState(() { _isLoading = true; _hasError = false; });
 
     if (Get.isRegistered<ProductController>()) {
       final list = Get.find<ProductController>().productList;

@@ -61,11 +61,34 @@ class _ProductPageState extends State<ProductPage> {
           ),
         ),
         centerTitle: true,
+        // ── Import Excel — pill button in AppBar, clearly separated ────
         actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_file_rounded, color: Colors.black87),
-            tooltip: 'Import Excel',
-            onPressed: () => Get.toNamed(AppRoutes.importProduct),
+          GestureDetector(
+            onTap: () => Get.toNamed(AppRoutes.importProduct),
+            child: Container(
+              margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.successBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.upload_file_rounded,
+                      size: 13, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Import',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
         bottom: PreferredSize(
@@ -124,11 +147,8 @@ class _ProductPageState extends State<ProductPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 48,
-                        color: Colors.grey[300],
-                      ),
+                      Icon(Icons.inventory_2_outlined,
+                          size: 48, color: Colors.grey[300]),
                       const SizedBox(height: 12),
                       Text(
                         'Produk tidak ditemukan',
@@ -154,7 +174,7 @@ class _ProductPageState extends State<ProductPage> {
                 color: AppColors.primary,
                 onRefresh: controller.loadInitialData,
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                   itemCount: list.length,
                   itemBuilder: (context, i) => ProductCard(product: list[i]),
                 ),
@@ -164,21 +184,22 @@ class _ProductPageState extends State<ProductPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
         onPressed: () {
           controller.resetForAddProduct();
           variantC.initPriceControllers();
           Get.toNamed(AppRoutes.addProduct);
         },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
+        child: const Icon(Icons.add_rounded, color: Colors.white)
       ),
     );
   }
 }
 
+// ── Active Filter Chips ────────────────────────────────────────────────────────
+
 class _ActiveFilterChips extends StatelessWidget {
   final ProductController controller;
-
   const _ActiveFilterChips({required this.controller});
 
   @override
