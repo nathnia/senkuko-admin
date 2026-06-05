@@ -14,7 +14,7 @@ enum MemberType {
 
   static MemberType fromString(String value) {
     return MemberType.values.firstWhere(
-      (e) => e.name == value,
+      (e) => e.name.toLowerCase() == value.toLowerCase(),
       orElse: () => MemberType.regular,
     );
   }
@@ -26,7 +26,7 @@ enum CustomerStatus {
 
   static CustomerStatus fromString(String? value) {
     return CustomerStatus.values.firstWhere(
-      (e) => e.name == value,
+      (e) => e.name.toLowerCase() == (value?.toLowerCase() ?? ''),
       orElse: () => CustomerStatus.active,
     );
   }
@@ -36,9 +36,10 @@ enum CustomerGroup {
   general,
   grosir;
 
+  // Case-insensitive: handles "General", "GROSIR", "grosir", "general"
   static CustomerGroup fromString(String? value) {
     return CustomerGroup.values.firstWhere(
-      (e) => e.name.toLowerCase() == value?.toLowerCase(),
+      (e) => e.name.toLowerCase() == (value?.toLowerCase() ?? ''),
       orElse: () => CustomerGroup.general,
     );
   }
@@ -49,6 +50,16 @@ enum CustomerGroup {
         return 'Eceran';
       case CustomerGroup.grosir:
         return 'Grosir';
+    }
+  }
+
+  // Value yang dikirim ke API — sesuaikan dengan actual API
+  String get apiValue {
+    switch (this) {
+      case CustomerGroup.general:
+        return 'General';
+      case CustomerGroup.grosir:
+        return 'GROSIR';
     }
   }
 }
@@ -76,20 +87,30 @@ class CustomerModel {
 
 class CustomerData {
   String id;
+  String code;
   String name;
   String? phone;
   String? email;
-  MemberType memberType; // ← enum, bukan String
-  double totalSpend; // ← double, bukan String
-  CustomerStatus status; // ← enum, bukan String
+  String? address;
+  String? city;
+  String? region;
+  String? subregion;
+  MemberType memberType;
+  double totalSpend;
+  CustomerStatus status;
   CustomerGroup customerGroup;
   DateTime createdAt;
 
   CustomerData({
     required this.id,
+    required this.code,
     required this.name,
     this.phone,
     this.email,
+    this.address,
+    this.city,
+    this.region,
+    this.subregion,
     required this.memberType,
     required this.totalSpend,
     required this.status,
@@ -101,14 +122,18 @@ class CustomerData {
 
   factory CustomerData.fromJson(Map<String, dynamic> json) => CustomerData(
     id: json["id"],
+    code: json["code"] ?? '',
     name: json["name"],
     phone: json["phone"],
     email: json["email"],
+    address: json["address"],
+    city: json["city"],
+    region: json["region"],
+    subregion: json["subregion"],
     memberType: MemberType.fromString(
       json["member_type"] as String? ?? 'regular',
     ),
-    // API kadang return String, kadang num — handle keduanya
-    totalSpend: double.parse(json["total_spend"].toString()),
+    totalSpend: double.tryParse(json["total_spend"].toString()) ?? 0.0,
     status: CustomerStatus.fromString(json["status"]),
     customerGroup: CustomerGroup.fromString(json["customer_group"]),
     createdAt: DateTime.parse(json["created_at"]),
@@ -116,9 +141,14 @@ class CustomerData {
 
   Map<String, dynamic> toJson() => {
     "id": id,
+    "code": code,
     "name": name,
     "phone": phone,
     "email": email,
+    "address": address,
+    "city": city,
+    "region": region,
+    "subregion": subregion,
     "member_type": memberType.name,
     "total_spend": totalSpend,
     "status": status.name,

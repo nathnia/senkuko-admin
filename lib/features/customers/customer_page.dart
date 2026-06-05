@@ -7,6 +7,7 @@ import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/features/customers/customer_card.dart';
 import 'package:senkukoadmin/features/customers/customer_controller.dart';
+import 'package:senkukoadmin/routes/routes.dart';
 
 class CustomerPage extends StatelessWidget {
   const CustomerPage({super.key});
@@ -35,18 +36,22 @@ class CustomerPage extends StatelessWidget {
           preferredSize: const Size.fromHeight(40),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: AppSearchBar(
-                    hintText: 'Cari nama, telepon, atau email...',
-                    onChanged: controller.updateSearch,
-                  ),
-                ),
-              ],
+            child: AppSearchBar(
+              hintText: 'Cari nama, telepon, atau email...',
+              onChanged: controller.updateSearch,
             ),
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          controller.resetAddForm();
+          Get.toNamed(AppRoutes.customerForm);
+        },
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.person_add_rounded, color: Colors.white),
       ),
       body: Column(
         children: [
@@ -69,22 +74,17 @@ class CustomerPage extends StatelessWidget {
               ),
             ],
           ),
-
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value &&
-                  controller.customerList.isEmpty) {
+              if (controller.isLoading.value && controller.customerList.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-
-              // ADD THIS
               if (controller.hasError.value) {
                 return AppErrorState(
                   message: controller.errorMessage.value,
                   onRetry: controller.fetchCustomers,
                 );
               }
-
               final list = controller.filteredCustomers;
               if (list.isEmpty) {
                 return const Center(
@@ -99,7 +99,7 @@ class CustomerPage extends StatelessWidget {
                 onRefresh: controller.fetchCustomers,
                 child: ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
                   itemCount: list.length,
                   itemBuilder: (context, index) {
                     final customer = list[index];

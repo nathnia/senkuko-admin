@@ -8,32 +8,26 @@ class CustomerCard extends StatelessWidget {
 
   const CustomerCard({super.key, required this.customer, this.onToggleStatus});
 
-  _MemberStyle _memberStyle(MemberType type) {
-    switch (type) {
-      case MemberType.vip:
-        return _MemberStyle(
+  _GroupStyle _groupStyle(CustomerGroup group) {
+    switch (group) {
+      case CustomerGroup.grosir:
+        return _GroupStyle(
           color: AppColors.warning,
           bg: AppColors.warningBg,
-          label: 'VIP',
+          label: 'GROSIR',
         );
-      case MemberType.member:
-        return _MemberStyle(
+      case CustomerGroup.general:
+        return _GroupStyle(
           color: AppColors.primary,
-          bg: AppColors.primary.withAlpha(20),
-          label: 'MEMBER',
-        );
-      case MemberType.regular:
-        return _MemberStyle(
-          color: AppColors.subtext,
-          bg: AppColors.subtext.withAlpha(20),
-          label: 'REGULAR',
+          bg: AppColors.successBg,
+          label: 'ECERAN',
         );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final style = _memberStyle(customer.memberType);
+    final style = _groupStyle(customer.customerGroup);
     final isActive = customer.isActive;
 
     return Opacity(
@@ -79,6 +73,7 @@ class CustomerCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Nama + badge grup
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -95,10 +90,21 @@ class CustomerCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        _Badge(style: style),
+                        _GroupBadge(style: style),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
+                    // Kode customer
+                    Text(
+                      customer.code,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.subtext,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
                     _SubInfo(customer: customer),
                   ],
                 ),
@@ -165,24 +171,24 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-// ─── Member Style ─────────────────────────────────────────────────────────────
+// ─── Group Style ──────────────────────────────────────────────────────────────
 
-class _MemberStyle {
+class _GroupStyle {
   final Color color;
   final Color bg;
   final String label;
-  const _MemberStyle({
+  const _GroupStyle({
     required this.color,
     required this.bg,
     required this.label,
   });
 }
 
-// ─── Badge ────────────────────────────────────────────────────────────────────
+// ─── Group Badge ──────────────────────────────────────────────────────────────
 
-class _Badge extends StatelessWidget {
-  final _MemberStyle style;
-  const _Badge({required this.style});
+class _GroupBadge extends StatelessWidget {
+  final _GroupStyle style;
+  const _GroupBadge({required this.style});
 
   @override
   Widget build(BuildContext context) {
@@ -224,9 +230,9 @@ class _SubInfo extends StatelessWidget {
     return Text(
       parts.join('  ·  '),
       style: TextStyle(
-        fontSize: 12,
+        fontSize: 11.5,
         fontWeight: FontWeight.w400,
-        color: Colors.grey.shade600,
+        color: Colors.grey.shade500,
         height: 1.3,
       ),
       overflow: TextOverflow.ellipsis,

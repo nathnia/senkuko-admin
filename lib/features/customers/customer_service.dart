@@ -19,7 +19,18 @@ class CustomerService {
     );
   }
 
-  // UPDATE STATUS — terima String karena controller kirim newStatus.name
+  // CREATE CUSTOMER (admin only)
+  static Future<http.Response> createCustomer(
+    Map<String, dynamic> body,
+  ) {
+    return http.post(
+      Uri.parse('${ApiConstants.baseUrl}/auth/admin/customers'),
+      headers: ApiConstants.headers,
+      body: jsonEncode(body),
+    );
+  }
+
+  // UPDATE STATUS
   static Future<http.Response> updateCustomerStatus(String id, String status) {
     return http.patch(
       Uri.parse('${ApiConstants.baseUrl}/customers/$id/status'),
