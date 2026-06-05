@@ -15,7 +15,9 @@ class TransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = transaction.paymentStyle;
+    // Gunakan statusStyle untuk badge — lebih informatif buat admin
+    // daripada payment method yang sudah ada di detail
+    final statusStyle = transaction.statusStyle;
 
     return GestureDetector(
       onTap: onTap,
@@ -53,15 +55,42 @@ class TransactionCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    DateFormatter.formatDateTime(transaction.transactedAt),
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  Row(
+                    children: [
+                      Text(
+                        DateFormatter.formatDateTime(transaction.transactedAt),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Payment method pill kecil — secondary info
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: transaction.paymentStyle.background,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          transaction.paymentMethodLabel,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: transaction.paymentStyle.color,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // AMOUNT + BADGE
+            // AMOUNT + STATUS BADGE
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -75,18 +104,20 @@ class TransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: style.background,
+                    color: statusStyle.background,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    style.label, 
+                    statusStyle.label,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: style.color,
+                      color: statusStyle.color,
                     ),
                   ),
                 ),
