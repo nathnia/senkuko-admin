@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/connectivity_banner.dart';
 import 'package:senkukoadmin/constant/connectivity_service.dart';
@@ -9,6 +10,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init(); 
   await initializeDateFormatting('id_ID');
   Get.put(ConnectivityService(), permanent: true);
   runApp(const MyApp());
@@ -25,7 +27,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         useMaterial3: true,
       ),
-      initialRoute: AppRoutes.dashboard,
+      initialRoute: AppRoutes.login,
       getPages: AppPages.pages,
       builder: (context, child) => Column(
         children: [

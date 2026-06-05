@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:senkukoadmin/features/auth/auth_binding.dart';
+import 'package:senkukoadmin/features/auth/login_page.dart';
 import 'package:senkukoadmin/features/dashboard_page.dart';
 import 'package:senkukoadmin/features/customers/customer_binding.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
@@ -26,6 +28,11 @@ import 'package:senkukoadmin/routes/routes.dart';
 
 class AppPages {
   static final pages = [
+        GetPage(
+      name: AppRoutes.login,
+      page: () => const LoginPage(),
+      binding: AuthBinding(),
+    ),
     GetPage(name: AppRoutes.dashboard, page: () => DashboardPage()),
     GetPage(
       name: AppRoutes.product,

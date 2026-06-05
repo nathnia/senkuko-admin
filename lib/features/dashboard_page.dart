@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
-import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
+import 'package:senkukoadmin/features/auth/auth_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -14,7 +15,6 @@ class DashboardPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          // ← hapus Obx di sini, pindah ke dalam
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -22,7 +22,6 @@ class DashboardPage extends StatelessWidget {
               const SizedBox(height: 20),
               _header(),
               const SizedBox(height: 24),
-              // _statsRow(),
               const SizedBox(height: 24),
               _ordersSection(),
               const SizedBox(height: 24),
@@ -39,6 +38,8 @@ class DashboardPage extends StatelessWidget {
 
   // ==================== HEADER ====================
   Widget _header() {
+    final auth = Get.find<AuthController>();
+
     return Row(
       children: [
         Expanded(
@@ -54,20 +55,30 @@ class DashboardPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
-                'Senkuko Admin',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A2E),
-                  letterSpacing: -0.4,
-                ),
-              ),
+              Obx(() => Text(
+                    auth.currentUser.value?.name ?? 'Admin',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                      letterSpacing: -0.4,
+                    ),
+                  )),
             ],
           ),
         ),
+
+        // Logout button
         GestureDetector(
-          onTap: () {},
+          onTap: () async {
+            final confirmed = await AppDialog.confirm(
+              title: 'Keluar',
+              content: 'Yakin ingin keluar dari akun ini?',
+              confirmLabel: 'Keluar',
+              confirmColor: AppColors.danger,
+            );
+            if (confirmed) auth.logout();
+          },
           child: Container(
             width: 40,
             height: 40,
@@ -76,7 +87,7 @@ class DashboardPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
-              Icons.notifications_outlined,
+              Icons.logout_rounded,
               color: Color(0xFF757575),
               size: 18,
             ),
@@ -87,50 +98,6 @@ class DashboardPage extends StatelessWidget {
   }
 
   // ==================== STATS ROW ====================
-  // Widget _statsRow(ProductController productC) {
-  //   final total = productC.productList.length;
-  //   final aktif = productC.productList.where((p) => p.isActive == 1).length;
-  //   final nonAktif = total - aktif;
-
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       _sectionLabel('Ringkasan Produk'),
-  //       const SizedBox(height: 10),
-  //       Row(
-  //         children: [
-  //           Expanded(
-  //             child: _statCard(
-  //               value: total.toString(),
-  //               label: 'Total',
-  //               isPrimary: true,
-  //               onTap: () => Get.toNamed(AppRoutes.product),
-  //             ),
-  //           ),
-  //           const SizedBox(width: 8),
-  //           Expanded(
-  //             child: _statCard(
-  //               value: aktif.toString(),
-  //               label: 'Aktif',
-  //               isPrimary: false,
-  //               onTap: () => Get.toNamed(AppRoutes.product),
-  //             ),
-  //           ),
-  //           const SizedBox(width: 8),
-  //           Expanded(
-  //             child: _statCard(
-  //               value: nonAktif.toString(),
-  //               label: 'Non-Aktif',
-  //               isPrimary: false,
-  //               onTap: () => Get.toNamed(AppRoutes.product),
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
-
   Widget _statCard({
     required String value,
     required String label,

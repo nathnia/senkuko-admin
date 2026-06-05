@@ -104,7 +104,9 @@ class CustomerData {
     name: json["name"],
     phone: json["phone"],
     email: json["email"],
-    memberType: MemberType.fromString(json["member_type"]),
+    memberType: MemberType.fromString(
+      json["member_type"] as String? ?? 'regular',
+    ),
     // API kadang return String, kadang num — handle keduanya
     totalSpend: double.parse(json["total_spend"].toString()),
     status: CustomerStatus.fromString(json["status"]),
