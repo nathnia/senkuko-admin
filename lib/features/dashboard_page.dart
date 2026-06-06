@@ -20,8 +20,7 @@ class DashboardPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              _header(),
-              const SizedBox(height: 24),
+              _header(context),
               const SizedBox(height: 24),
               _ordersSection(),
               const SizedBox(height: 24),
@@ -37,7 +36,7 @@ class DashboardPage extends StatelessWidget {
   }
 
   // ==================== HEADER ====================
-  Widget _header() {
+  Widget _header(BuildContext context) {
     final auth = Get.find<AuthController>();
 
     return Row(
@@ -48,99 +47,134 @@ class DashboardPage extends StatelessWidget {
             children: [
               Text(
                 'Selamat datang 👋',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.subtext,
-                  fontWeight: FontWeight.w400,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.subtext),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Obx(() => Text(
                     auth.currentUser.value?.name ?? 'Admin',
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A2E),
-                      letterSpacing: -0.4,
+                      color: AppColors.title,
+                      letterSpacing: -0.3,
                     ),
                   )),
             ],
           ),
         ),
+        Obx(() {
+          final user = auth.currentUser.value;
+          final initial = (user?.name.isNotEmpty == true)
+              ? user!.name[0].toUpperCase()
+              : 'A';
 
-        // Logout button
-        GestureDetector(
-          onTap: () async {
-            final confirmed = await AppDialog.confirm(
-              title: 'Keluar',
-              content: 'Yakin ingin keluar dari akun ini?',
-              confirmLabel: 'Keluar',
-              confirmColor: AppColors.danger,
-            );
-            if (confirmed) auth.logout();
-          },
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
+          return PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'logout') {
+                final confirmed = await AppDialog.confirm(
+                  title: 'Keluar',
+                  content: 'Yakin ingin keluar dari akun ini?',
+                  confirmLabel: 'Keluar',
+                  confirmColor: AppColors.danger,
+                );
+                if (confirmed) auth.logout();
+              }
+            },
+            color: Colors.white,
+            elevation: 8,
+            shadowColor: Colors.black26,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey.shade100),
             ),
-            child: const Icon(
-              Icons.logout_rounded,
-              color: Color(0xFF757575),
-              size: 18,
+            offset: const Offset(0, 48),
+            itemBuilder: (_) => [
+              // header info — non-interactive
+              PopupMenuItem(
+                enabled: false,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?.name ?? 'Admin',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.title,
+                      ),
+                    ),
+                    if (user?.email != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        user!.email!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.subtext,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        user?.role.name.capitalizeFirst ?? 'Admin',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(height: 1),
+              PopupMenuItem<String>(
+                value: 'logout',
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.logout_rounded, size: 16, color: AppColors.danger),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Keluar',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.danger,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ],
-    );
-  }
-
-  // ==================== STATS ROW ====================
-  Widget _statCard({
-    required String value,
-    required String label,
-    required bool isPrimary,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        decoration: BoxDecoration(
-          color: isPrimary ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: isPrimary
-              ? null
-              : Border.all(color: const Color.fromARGB(255, 255, 255, 255)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: isPrimary ? Colors.white : const Color(0xFF1A1A2E),
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: isPrimary
-                    ? Colors.white.withAlpha(180)
-                    : AppColors.subtext,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -179,21 +213,30 @@ class DashboardPage extends StatelessWidget {
                 title: 'Perlu Diproses',
                 subtitle: 'Menunggu konfirmasi',
                 isLast: false,
-                onTap: () => Get.toNamed(AppRoutes.transaction),
+                onTap: () => Get.toNamed(
+                  AppRoutes.transaction,
+                  arguments: {'statusFilter': 'processing'},
+                ),
               ),
               _orderRow(
                 icon: Icons.local_shipping_outlined,
                 title: 'Perlu Dikirim',
                 subtitle: 'Siap untuk pengiriman',
                 isLast: false,
-                onTap: () => Get.toNamed(AppRoutes.transaction),
+                onTap: () => Get.toNamed(
+                  AppRoutes.transaction,
+                  arguments: {'statusFilter': 'shipped'},
+                ),
               ),
               _orderRow(
                 icon: Icons.cancel_outlined,
-                title: 'Pembatalan',
-                subtitle: 'Perlu persetujuan',
+                title: 'Dibatalkan',
+                subtitle: 'Transaksi dibatalkan',
                 isLast: true,
-                onTap: () => Get.toNamed(AppRoutes.transaction),
+                onTap: () => Get.toNamed(
+                  AppRoutes.transaction,
+                  arguments: {'statusFilter': 'cancelled'},
+                ),
               ),
             ],
           ),
@@ -216,7 +259,7 @@ class DashboardPage extends StatelessWidget {
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : const Border(bottom: BorderSide(color: Color(0xFFF2F2F2))),
+              : const Border(bottom: BorderSide(color: AppColors.background)),
         ),
         child: Row(
           children: [
@@ -234,26 +277,19 @@ class DashboardPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.title)),
                   const SizedBox(height: 1),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                  ),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.subtext)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, size: 16, color: Color(0xFFBDBDBD)),
+            const Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
           ],
         ),
       ),
@@ -344,24 +380,18 @@ class DashboardPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                  ),
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.title)),
+                  Text(sub,
+                      style: const TextStyle(
+                          fontSize: 10, color: AppColors.subtext)),
                 ],
               ),
             ),
+            const Icon(Icons.chevron_right, size: 14, color: AppColors.subtext),
           ],
         ),
       ),
@@ -388,10 +418,9 @@ class DashboardPage extends StatelessWidget {
             Text(
               'Tambah Produk Baru',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14),
             ),
           ],
         ),
@@ -406,7 +435,7 @@ class DashboardPage extends StatelessWidget {
       style: const TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF1A1A2E),
+        color: AppColors.title,
         letterSpacing: -0.1,
       ),
     );

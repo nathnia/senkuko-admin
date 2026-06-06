@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:senkukoadmin/features/auth/auth_binding.dart';
 import 'package:senkukoadmin/features/auth/login_page.dart';
+import 'package:senkukoadmin/features/auth/splash_page.dart';
 import 'package:senkukoadmin/features/customers/customer_form.dart';
 import 'package:senkukoadmin/features/dashboard_page.dart';
 import 'package:senkukoadmin/features/customers/customer_binding.dart';
@@ -29,6 +30,11 @@ import 'package:senkukoadmin/routes/routes.dart';
 
 class AppPages {
   static final pages = [
+    GetPage(
+      name: AppRoutes.splash,
+      page: () => const SplashPage(),
+      binding: AuthBinding(), // AuthController sudah fenix: true, aman dipakai di sini
+    ),
     GetPage(
       name: AppRoutes.login,
       page: () => const LoginPage(),

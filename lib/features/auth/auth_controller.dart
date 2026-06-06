@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -23,7 +24,6 @@ class AuthController extends GetxController {
   final nameC = TextEditingController();
   final passwordC = TextEditingController();
 
-  // track apakah controller sudah di-dispose
   bool _disposed = false;
 
   // ── Getters ───────────────────────────────────────────────────────────────
@@ -34,7 +34,6 @@ class AuthController extends GetxController {
   void onInit() {
     super.onInit();
     _disposed = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreSession());
   }
 
   @override
@@ -45,18 +44,31 @@ class AuthController extends GetxController {
     super.onClose();
   }
 
-  // ── Session Restore ───────────────────────────────────────────────────────
-  void _restoreSession() {
+  // ── Session Check (dipanggil dari SplashPage) ─────────────────────────────
+  Future<void> checkSession() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+
     final savedToken = _box.read<String>(_keyToken) ?? '';
-    if (savedToken.isNotEmpty) {
-      token.value = savedToken;
-      final userJson = _box.read<Map>(_keyUser);
-      if (userJson != null) {
-        currentUser.value =
-            AuthUser.fromJson(Map<String, dynamic>.from(userJson));
-      }
-      Get.offAllNamed(AppRoutes.dashboard);
+
+    if (savedToken.isEmpty) {
+      Get.offAllNamed(AppRoutes.login);
+      return;
     }
+
+    if (_isTokenExpired(savedToken)) {
+      _box.remove(_keyToken);
+      _box.remove(_keyUser);
+      Get.offAllNamed(AppRoutes.login);
+      return;
+    }
+
+    token.value = savedToken;
+    final userJson = _box.read<Map>(_keyUser);
+    if (userJson != null) {
+      currentUser.value =
+          AuthUser.fromJson(Map<String, dynamic>.from(userJson));
+    }
+    Get.offAllNamed(AppRoutes.dashboard);
   }
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -99,6 +111,31 @@ class AuthController extends GetxController {
     Get.offAllNamed(AppRoutes.login);
   }
 
+  // ── Token Expiry Check ────────────────────────────────────────────────────
+  bool _isTokenExpired(String t) {
+    if (t.isEmpty) return true;
+    try {
+      final parts = t.split('.');
+      if (parts.length != 3) return true;
+
+      String payload = parts[1];
+      final mod = payload.length % 4;
+      if (mod != 0) payload += '=' * (4 - mod);
+
+      final decoded = json.decode(
+        utf8.decode(base64Url.decode(payload)),
+      ) as Map<String, dynamic>;
+
+      final exp = decoded['exp'];
+      if (exp == null) return false;
+
+      final expiry = DateTime.fromMillisecondsSinceEpoch((exp as int) * 1000);
+      return DateTime.now().isAfter(expiry.subtract(const Duration(seconds: 30)));
+    } catch (_) {
+      return true;
+    }
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   void toggleObscure() => obscurePassword.toggle();
 
@@ -121,7 +158,6 @@ class AuthController extends GetxController {
     currentUser.value = null;
     _box.remove(_keyToken);
     _box.remove(_keyUser);
-    // Hanya clear form kalau TextEditingController belum di-dispose
     if (!_disposed) {
       nameC.clear();
       passwordC.clear();
