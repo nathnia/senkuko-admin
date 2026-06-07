@@ -2,21 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_error_state.dart';
+import 'package:senkukoadmin/constant/app_filter_button.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
-import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/features/transactions/transaction_card.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
+import 'package:senkukoadmin/features/transactions/transaction_filter_sheet.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class TransactionPage extends StatelessWidget {
+class TransactionPage extends StatefulWidget {
   const TransactionPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<TransactionController>();
+  State<TransactionPage> createState() => _TransactionPageState();
+}
 
+class _TransactionPageState extends State<TransactionPage> {
+  late final TransactionController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.find<TransactionController>();
+    // Reset filter setiap kali page dibuka — supaya admin selalu mulai fresh.
+    // Ini penting karena controller di-reuse (fenix: true), state tidak
+    // otomatis reset waktu balik ke page ini.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.resetOnEnter();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -34,52 +52,60 @@ class TransactionPage extends StatelessWidget {
         ),
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(40),
+          preferredSize: const Size.fromHeight(48),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: AppSearchBar(
-              hintText: 'Cari invoice atau nama pelanggan...',
-              onChanged: controller.updateSearch,
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSearchBar(
+                    hintText: 'Cari invoice atau nama pelanggan...',
+                    onChanged: _controller.updateSearch,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Obx(
+                  () => AppFilterButton(
+                    isActive: _controller.hasActiveDateFilter,
+                    onTap: () =>
+                        showTransactionFilterSheet(context, _controller),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
       body: Column(
         children: [
-          Obx(() {
-            final range = controller.selectedDateRange.value;
-            return AppFilterChips(
-              items: controller.quickDateFilters
-                  .map(
-                    (f) => FilterChipItem(
-                      label: f,
-                      icon: f == 'Custom' ? Icons.date_range_outlined : null,
-                    ),
-                  )
+          // ── Status filter chips ──────────────────────────────────────
+          Obx(
+            () => AppFilterChips(
+              items: TransactionController.statusTabs
+                  .map((t) => FilterChipItem(label: t.label))
                   .toList(),
-              selectedLabel: controller.selectedQuickDate.value,
-              selectedLabelOverride:
-                  (controller.selectedQuickDate.value == 'Custom' &&
-                      range != null)
-                  ? '${DateFormatter.formatShort(range.start)} – ${DateFormatter.formatShort(range.end)}'
-                  : null,
-              onChipTap: (label) async {
-                if (label == 'Custom') {
-                  await controller.pickDateRange(context);
-                } else {
-                  controller.updateQuickDate(label);
-                }
+              selectedLabel: TransactionController.statusTabs
+                  .firstWhere(
+                    (t) => t.value == _controller.selectedStatus.value,
+                    orElse: () => TransactionController.statusTabs.first,
+                  )
+                  .label,
+              onChipTap: (label) {
+                final tab = TransactionController.statusTabs
+                    .firstWhere((t) => t.label == label);
+                _controller.updateStatus(tab.value);
               },
-            );
-          }),
-          Obx(() => _summaryBar(controller)),
-          Expanded(child: _transactionList(controller)),
+            ),
+          ),
+
+          Obx(() => _summaryBar()),
+          Expanded(child: _transactionList()),
         ],
       ),
     );
   }
 
-  Widget _summaryBar(TransactionController controller) {
+  Widget _summaryBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
@@ -87,14 +113,14 @@ class TransactionPage extends StatelessWidget {
           Expanded(
             child: _summaryCard(
               label: 'Total transaksi',
-              value: '${controller.filteredTransactions.length}',
+              value: '${_controller.filteredTransactions.length}',
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _summaryCard(
               label: 'Total pendapatan',
-              value: controller.formattedTotalRevenue,
+              value: _controller.formattedTotalRevenue,
               valueColor: AppColors.primary,
               valueFontSize: 14,
             ),
@@ -120,14 +146,17 @@ class TransactionPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
           const SizedBox(height: 2),
           Text(
             value,
             style: TextStyle(
               fontSize: valueFontSize,
               fontWeight: FontWeight.w600,
-              color: valueColor ?? const Color(0xFF1A1A2E),
+              color: valueColor ?? AppColors.title,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -136,49 +165,77 @@ class TransactionPage extends StatelessWidget {
     );
   }
 
-Widget _transactionList(TransactionController controller) {
-  return Obx(() {
-    if (controller.isLoading.value) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  Widget _transactionList() {
+    return Obx(() {
+      if (_controller.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-    // ADD THIS
-    if (controller.hasError.value) {
-      return AppErrorState(
-        message: controller.errorMessage.value,
-        onRetry: controller.fetchTransactions,
-      );
-    }
+      if (_controller.hasError.value) {
+        return AppErrorState(
+          message: _controller.errorMessage.value,
+          onRetry: _controller.fetchTransactions,
+        );
+      }
 
-    final list = controller.filteredTransactions;
-    if (list.isEmpty) {
-      return Center(
-        child: Text(
-          'Transaksi tidak ditemukan',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.subtext,
+      final list = _controller.filteredTransactions;
+
+      if (list.isEmpty) {
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _controller.fetchTransactions,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 48,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Tidak ada transaksi',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.subtext,
+                      ),
+                    ),
+                    if (_controller.hasActiveDateFilter) ...[
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _controller.resetDateFilter,
+                        child: const Text('Reset filter tanggal'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _controller.fetchTransactions,
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          itemCount: list.length,
+          itemBuilder: (context, index) => TransactionCard(
+            transaction: list[index],
+            onTap: () => Get.toNamed(
+              AppRoutes.transactionDetail,
+              arguments: list[index].id,
+            ),
           ),
         ),
       );
-    }
-
-    return RefreshIndicator(
-      color: AppColors.primary,
-      onRefresh: controller.fetchTransactions,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-        itemCount: list.length,
-        itemBuilder: (context, index) => TransactionCard(
-          transaction: list[index],
-          onTap: () => Get.toNamed(
-            AppRoutes.transactionDetail,
-            arguments: list[index].id,
-          ),
-        ),
-      ),
-    );
-  });
-}
+    });
+  }
 }

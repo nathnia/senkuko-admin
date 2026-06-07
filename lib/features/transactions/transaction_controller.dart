@@ -17,7 +17,12 @@ class TransactionController extends GetxController {
 
   final searchText = ''.obs;
   final selectedDateRange = Rxn<DateTimeRange>();
-  final selectedQuickDate = 'Hari Ini'.obs;
+
+  // Default "Semua" — volume transaksi masih kecil, admin perlu lihat semua
+  final selectedQuickDate = 'Semua'.obs;
+
+  // null = semua status (chip "Semua")
+  final selectedStatus = Rxn<String>();
 
   final hasError = false.obs;
   final errorMessage = ''.obs;
@@ -32,10 +37,53 @@ class TransactionController extends GetxController {
     'Custom',
   ];
 
+  /// Status chips yang ditampilkan di transaction page.
+  /// null = semua transaksi, string = filter by status value.
+  ///
+  /// pending_payment sengaja tidak dimasukkan — status itu dikelola otomatis
+  /// oleh webhook Midtrans, admin tidak perlu tahu atau melakukan apapun.
+  static const List<({String label, String? value})> statusTabs = [
+    (label: 'Semua', value: null),
+    (label: 'Diproses', value: 'processing'),
+    (label: 'Dikirim', value: 'shipped'),
+    (label: 'Selesai', value: 'completed'),
+    (label: 'Dibatalkan', value: 'cancelled'),
+    (label: 'Gagal', value: 'failed'),
+  ];
+
   @override
   void onInit() {
     super.onInit();
+    _initFromArgs();
     fetchTransactions();
+  }
+
+  /// Dipanggil setiap kali TransactionPage dibuka (termasuk saat balik dari
+  /// page lain). Reset filter ke default supaya admin selalu mulai fresh,
+  /// kecuali kalau ada args dari dashboard yang minta filter tertentu.
+  void resetOnEnter() {
+    final args = Get.arguments;
+    if (args is Map && args['statusFilter'] != null) {
+      // Dari dashboard — terapkan filter yang diminta
+      selectedStatus.value = args['statusFilter'] as String;
+      selectedQuickDate.value = 'Semua';
+      selectedDateRange.value = null;
+    } else {
+      // Buka biasa — reset ke default
+      selectedStatus.value = null;
+      selectedQuickDate.value = 'Semua';
+      selectedDateRange.value = null;
+    }
+    searchText.value = '';
+    _applyFilter();
+  }
+
+  void _initFromArgs() {
+    final args = Get.arguments;
+    if (args is Map && args['statusFilter'] != null) {
+      selectedStatus.value = args['statusFilter'] as String;
+    }
+    // selectedQuickDate sudah default 'Semua' dari deklarasi
   }
 
   // ===================== FILTER =====================
@@ -45,15 +93,17 @@ class TransactionController extends GetxController {
     final query = searchText.value.toLowerCase();
     final quickDate = selectedQuickDate.value;
     final range = selectedDateRange.value;
+    final status = selectedStatus.value;
 
     filteredTransactions.assignAll(
       transactionList.where((t) {
+        // Search
         final matchSearch =
             t.invoiceNumber.toLowerCase().contains(query) ||
             (t.customerName?.toLowerCase().contains(query) ?? false);
 
+        // Date
         bool matchDate = true;
-
         if (quickDate == 'Hari Ini') {
           matchDate =
               t.transactedAt.year == now.year &&
@@ -67,6 +117,8 @@ class TransactionController extends GetxController {
           final from = DateTime(now.year, now.month, now.day)
               .subtract(const Duration(days: 29));
           matchDate = !t.transactedAt.isBefore(from);
+        } else if (quickDate == 'Semua') {
+          matchDate = true;
         } else if (quickDate == 'Custom') {
           if (range != null) {
             final end = DateTime(
@@ -83,7 +135,10 @@ class TransactionController extends GetxController {
           }
         }
 
-        return matchSearch && matchDate;
+        // Status — null berarti semua
+        final matchStatus = status == null || t.status == status;
+
+        return matchSearch && matchDate && matchStatus;
       }).toList(),
     );
   }
@@ -99,8 +154,32 @@ class TransactionController extends GetxController {
     _applyFilter();
   }
 
-  // Theme logic dipindahkan keluar dari controller ke transaction_page.dart.
-  // Controller hanya return DateTimeRange, widget yang apply theme-nya.
+  void updateStatus(String? value) {
+    selectedStatus.value = value;
+    _applyFilter();
+  }
+
+  void resetDateFilter() {
+    selectedQuickDate.value = 'Semua';
+    selectedDateRange.value = null;
+    _applyFilter();
+  }
+
+  void resetFilters() {
+    selectedQuickDate.value = 'Semua';
+    selectedDateRange.value = null;
+    selectedStatus.value = null;
+    searchText.value = '';
+    _applyFilter();
+  }
+
+  /// True kalau date filter bukan default — untuk dot indicator di filter button.
+  bool get hasActiveDateFilter => selectedQuickDate.value != 'Semua';
+
+  /// True kalau ada filter apapun aktif — untuk empty state reset button.
+  bool get hasActiveFilters =>
+      selectedStatus.value != null || selectedQuickDate.value != 'Semua';
+
   Future<void> pickDateRange(BuildContext context) async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
@@ -114,9 +193,6 @@ class TransactionController extends GetxController {
             end: now,
           ),
       builder: (context, child) {
-        // Theme ditaruh di sini karena showDateRangePicker memang butuh
-        // ThemeData via builder — ini bukan "logic", ini presentasi dialog
-        // yang harus tinggal bersama pemanggilnya.
         return Theme(
           data: ThemeData(
             colorScheme: ColorScheme.light(
@@ -125,7 +201,7 @@ class TransactionController extends GetxController {
               primaryContainer: AppColors.primary.withAlpha(40),
               onPrimaryContainer: AppColors.primary,
               surface: AppColors.background,
-              onSurface: const Color(0xFF1A1A2E),
+              onSurface: AppColors.title,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(foregroundColor: AppColors.primary),
@@ -158,7 +234,12 @@ class TransactionController extends GetxController {
     try {
       final res = await TransactionService.getAllTransactions();
       if (res.statusCode == 200) {
-        transactionList.assignAll(transactionModelFromJson(res.body).data);
+        // Exclude pending_payment — dikelola otomatis webhook Midtrans,
+        // tidak relevan untuk admin dan hanya membingungkan.
+        final all = transactionModelFromJson(res.body).data;
+        transactionList.assignAll(
+          all.where((t) => t.status != 'pending_payment').toList(),
+        );
         _applyFilter();
       } else {
         hasError.value = true;
@@ -208,9 +289,8 @@ class TransactionController extends GetxController {
     try {
       final res = await TransactionService.updateTransactionStatus(id, status);
       if (res.statusCode == 200) {
-        // Refresh detail supaya badge dan tombol aksi ikut update
         await fetchTransactionById(id);
-        // Refresh list di background — tidak perlu await
+        // Fire and forget — list refresh di background, tidak perlu tunggu
         fetchTransactions();
         return true;
       } else {
@@ -221,8 +301,8 @@ class TransactionController extends GetxController {
           'Gagal',
           msg,
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: const Color(0xFFFEE2E2),
-          colorText: const Color(0xFFEF4444),
+          backgroundColor: AppColors.dangerBg,
+          colorText: AppColors.danger,
           margin: const EdgeInsets.all(16),
           borderRadius: 12,
         );
@@ -233,8 +313,8 @@ class TransactionController extends GetxController {
         'Gagal',
         'Terjadi kesalahan. Coba lagi.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFFFEE2E2),
-        colorText: const Color(0xFFEF4444),
+        backgroundColor: AppColors.dangerBg,
+        colorText: AppColors.danger,
         margin: const EdgeInsets.all(16),
         borderRadius: 12,
       );

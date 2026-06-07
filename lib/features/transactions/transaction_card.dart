@@ -15,8 +15,6 @@ class TransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Gunakan statusStyle untuk badge — lebih informatif buat admin
-    // daripada payment method yang sudah ada di detail
     final statusStyle = transaction.statusStyle;
 
     return GestureDetector(
@@ -25,7 +23,7 @@ class TransactionCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.grey.shade100),
         ),
@@ -41,7 +39,7 @@ class TransactionCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
+                      color: AppColors.title,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -50,8 +48,8 @@ class TransactionCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       color: transaction.customerName != null
-                          ? Colors.grey.shade700
-                          : Colors.grey,
+                          ? AppColors.subtitle
+                          : AppColors.subtext,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -61,11 +59,11 @@ class TransactionCard extends StatelessWidget {
                         DateFormatter.formatDateTime(transaction.transactedAt),
                         style: const TextStyle(
                           fontSize: 10,
-                          color: Colors.grey,
+                          color: AppColors.subtext,
                         ),
                       ),
                       const SizedBox(width: 6),
-                      // Payment method pill kecil — secondary info
+                      // Payment method pill — secondary info
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 5,
@@ -96,7 +94,7 @@ class TransactionCard extends StatelessWidget {
               children: [
                 Text(
                   transaction.formattedGrandTotal,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -124,7 +122,11 @@ class TransactionCard extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 6),
-            Icon(Icons.chevron_right, size: 16, color: Colors.grey.shade400),
+            Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
           ],
         ),
       ),

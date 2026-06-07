@@ -56,7 +56,8 @@ class TransactionDetailPage extends StatelessWidget {
           return const Center(child: Text('Data tidak ditemukan'));
         }
 
-        final nextStatuses = _nextStatuses(data.status, data.paymentMethod);
+        final nextStatuses = _nextStatuses(data.status, data.isCod);
+        final canCancel = !data.isTerminal;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -79,7 +80,7 @@ class TransactionDetailPage extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E),
+                              color: AppColors.title,
                             ),
                           ),
                         ),
@@ -140,7 +141,7 @@ class TransactionDetailPage extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF1A1A2E),
+                          color: AppColors.title,
                         ),
                       ),
                       if (data.addressLine2.isNotEmpty) ...[
@@ -197,7 +198,7 @@ class TransactionDetailPage extends StatelessWidget {
                         border: isLast
                             ? null
                             : const Border(
-                                bottom: BorderSide(color: Color(0xFFF0F0F0)),
+                                bottom: BorderSide(color: Color(0xFFE0E0E0)),
                               ),
                       ),
                       child: Row(
@@ -212,7 +213,7 @@ class TransactionDetailPage extends StatelessWidget {
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
-                                    color: Color(0xFF1A1A2E),
+                                    color: AppColors.title,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -231,7 +232,7 @@ class TransactionDetailPage extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E),
+                              color: AppColors.title,
                             ),
                           ),
                         ],
@@ -266,7 +267,7 @@ class TransactionDetailPage extends StatelessWidget {
                               '- ${promo.formattedDiscount}',
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFFFF6B6B),
+                                color: AppColors.danger,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -289,11 +290,11 @@ class TransactionDetailPage extends StatelessWidget {
                       _summaryRow(
                         'Diskon',
                         '- ${data.formattedTotalDiscount}',
-                        valueColor: const Color(0xFFFF6B6B),
+                        valueColor: AppColors.danger,
                       ),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(height: 1, color: Color(0xFFF0F0F0)),
+                      child: Divider(height: 1, color: Color(0xFFE0E0E0)),
                     ),
                     _summaryRow(
                       'Total',
@@ -309,8 +310,11 @@ class TransactionDetailPage extends StatelessWidget {
               ),
 
               // ── Tombol aksi admin ───────────────────────────────────────────
-              if (nextStatuses.isNotEmpty) ...[
+              // Hanya tampil kalau ada aksi yang tersedia atau bisa dibatalkan.
+              if (nextStatuses.isNotEmpty || canCancel) ...[
                 const SizedBox(height: 20),
+
+                // Primary action buttons (maju ke status berikutnya)
                 ...nextStatuses.map(
                   (s) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -327,7 +331,7 @@ class TransactionDetailPage extends StatelessWidget {
                                     s,
                                   ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _buttonColor(s),
+                            backgroundColor: StatusStyle.of(s).color,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             elevation: 0,
@@ -345,7 +349,7 @@ class TransactionDetailPage extends StatelessWidget {
                                   ),
                                 )
                               : Text(
-                                  _buttonLabel(s),
+                                  _buttonLabel(s, data.isCod),
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -356,9 +360,10 @@ class TransactionDetailPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Tombol batalkan — tampil selama belum terminal state
-                if (!['completed', 'cancelled', 'failed']
-                    .contains(data.status))
+
+                // Cancel button — tampil selama belum terminal state,
+                // termasuk untuk Midtrans pending_payment (admin bisa force cancel).
+                if (canCancel)
                   Obx(
                     () => SizedBox(
                       width: double.infinity,
@@ -372,8 +377,8 @@ class TransactionDetailPage extends StatelessWidget {
                                   'cancelled',
                                 ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF6B7280),
-                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          foregroundColor: AppColors.subtext,
+                          side: BorderSide(color: Colors.grey.shade200),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -399,43 +404,43 @@ class TransactionDetailPage extends StatelessWidget {
 
   // ── Status helpers ──────────────────────────────────────────────────────────
 
-  List<String> _nextStatuses(String status, String paymentMethod) {
-    final isCod = paymentMethod == 'cod';
+  /// Menentukan tombol aksi yang tersedia berdasarkan status dan metode bayar.
+  ///
+  /// Flow admin:
+  /// - COD pending_payment  → processing (admin konfirmasi order diterima)
+  /// - Midtrans pending_payment → [] (otomatis via webhook, admin tidak bisa advance)
+  /// - processing           → shipped (COD maupun Midtrans, siapkan pengiriman)
+  /// - shipped              → completed (barang sudah diterima customer)
+  /// - Terminal states (completed/cancelled/failed) → tidak ada tombol
+  List<String> _nextStatuses(String status, bool isCod) {
     switch (status) {
       case 'pending_payment':
-        // COD: admin manual → processing. Midtrans: otomatis via webhook, tidak ada tombol.
+        // COD: admin konfirmasi pesanan diterima → processing.
+        // Midtrans: status diupdate otomatis via webhook, admin tidak bisa advance.
         return isCod ? ['processing'] : [];
       case 'processing':
-        // COD: konfirmasi bayar cash. Midtrans: shipped.
-        return isCod ? ['paid'] : ['shipped'];
+        // Baik COD maupun Midtrans: siapkan dan kirim pesanan.
+        return ['shipped'];
       case 'shipped':
+        // Konfirmasi barang sudah diterima customer.
         return ['completed'];
       default:
+        // completed, cancelled, failed — terminal, tidak ada aksi.
         return [];
     }
   }
 
-  String _buttonLabel(String status) {
+  /// Label tombol yang human-readable untuk admin.
+  String _buttonLabel(String status, bool isCod) {
     switch (status) {
       case 'processing':
-        return 'Proses & Kirim';
-      case 'paid':
-        return 'Konfirmasi Pembayaran COD';
+        return 'Proses Pesanan';
       case 'shipped':
-        return 'Tandai Sedang Dikirim';
+        return isCod ? 'Kirim & Tagih COD' : 'Kirim Pesanan';
       case 'completed':
         return 'Tandai Selesai';
       default:
-        return status;
-    }
-  }
-
-  Color _buttonColor(String status) {
-    switch (status) {
-      case 'shipped':
-        return const Color(0xFF8B5CF6);
-      default:
-        return AppColors.primary;
+        return StatusStyle.of(status).label;
     }
   }
 
@@ -472,7 +477,7 @@ class TransactionDetailPage extends StatelessWidget {
               'Ya, lanjutkan',
               style: TextStyle(
                 color: newStatus == 'cancelled'
-                    ? const Color(0xFFEF4444)
+                    ? AppColors.danger
                     : AppColors.primary,
                 fontWeight: FontWeight.w600,
               ),
@@ -531,7 +536,7 @@ class TransactionDetailPage extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF1A1A2E),
+                  color: AppColors.title,
                 ),
               ),
             ),
@@ -554,7 +559,7 @@ class TransactionDetailPage extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                color: isBold ? const Color(0xFF1A1A2E) : Colors.grey,
+                color: isBold ? AppColors.title : Colors.grey,
                 fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -563,7 +568,7 @@ class TransactionDetailPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
-                color: valueColor ?? const Color(0xFF1A1A2E),
+                color: valueColor ?? AppColors.title,
               ),
             ),
           ],

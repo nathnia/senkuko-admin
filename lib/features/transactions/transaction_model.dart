@@ -43,8 +43,8 @@ class PaymentStyle {
       case 'cash':
       case 'cod':
         return const PaymentStyle(
-          color: AppColors.primary,
-          background: Color(0xFFE8FAF3),
+          color: AppColors.success,
+          background: AppColors.successBg,
           icon: Icons.payments_outlined,
           label: 'Tunai / COD',
         );
@@ -52,11 +52,12 @@ class PaymentStyle {
       case 'bank_transfer':
         return const PaymentStyle(
           color: AppColors.secondary,
-          background: Color(0xFFEEF3FF),
+          background: AppColors.secondaryBg,
           icon: Icons.account_balance_outlined,
           label: 'Transfer Bank',
         );
       case 'qris':
+        // Brand color QRIS — tidak ada padanannya di AppColors
         return const PaymentStyle(
           color: Color(0xFF9B6DFF),
           background: Color(0xFFF3EEFF),
@@ -64,6 +65,7 @@ class PaymentStyle {
           label: 'QRIS',
         );
       case 'gopay':
+        // Brand color GoPay
         return const PaymentStyle(
           color: Color(0xFF00AED6),
           background: Color(0xFFE5F7FB),
@@ -71,6 +73,7 @@ class PaymentStyle {
           label: 'GoPay',
         );
       case 'shopeepay':
+        // Brand color ShopeePay
         return const PaymentStyle(
           color: Color(0xFFEE4D2D),
           background: Color(0xFFFEEDE9),
@@ -78,11 +81,11 @@ class PaymentStyle {
           label: 'ShopeePay',
         );
       default:
-        return PaymentStyle(
-          color: Colors.grey,
-          background: Colors.grey.shade100,
+        return const PaymentStyle(
+          color: AppColors.subtext,
+          background: AppColors.neutralBg,
           icon: Icons.payment_outlined,
-          label: method,
+          label: 'Lainnya',
         );
     }
   }
@@ -105,45 +108,45 @@ class StatusStyle {
     switch (status) {
       case 'pending_payment':
         return const StatusStyle(
-          color: Color(0xFFF59E0B),
-          background: Color(0xFFFEF3C7),
+          color: AppColors.warning,
+          background: AppColors.warningBg,
           label: 'Menunggu Bayar',
         );
       case 'processing':
         return const StatusStyle(
-          color: Color(0xFF3B82F6),
-          background: Color(0xFFEFF6FF),
+          color: AppColors.secondary,
+          background: AppColors.secondaryBg,
           label: 'Diproses',
         );
       case 'shipped':
         return const StatusStyle(
-          color: Color(0xFF8B5CF6),
-          background: Color(0xFFF5F3FF),
+          color: AppColors.shipped,
+          background: AppColors.shippedBg,
           label: 'Dikirim',
         );
       case 'completed':
         return const StatusStyle(
-          color: AppColors.primary,
-          background: Color(0xFFE8FAF3),
+          color: AppColors.success,
+          background: AppColors.successBg,
           label: 'Selesai',
         );
       case 'cancelled':
         return const StatusStyle(
-          color: Color(0xFF6B7280),
-          background: Color(0xFFF3F4F6),
+          color: AppColors.subtext,
+          background: AppColors.neutralBg,
           label: 'Dibatalkan',
         );
       case 'failed':
         return const StatusStyle(
-          color: Color(0xFFEF4444),
-          background: Color(0xFFFEE2E2),
+          color: AppColors.danger,
+          background: AppColors.dangerBg,
           label: 'Gagal',
         );
       default:
-        return StatusStyle(
-          color: Colors.grey,
-          background: Colors.grey.shade100,
-          label: status,
+        return const StatusStyle(
+          color: AppColors.subtext,
+          background: AppColors.neutralBg,
+          label: 'Unknown',
         );
     }
   }
@@ -155,7 +158,11 @@ class TransactionData {
   final String id;
   final String invoiceNumber;
   final String status;
+
+  // Parsed from API but intentionally not displayed in admin UI.
+  // Admin only needs transaction status, not payment gateway status.
   final String paymentStatus;
+
   final double subtotal;
   final double totalDiscount;
   final double grandTotal;
@@ -320,16 +327,24 @@ class TransactionDetail {
   final String id;
   final String invoiceNumber;
   final String status;
+
+  // Parsed from API but intentionally not displayed in admin UI.
+  // Admin only needs transaction status, not payment gateway status.
   final String paymentStatus;
+
   final double subtotal;
   final double totalDiscount;
   final double grandTotal;
   final double paidAmount;
   final double changeAmount;
   final String paymentMethod;
+
+  // Internal Midtrans fields — not shown in admin UI.
+  // Keep parsing to avoid JSON decode errors if backend sends them.
   final String? midtransOrderId;
   final String? midtransToken;
   final String? midtransPdfUrl;
+
   final DateTime? paidAt;
   final String? deliveryAddress;
   final String? deliveryCity;
@@ -397,8 +412,7 @@ class TransactionDetail {
             .toList(),
         promotions: (json['promotions'] as List? ?? [])
             .map(
-              (e) =>
-                  TransactionPromotion.fromJson(e as Map<String, dynamic>),
+              (e) => TransactionPromotion.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
       );
@@ -407,8 +421,14 @@ class TransactionDetail {
   PaymentStyle get paymentStyle => PaymentStyle.of(paymentMethod);
   StatusStyle get statusStyle => StatusStyle.of(status);
   String get paymentMethodLabel => paymentStyle.label;
-  bool get isCod => paymentMethod == 'cod';
+  bool get isCod => paymentMethod == 'cod' || paymentMethod == 'cash';
   bool get hasAddress => deliveryAddress != null;
+
+  /// Apakah transaksi sudah di terminal state (tidak bisa diubah lagi).
+  bool get isTerminal =>
+      status == 'completed' ||
+      status == 'cancelled' ||
+      status == 'failed';
 
   /// Bagian alamat baris kedua: subregion, region, city
   String get addressLine2 => [
