@@ -2,33 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
-import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/auth/auth_controller.dart';
+import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
+  int _countByStatus(TransactionController c, String status) =>
+      c.transactionList.where((t) => t.status == status).length;
+
   @override
   Widget build(BuildContext context) {
+    final txC = Get.find<TransactionController>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              _header(context),
-              const SizedBox(height: 24),
-              _ordersSection(),
-              const SizedBox(height: 24),
-              _menuSection(),
-              const SizedBox(height: 24),
-              _addProductButton(),
-              const SizedBox(height: 32),
-            ],
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: Colors.white,
+          onRefresh: () => txC.fetchTransactions(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 14),
+                _header(),
+                const SizedBox(height: 24),
+                _ordersSection(txC),
+                const SizedBox(height: 24),
+                _menuSection(),
+                const SizedBox(height: 24),
+                _addProductButton(),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
@@ -36,7 +47,7 @@ class DashboardPage extends StatelessWidget {
   }
 
   // ==================== HEADER ====================
-  Widget _header(BuildContext context) {
+  Widget _header() {
     final auth = Get.find<AuthController>();
 
     return Row(
@@ -49,12 +60,12 @@ class DashboardPage extends StatelessWidget {
                 'Selamat datang 👋',
                 style: TextStyle(fontSize: 11, color: AppColors.subtext),
               ),
-              const SizedBox(height: 1),
+              const SizedBox(height: 2),
               Obx(() => Text(
                     auth.currentUser.value?.name ?? 'Admin',
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.title,
                       letterSpacing: -0.3,
                     ),
@@ -89,10 +100,10 @@ class DashboardPage extends StatelessWidget {
             ),
             offset: const Offset(0, 48),
             itemBuilder: (_) => [
-              // header info — non-interactive
               PopupMenuItem(
                 enabled: false,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -137,10 +148,12 @@ class DashboardPage extends StatelessWidget {
               const PopupMenuDivider(height: 1),
               PopupMenuItem<String>(
                 value: 'logout',
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    Icon(Icons.logout_rounded, size: 16, color: AppColors.danger),
+                    Icon(Icons.logout_rounded,
+                        size: 16, color: AppColors.danger),
                     const SizedBox(width: 10),
                     Text(
                       'Keluar',
@@ -155,8 +168,8 @@ class DashboardPage extends StatelessWidget {
               ),
             ],
             child: Container(
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: AppColors.primary.withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
@@ -165,7 +178,7 @@ class DashboardPage extends StatelessWidget {
                 child: Text(
                   initial,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
@@ -179,7 +192,7 @@ class DashboardPage extends StatelessWidget {
   }
 
   // ==================== ORDERS SECTION ====================
-  Widget _ordersSection() {
+  Widget _ordersSection(TransactionController txC) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -189,7 +202,7 @@ class DashboardPage extends StatelessWidget {
             _sectionLabel('Pesanan'),
             GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.transaction),
-              child: const Text(
+              child: Text(
                 'Lihat semua',
                 style: TextStyle(
                   fontSize: 12,
@@ -205,41 +218,54 @@ class DashboardPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.black.withAlpha(10), width: 0.5),
           ),
-          child: Column(
-            children: [
-              _orderRow(
-                icon: Icons.access_time_rounded,
-                title: 'Perlu Diproses',
-                subtitle: 'Menunggu konfirmasi',
-                isLast: false,
-                onTap: () => Get.toNamed(
-                  AppRoutes.transaction,
-                  arguments: {'statusFilter': 'processing'},
-                ),
-              ),
-              _orderRow(
-                icon: Icons.local_shipping_outlined,
-                title: 'Perlu Dikirim',
-                subtitle: 'Siap untuk pengiriman',
-                isLast: false,
-                onTap: () => Get.toNamed(
-                  AppRoutes.transaction,
-                  arguments: {'statusFilter': 'shipped'},
-                ),
-              ),
-              _orderRow(
-                icon: Icons.cancel_outlined,
-                title: 'Dibatalkan',
-                subtitle: 'Transaksi dibatalkan',
-                isLast: true,
-                onTap: () => Get.toNamed(
-                  AppRoutes.transaction,
-                  arguments: {'statusFilter': 'cancelled'},
-                ),
-              ),
-            ],
-          ),
+          child: Obx(() => Column(
+                children: [
+                  _orderRow(
+                    icon: Icons.access_time_rounded,
+                    iconBg: const Color(0xFFFAEEDA),
+                    iconColor: const Color(0xFF854F0B),
+                    title: 'Perlu Diproses',
+                    subtitle: 'Menunggu konfirmasi',
+                    count: _countByStatus(txC, 'processing'),
+                    badgeStyle: _BadgeStyle.amber,
+                    isLast: false,
+                    onTap: () => Get.toNamed(
+                      AppRoutes.transaction,
+                      arguments: {'statusFilter': 'processing'},
+                    ),
+                  ),
+                  _orderRow(
+                    icon: Icons.local_shipping_outlined,
+                    iconBg: const Color(0xFFFAEEDA),
+                    iconColor: const Color(0xFF854F0B),
+                    title: 'Perlu Dikirim',
+                    subtitle: 'Siap untuk pengiriman',
+                    count: _countByStatus(txC, 'shipped'),
+                    badgeStyle: _BadgeStyle.amber,
+                    isLast: false,
+                    onTap: () => Get.toNamed(
+                      AppRoutes.transaction,
+                      arguments: {'statusFilter': 'shipped'},
+                    ),
+                  ),
+                  _orderRow(
+                    icon: Icons.cancel_outlined,
+                    iconBg: const Color(0xFFFCEBEB),
+                    iconColor: const Color(0xFFA32D2D),
+                    title: 'Dibatalkan',
+                    subtitle: 'Transaksi dibatalkan',
+                    count: _countByStatus(txC, 'cancelled'),
+                    badgeStyle: _BadgeStyle.red,
+                    isLast: true,
+                    onTap: () => Get.toNamed(
+                      AppRoutes.transaction,
+                      arguments: {'statusFilter': 'cancelled'},
+                    ),
+                  ),
+                ],
+              )),
         ),
       ],
     );
@@ -247,50 +273,98 @@ class DashboardPage extends StatelessWidget {
 
   Widget _orderRow({
     required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
     required String title,
     required String subtitle,
+    required int count,
+    required _BadgeStyle badgeStyle,
     required bool isLast,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : const Border(bottom: BorderSide(color: AppColors.background)),
+              : Border(
+                  bottom: BorderSide(color: AppColors.background, width: 1),
+                ),
         ),
         child: Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(12),
+                color: iconBg,
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 16),
+              child: Icon(icon, color: iconColor, size: 15),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.title)),
-                  const SizedBox(height: 1),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.subtext)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.title,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.subtext,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
+            if (count > 0) ...[
+              _badge(count, badgeStyle),
+              const SizedBox(width: 6),
+            ],
+            Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _badge(int count, _BadgeStyle style) {
+    final Color bg;
+    final Color fg;
+
+    switch (style) {
+      case _BadgeStyle.amber:
+        bg = const Color(0xFFFAEEDA);
+        fg = const Color(0xFF854F0B);
+      case _BadgeStyle.red:
+        bg = const Color(0xFFFCEBEB);
+        fg = const Color(0xFFA32D2D);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: fg,
         ),
       ),
     );
@@ -363,35 +437,34 @@ class DashboardPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black.withAlpha(10), width: 0.5),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(12),
+                color: AppColors.primary.withAlpha(18),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 16),
+              child: Icon(icon, color: AppColors.primary, size: 15),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.title)),
-                  Text(sub,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.subtext)),
-                ],
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.title,
               ),
             ),
-            const Icon(Icons.chevron_right, size: 14, color: AppColors.subtext),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: const TextStyle(fontSize: 12, color: AppColors.subtext),
+            ),
           ],
         ),
       ),
@@ -401,8 +474,7 @@ class DashboardPage extends StatelessWidget {
   // ==================== ADD PRODUCT ====================
   Widget _addProductButton() {
     return GestureDetector(
-      onTap: () =>
-          AppToast.show('Fitur tambah produk sedang dalam pengembangan'),
+      onTap: () => Get.toNamed(AppRoutes.addProduct),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 15),
@@ -418,9 +490,10 @@ class DashboardPage extends StatelessWidget {
             Text(
               'Tambah Produk Baru',
               style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14),
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -441,3 +514,5 @@ class DashboardPage extends StatelessWidget {
     );
   }
 }
+
+enum _BadgeStyle { amber, red }

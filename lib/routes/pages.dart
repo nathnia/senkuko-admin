@@ -3,6 +3,7 @@ import 'package:senkukoadmin/features/auth/auth_binding.dart';
 import 'package:senkukoadmin/features/auth/login_page.dart';
 import 'package:senkukoadmin/features/auth/splash_page.dart';
 import 'package:senkukoadmin/features/customers/customer_form.dart';
+import 'package:senkukoadmin/features/dashboard_binding.dart';
 import 'package:senkukoadmin/features/dashboard_page.dart';
 import 'package:senkukoadmin/features/customers/customer_binding.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
@@ -40,7 +41,7 @@ class AppPages {
       page: () => const LoginPage(),
       binding: AuthBinding(),
     ),
-    GetPage(name: AppRoutes.dashboard, page: () => DashboardPage()),
+    GetPage(name: AppRoutes.dashboard, page: () => DashboardPage(), binding: DashboardBinding()),
     GetPage(
       name: AppRoutes.product,
       page: () => ProductPage(),
