@@ -5,8 +5,14 @@ import 'package:senkukoadmin/features/customers/customer_model.dart';
 class CustomerCard extends StatelessWidget {
   final CustomerData customer;
   final VoidCallback? onToggleStatus;
+  final VoidCallback? onTap;
 
-  const CustomerCard({super.key, required this.customer, this.onToggleStatus});
+  const CustomerCard({
+    super.key,
+    required this.customer,
+    this.onToggleStatus,
+    this.onTap,
+  });
 
   _GroupStyle _groupStyle(CustomerGroup group) {
     switch (group) {
@@ -32,89 +38,93 @@ class CustomerCard extends StatelessWidget {
 
     return Opacity(
       opacity: isActive ? 1.0 : 0.5,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.grey.shade100, width: 0.8),
-        ),
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              // AVATAR
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: style.bg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  customer.name.isNotEmpty
-                      ? customer.name[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    color: style.color,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+      child: InkWell(
+            onTap: onTap,
+    borderRadius: BorderRadius.circular(20),
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.grey.shade100, width: 0.8),
+          ),
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                // AVATAR
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: style.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    customer.name.isNotEmpty
+                        ? customer.name[0].toUpperCase()
+                        : '?',
+                    style: TextStyle(
+                      color: style.color,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // INFO
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Nama + badge grup
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            customer.name,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A1A),
-                              height: 1.2,
+        
+                const SizedBox(width: 12),
+        
+                // INFO
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nama + badge grup
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              customer.name,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                                height: 1.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        _GroupBadge(style: style),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    // Kode customer
-                    Text(
-                      customer.code,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.subtext,
-                        letterSpacing: 0.2,
+                          const SizedBox(width: 6),
+                          _GroupBadge(style: style),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    _SubInfo(customer: customer),
-                  ],
+                      const SizedBox(height: 2),
+                      // Kode customer
+                      Text(
+                        customer.code,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.subtext,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      _SubInfo(customer: customer),
+                    ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(width: 10),
-
-              // STATUS PILL
-              _StatusPill(isActive: isActive, onTap: onToggleStatus),
-            ],
+        
+                const SizedBox(width: 10),
+        
+                // STATUS PILL
+                _StatusPill(isActive: isActive, onTap: onToggleStatus),
+              ],
+            ),
           ),
         ),
       ),
@@ -150,10 +160,7 @@ class _StatusPill extends StatelessWidget {
             Container(
               width: 5,
               height: 5,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 5),
             Text(

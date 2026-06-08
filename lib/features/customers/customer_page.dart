@@ -45,7 +45,7 @@ class CustomerPage extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          controller.resetAddForm();
+          controller.resetForAdd(); // optional, initState sudah handle
           Get.toNamed(AppRoutes.customerForm);
         },
         backgroundColor: AppColors.primary,
@@ -76,7 +76,8 @@ class CustomerPage extends StatelessWidget {
           ),
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value && controller.customerList.isEmpty) {
+              if (controller.isLoading.value &&
+                  controller.customerList.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (controller.hasError.value) {
@@ -105,6 +106,11 @@ class CustomerPage extends StatelessWidget {
                     final customer = list[index];
                     return CustomerCard(
                       customer: customer,
+                      onTap: () => Get.toNamed(
+                        // ← tambah
+                        AppRoutes.customerForm,
+                        arguments: customer,
+                      ),
                       onToggleStatus: () =>
                           controller.toggleCustomerStatus(customer),
                     );

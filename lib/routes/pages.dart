@@ -61,7 +61,7 @@ class AppPages {
     ),
     GetPage(
       name: AppRoutes.customerForm,
-      page: () => const AddCustomerPage(),
+      page: () => const CustomerFormPage(),
     ),
     GetPage(
       name: AppRoutes.transaction,

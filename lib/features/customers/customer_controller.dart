@@ -8,26 +8,6 @@ import 'package:senkukoadmin/features/customers/customer_model.dart';
 import 'package:senkukoadmin/features/customers/customer_service.dart';
 
 class CustomerController extends GetxController {
-  // ===================== EDIT FORM STATE =====================
-  final isDirty = false.obs;
-  final nameC = TextEditingController();
-  final phoneC = TextEditingController();
-  final emailC = TextEditingController();
-  final selectedMemberType = MemberType.regular.obs;
-
-  // ===================== ADD FORM STATE =====================
-  final addIsDirty = false.obs;
-  final isSubmitting = false.obs;
-  final addNameC = TextEditingController();
-  final addCodeC = TextEditingController();
-  final addPhoneC = TextEditingController();
-  final addEmailC = TextEditingController();
-  final addAddressC = TextEditingController();
-  final addCityC = TextEditingController();
-  final addRegionC = TextEditingController();
-  final addSubregionC = TextEditingController();
-  final addCustomerGroup = CustomerGroup.general.obs;
-
   // ===================== LIST STATE =====================
   final isLoading = false.obs;
   final customerList = <CustomerData>[].obs;
@@ -36,9 +16,43 @@ class CustomerController extends GetxController {
   final searchText = ''.obs;
   final Rxn<CustomerStatus> statusFilter = Rxn(CustomerStatus.active);
   final Rxn<CustomerGroup> groupFilter = Rxn(null);
-
   final hasError = false.obs;
   final errorMessage = ''.obs;
+
+  // ===================== FORM STATE (shared Add & Edit) =====================
+  final isSubmitting = false.obs;
+  final isDirty = false.obs;
+  final nameC = TextEditingController();
+  final codeC = TextEditingController();
+  final phoneC = TextEditingController();
+  final emailC = TextEditingController();
+  final addressC = TextEditingController();
+  final cityC = TextEditingController();
+  final regionC = TextEditingController();
+  final subregionC = TextEditingController();
+  final customerGroup = CustomerGroup.general.obs;
+
+  // Snapshot untuk edit dirty tracking
+  String _snapName = '';
+  String _snapCode = '';
+  String _snapPhone = '';
+  String _snapEmail = '';
+  String _snapAddress = '';
+  String _snapCity = '';
+  String _snapRegion = '';
+  String _snapSubregion = '';
+  CustomerGroup _snapGroup = CustomerGroup.general;
+
+  List<TextEditingController> get _formControllers => [
+        nameC,
+        codeC,
+        phoneC,
+        emailC,
+        addressC,
+        cityC,
+        regionC,
+        subregionC,
+      ];
 
   @override
   void onInit() {
@@ -48,73 +62,104 @@ class CustomerController extends GetxController {
 
   @override
   void onClose() {
-    nameC.dispose();
-    phoneC.dispose();
-    emailC.dispose();
-    addNameC.removeListener(_checkAddDirty);
-    addCodeC.removeListener(_checkAddDirty);
-    addPhoneC.removeListener(_checkAddDirty);
-    addNameC.dispose();
-    addCodeC.dispose();
-    addPhoneC.dispose();
-    addEmailC.dispose();
-    addAddressC.dispose();
-    addCityC.dispose();
-    addRegionC.dispose();
-    addSubregionC.dispose();
+    for (final c in _formControllers) {
+      c.dispose();
+    }
     super.onClose();
   }
 
-  // ===================== EDIT FORM HELPERS =====================
-  void markDirty() => isDirty.value = true;
+  // ===================== FORM HELPERS =====================
 
-  void resetForm() {
-    isDirty.value = false;
-    nameC.clear();
-    phoneC.clear();
-    emailC.clear();
-    selectedMemberType.value = MemberType.regular;
-    selectedCustomer.value = null;
+  void _removeListeners(VoidCallback fn) {
+    for (final c in _formControllers) {
+      c.removeListener(fn);
+    }
   }
 
-  void populateForm(CustomerData c) {
-    nameC.text = c.name;
-    phoneC.text = c.phone ?? '';
-    emailC.text = c.email ?? '';
-    selectedMemberType.value = c.memberType;
+  void _addListeners(VoidCallback fn) {
+    for (final c in _formControllers) {
+      c.addListener(fn);
+    }
   }
 
-  // ===================== ADD FORM HELPERS =====================
-
+  // Add mode: dirty = required fields tidak kosong
   void _checkAddDirty() {
-    addIsDirty.value =
-        addNameC.text.trim().isNotEmpty &&
-        addCodeC.text.trim().isNotEmpty &&
-        addPhoneC.text.trim().isNotEmpty;
+    isDirty.value =
+        nameC.text.trim().isNotEmpty &&
+        codeC.text.trim().isNotEmpty &&
+        phoneC.text.trim().isNotEmpty;
   }
 
-  void resetAddForm() {
-    addIsDirty.value = false;
-    addNameC.clear();
-    addCodeC.clear();
-    addPhoneC.clear();
-    addEmailC.clear();
-    addAddressC.clear();
-    addCityC.clear();
-    addRegionC.clear();
-    addSubregionC.clear();
-    addCustomerGroup.value = CustomerGroup.general;
+  // Edit mode: dirty = ada yang berubah dari snapshot
+  void _checkEditDirty() {
+    isDirty.value =
+        nameC.text.trim() != _snapName ||
+        codeC.text.trim() != _snapCode ||
+        phoneC.text.trim() != _snapPhone ||
+        emailC.text.trim() != _snapEmail ||
+        addressC.text.trim() != _snapAddress ||
+        cityC.text.trim() != _snapCity ||
+        regionC.text.trim() != _snapRegion ||
+        subregionC.text.trim() != _snapSubregion ||
+        customerGroup.value != _snapGroup;
+  }
 
-    // re-wire listeners (safe to call multiple times)
-    addNameC.removeListener(_checkAddDirty);
-    addCodeC.removeListener(_checkAddDirty);
-    addPhoneC.removeListener(_checkAddDirty);
-    addNameC.addListener(_checkAddDirty);
-    addCodeC.addListener(_checkAddDirty);
-    addPhoneC.addListener(_checkAddDirty);
+  /// Dipanggil dari onChanged dropdown di edit mode
+  void onGroupChanged(CustomerGroup val) {
+    customerGroup.value = val;
+    _checkEditDirty();
+  }
+
+  void resetForAdd() {
+    _removeListeners(_checkAddDirty);
+    _removeListeners(_checkEditDirty);
+    for (final c in _formControllers) {
+      c.clear();
+    }
+    customerGroup.value = CustomerGroup.general;
+    isDirty.value = false;
+    isSubmitting.value = false;
+    _addListeners(_checkAddDirty);
+  }
+
+  void resetForEdit() {
+    _removeListeners(_checkAddDirty);
+    _removeListeners(_checkEditDirty);
+    for (final c in _formControllers) {
+      c.clear();
+    }
+    customerGroup.value = CustomerGroup.general;
+    isDirty.value = false;
+    isSubmitting.value = false;
+  }
+
+  void populateEditForm(CustomerData c) {
+    _snapName      = c.name;
+    _snapCode      = c.code;
+    _snapPhone     = c.phone ?? '';
+    _snapEmail     = c.email ?? '';
+    _snapAddress   = c.address ?? '';
+    _snapCity      = c.city ?? '';
+    _snapRegion    = c.region ?? '';
+    _snapSubregion = c.subregion ?? '';
+    _snapGroup     = c.customerGroup;
+
+    nameC.text      = _snapName;
+    codeC.text      = _snapCode;
+    phoneC.text     = _snapPhone;
+    emailC.text     = _snapEmail;
+    addressC.text   = _snapAddress;
+    cityC.text      = _snapCity;
+    regionC.text    = _snapRegion;
+    subregionC.text = _snapSubregion;
+    customerGroup.value = _snapGroup;
+    isDirty.value   = false;
+
+    _addListeners(_checkEditDirty);
   }
 
   // ===================== FILTER =====================
+
   void _applyFilter() {
     final lower = searchText.value.toLowerCase();
     filteredCustomers.assignAll(
@@ -174,6 +219,7 @@ class CustomerController extends GetxController {
   }
 
   // ===================== FETCH =====================
+
   Future<void> fetchCustomers() async {
     if (isLoading.value) return;
     isLoading.value = true;
@@ -213,50 +259,36 @@ class CustomerController extends GetxController {
     }
   }
 
-  // ===================== CREATE CUSTOMER =====================
+  // ===================== CREATE =====================
+
   Future<bool> createCustomer() async {
-    if (addNameC.text.trim().isEmpty) {
-      AppToast.show('Nama pelanggan wajib diisi');
-      return false;
-    }
-    if (addCodeC.text.trim().isEmpty) {
-      AppToast.show('Kode pelanggan wajib diisi');
-      return false;
-    }
-    if (addPhoneC.text.trim().isEmpty) {
-      AppToast.show('Nomor telepon wajib diisi');
-      return false;
-    }
+    if (!_validateForm()) return false;
 
     isSubmitting.value = true;
     try {
       final body = <String, dynamic>{
-        'name': addNameC.text.trim(),
-        'code': addCodeC.text.trim(),
-        'phone': addPhoneC.text.trim(),
-        'customer_group': addCustomerGroup.value.apiValue,
-        if (addEmailC.text.trim().isNotEmpty) 'email': addEmailC.text.trim(),
-        if (addAddressC.text.trim().isNotEmpty)
-          'address': addAddressC.text.trim(),
-        if (addCityC.text.trim().isNotEmpty) 'city': addCityC.text.trim(),
-        if (addRegionC.text.trim().isNotEmpty) 'region': addRegionC.text.trim(),
-        if (addSubregionC.text.trim().isNotEmpty)
-          'subregion': addSubregionC.text.trim(),
+        'name': nameC.text.trim(),
+        'code': codeC.text.trim(),
+        'phone': phoneC.text.trim(),
+        'customer_group': customerGroup.value.apiValue,
+        if (emailC.text.trim().isNotEmpty) 'email': emailC.text.trim(),
+        if (addressC.text.trim().isNotEmpty) 'address': addressC.text.trim(),
+        if (cityC.text.trim().isNotEmpty) 'city': cityC.text.trim(),
+        if (regionC.text.trim().isNotEmpty) 'region': regionC.text.trim(),
+        if (subregionC.text.trim().isNotEmpty) 'subregion': subregionC.text.trim(),
       };
 
       final res = await CustomerService.createCustomer(body);
 
       if (res.statusCode == 201) {
-        final newCustomer = CustomerData.fromJson(
-          jsonDecode(res.body)['data'],
-        );
+        final newCustomer = CustomerData.fromJson(jsonDecode(res.body)['data']);
         customerList.insert(0, newCustomer);
         _applyFilter();
         AppToast.show('Pelanggan berhasil ditambahkan');
-        resetAddForm();
+        resetForAdd();
         return true;
       } else {
-        debugPrint('createCustomer failed — status: ${res.statusCode}, body: ${res.body}');
+        debugPrint('createCustomer failed — ${res.statusCode}: ${res.body}');
         AppToast.show(ApiHelper.parseError(res.body, 'Gagal menambahkan pelanggan'));
         return false;
       }
@@ -269,23 +301,61 @@ class CustomerController extends GetxController {
     }
   }
 
+  // ===================== UPDATE =====================
+
+  Future<bool> updateCustomer(String id) async {
+    if (!_validateForm()) return false;
+
+    isSubmitting.value = true;
+    try {
+      final body = <String, dynamic>{
+        'name': nameC.text.trim(),
+        'code': codeC.text.trim(),
+        'phone': phoneC.text.trim(),
+        'customer_group': customerGroup.value.apiValue,
+        'email': emailC.text.trim(),
+        'address': addressC.text.trim(),
+        'city': cityC.text.trim(),
+        'region': regionC.text.trim(),
+        'subregion': subregionC.text.trim(),
+      };
+
+      final res = await CustomerService.updateCustomer(id, body);
+
+      if (res.statusCode == 200) {
+        final updated = CustomerData.fromJson(jsonDecode(res.body)['data']);
+        final idx = customerList.indexWhere((c) => c.id == id);
+        if (idx != -1) customerList[idx] = updated;
+        _applyFilter();
+        AppToast.show('Pelanggan berhasil diperbarui');
+        return true;
+      } else {
+        debugPrint('updateCustomer failed — ${res.statusCode}: ${res.body}');
+        AppToast.show(ApiHelper.parseError(res.body, 'Gagal memperbarui pelanggan'));
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error updateCustomer: $e');
+      AppToast.show('Terjadi kesalahan');
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
   // ===================== TOGGLE STATUS =====================
+
   Future<bool> toggleCustomerStatus(CustomerData customer) async {
     final newStatus = customer.isActive
         ? CustomerStatus.inactive
         : CustomerStatus.active;
-    final label = newStatus == CustomerStatus.inactive
-        ? 'nonaktifkan'
-        : 'aktifkan';
+    final label = newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
 
     final confirmed = await AppDialog.confirm(
-      title:
-          '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
+      title: '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
       content: 'Yakin ingin $label "${customer.name}"?',
-      confirmLabel:
-          newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
-      confirmColor:
-          newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
+      confirmLabel: newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
+      confirmColor: newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
     );
 
     if (!confirmed) return false;
@@ -317,5 +387,23 @@ class CustomerController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // ===================== PRIVATE HELPERS =====================
+
+  bool _validateForm() {
+    if (nameC.text.trim().isEmpty) {
+      AppToast.show('Nama pelanggan wajib diisi');
+      return false;
+    }
+    if (codeC.text.trim().isEmpty) {
+      AppToast.show('Kode pelanggan wajib diisi');
+      return false;
+    }
+    if (phoneC.text.trim().isEmpty) {
+      AppToast.show('Nomor telepon wajib diisi');
+      return false;
+    }
+    return true;
   }
 }
