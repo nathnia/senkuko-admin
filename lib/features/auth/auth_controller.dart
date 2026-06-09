@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/features/auth/auth_model.dart';
 import 'package:senkukoadmin/features/auth/auth_service.dart';
@@ -94,8 +93,7 @@ class AuthController extends GetxController {
         _saveSession(auth);
         Get.offAllNamed(AppRoutes.dashboard);
       } else {
-        final msg = ApiHelper.parseError(res.body, _mapError(res.statusCode));
-        AppToast.show(msg);
+         AppToast.show(_mapError(res.statusCode));
       }
     } catch (e) {
       debugPrint('login error: $e');
@@ -166,7 +164,7 @@ class AuthController extends GetxController {
 
   String _mapError(int statusCode) {
     switch (statusCode) {
-      case 401:
+      case 400:
         return 'Nama atau password salah';
       case 403:
         return 'Akun tidak aktif';
