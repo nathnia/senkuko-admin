@@ -377,8 +377,8 @@ class TransactionDetailPage extends StatelessWidget {
                                   'cancelled',
                                 ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.subtext,
-                          side: BorderSide(color: Colors.grey.shade200),
+                          foregroundColor: AppColors.danger,
+                          side: BorderSide(color: AppColors.danger),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

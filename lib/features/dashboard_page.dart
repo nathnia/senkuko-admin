@@ -223,13 +223,21 @@ class DashboardPage extends StatelessWidget {
           child: Obx(() => Column(
                 children: [
                   _orderRow(
+                    icon: Icons.inbox_rounded,
+                    title: 'Pesanan Baru',
+                    subtitle: 'COD menunggu konfirmasi',
+                    count: _countByStatus(txC, 'pending_payment'),
+                    isLast: false,
+                    onTap: () => Get.toNamed(
+                      AppRoutes.transaction,
+                      arguments: {'statusFilter': 'pending_payment'},
+                    ),
+                  ),
+                  _orderRow(
                     icon: Icons.access_time_rounded,
-                    iconBg: const Color(0xFFFAEEDA),
-                    iconColor: const Color(0xFF854F0B),
-                    title: 'Perlu Diproses',
-                    subtitle: 'Menunggu konfirmasi',
+                    title: 'Diproses',
+                    subtitle: 'Pesanan siap diproses',
                     count: _countByStatus(txC, 'processing'),
-                    badgeStyle: _BadgeStyle.amber,
                     isLast: false,
                     onTap: () => Get.toNamed(
                       AppRoutes.transaction,
@@ -238,12 +246,9 @@ class DashboardPage extends StatelessWidget {
                   ),
                   _orderRow(
                     icon: Icons.local_shipping_outlined,
-                    iconBg: const Color(0xFFFAEEDA),
-                    iconColor: const Color(0xFF854F0B),
-                    title: 'Perlu Dikirim',
-                    subtitle: 'Siap untuk pengiriman',
+                    title: 'Dikirim',
+                    subtitle: 'Pesanan sedang dikirim',
                     count: _countByStatus(txC, 'shipped'),
-                    badgeStyle: _BadgeStyle.amber,
                     isLast: false,
                     onTap: () => Get.toNamed(
                       AppRoutes.transaction,
@@ -252,12 +257,9 @@ class DashboardPage extends StatelessWidget {
                   ),
                   _orderRow(
                     icon: Icons.cancel_outlined,
-                    iconBg: const Color(0xFFFCEBEB),
-                    iconColor: const Color(0xFFA32D2D),
                     title: 'Dibatalkan',
                     subtitle: 'Transaksi dibatalkan',
                     count: _countByStatus(txC, 'cancelled'),
-                    badgeStyle: _BadgeStyle.red,
                     isLast: true,
                     onTap: () => Get.toNamed(
                       AppRoutes.transaction,
@@ -273,12 +275,9 @@ class DashboardPage extends StatelessWidget {
 
   Widget _orderRow({
     required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
     required String title,
     required String subtitle,
     required int count,
-    required _BadgeStyle badgeStyle,
     required bool isLast,
     required VoidCallback onTap,
   }) {
@@ -300,10 +299,10 @@ class DashboardPage extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: iconBg,
+                color: AppColors.primary.withAlpha(18),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: Icon(icon, color: iconColor, size: 15),
+              child: Icon(icon, color: AppColors.primary, size: 15),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -330,7 +329,7 @@ class DashboardPage extends StatelessWidget {
               ),
             ),
             if (count > 0) ...[
-              _badge(count, badgeStyle),
+              _badge(count),
               const SizedBox(width: 6),
             ],
             Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
@@ -340,23 +339,11 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _badge(int count, _BadgeStyle style) {
-    final Color bg;
-    final Color fg;
-
-    switch (style) {
-      case _BadgeStyle.amber:
-        bg = const Color(0xFFFAEEDA);
-        fg = const Color(0xFF854F0B);
-      case _BadgeStyle.red:
-        bg = const Color(0xFFFCEBEB);
-        fg = const Color(0xFFA32D2D);
-    }
-
+  Widget _badge(int count) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: bg,
+        color: AppColors.primary.withAlpha(18),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -364,7 +351,7 @@ class DashboardPage extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: fg,
+          color: AppColors.primary,
         ),
       ),
     );
@@ -514,5 +501,3 @@ class DashboardPage extends StatelessWidget {
     );
   }
 }
-
-enum _BadgeStyle { amber, red }

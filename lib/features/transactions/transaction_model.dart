@@ -110,7 +110,7 @@ class StatusStyle {
         return const StatusStyle(
           color: AppColors.warning,
           background: AppColors.warningBg,
-          label: 'Menunggu Bayar',
+          label: 'Pesanan Baru',
         );
       case 'processing':
         return const StatusStyle(
@@ -225,6 +225,7 @@ class TransactionData {
   PaymentStyle get paymentStyle => PaymentStyle.of(paymentMethod);
   StatusStyle get statusStyle => StatusStyle.of(status);
   String get paymentMethodLabel => paymentStyle.label;
+  bool get isCod => paymentMethod == 'cod' || paymentMethod == 'cash';
 
   /// Hanya status yang relevan secara bisnis yang dihitung sebagai revenue.
   bool get isCountableRevenue =>

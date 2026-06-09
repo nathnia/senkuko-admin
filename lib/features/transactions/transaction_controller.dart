@@ -40,10 +40,12 @@ class TransactionController extends GetxController {
   /// Status chips yang ditampilkan di transaction page.
   /// null = semua transaksi, string = filter by status value.
   ///
-  /// pending_payment sengaja tidak dimasukkan — status itu dikelola otomatis
-  /// oleh webhook Midtrans, admin tidak perlu tahu atau melakukan apapun.
+  /// pending_payment tetap ditampilkan karena COD butuh konfirmasi admin.
+  /// Yang di-exclude dari list hanya pending_payment non-COD (Midtrans, QRIS, dll)
+  /// karena dikelola otomatis oleh webhook — lihat fetchTransactions().
   static const List<({String label, String? value})> statusTabs = [
     (label: 'Semua', value: null),
+    (label: 'Pesanan Baru', value: 'pending_payment'),
     (label: 'Diproses', value: 'processing'),
     (label: 'Dikirim', value: 'shipped'),
     (label: 'Selesai', value: 'completed'),
@@ -54,36 +56,12 @@ class TransactionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initFromArgs();
+    // Cek apakah ada status filter yang di-pass dari dashboard
+    final args = Get.arguments;
+    if (args is Map && args['statusFilter'] != null) {
+      selectedStatus.value = args['statusFilter'] as String;
+    }
     fetchTransactions();
-  }
-
-  /// Dipanggil setiap kali TransactionPage dibuka (termasuk saat balik dari
-  /// page lain). Reset filter ke default supaya admin selalu mulai fresh,
-  /// kecuali kalau ada args dari dashboard yang minta filter tertentu.
-  void resetOnEnter() {
-    final args = Get.arguments;
-    if (args is Map && args['statusFilter'] != null) {
-      // Dari dashboard — terapkan filter yang diminta
-      selectedStatus.value = args['statusFilter'] as String;
-      selectedQuickDate.value = 'Semua';
-      selectedDateRange.value = null;
-    } else {
-      // Buka biasa — reset ke default
-      selectedStatus.value = null;
-      selectedQuickDate.value = 'Semua';
-      selectedDateRange.value = null;
-    }
-    searchText.value = '';
-    _applyFilter();
-  }
-
-  void _initFromArgs() {
-    final args = Get.arguments;
-    if (args is Map && args['statusFilter'] != null) {
-      selectedStatus.value = args['statusFilter'] as String;
-    }
-    // selectedQuickDate sudah default 'Semua' dari deklarasi
   }
 
   // ===================== FILTER =====================
@@ -117,8 +95,6 @@ class TransactionController extends GetxController {
           final from = DateTime(now.year, now.month, now.day)
               .subtract(const Duration(days: 29));
           matchDate = !t.transactedAt.isBefore(from);
-        } else if (quickDate == 'Semua') {
-          matchDate = true;
         } else if (quickDate == 'Custom') {
           if (range != null) {
             final end = DateTime(
@@ -234,11 +210,13 @@ class TransactionController extends GetxController {
     try {
       final res = await TransactionService.getAllTransactions();
       if (res.statusCode == 200) {
-        // Exclude pending_payment — dikelola otomatis webhook Midtrans,
-        // tidak relevan untuk admin dan hanya membingungkan.
+        // Exclude pending_payment hanya untuk non-COD (Midtrans, QRIS, dll).
+        // COD pending_payment tetap tampil karena admin perlu konfirmasi order.
         final all = transactionModelFromJson(res.body).data;
         transactionList.assignAll(
-          all.where((t) => t.status != 'pending_payment').toList(),
+          all.where((t) =>
+            !(t.status == 'pending_payment' && !t.isCod)
+          ).toList(),
         );
         _applyFilter();
       } else {

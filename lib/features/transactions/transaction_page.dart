@@ -25,11 +25,17 @@ class _TransactionPageState extends State<TransactionPage> {
   void initState() {
     super.initState();
     _controller = Get.find<TransactionController>();
-    // Reset filter setiap kali page dibuka — supaya admin selalu mulai fresh.
-    // Ini penting karena controller di-reuse (fenix: true), state tidak
-    // otomatis reset waktu balik ke page ini.
+
+    // Baca args dan apply filter SETELAH frame pertama selesai.
+    // Ini juga handle kasus balik dari detail page — filter di-reset ke default,
+    // kecuali kalau ada statusFilter dari dashboard.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.resetOnEnter();
+      final args = Get.arguments;
+      if (args is Map && args['statusFilter'] != null) {
+        _controller.updateStatus(args['statusFilter'] as String);
+      } else {
+        _controller.updateStatus(null);
+      }
     });
   }
 
@@ -54,7 +60,7 @@ class _TransactionPageState extends State<TransactionPage> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Row(
               children: [
                 Expanded(
