@@ -160,15 +160,15 @@ class PriceController extends GetxController {
 
       final jsonData = json.decode(res.body);
 
-      // Backend docs: data adalah array langsung
-      final List rawList = (jsonData['data'] as List? ?? []);
+      final List rawList = (jsonData['data']?['prices'] as List? ?? []);
 
       return rawList.map((e) {
         final m = Map<String, dynamic>.from(e as Map);
         return {
           'id': m['id']?.toString() ?? '',
           'price_list_id': m['price_list_id']?.toString() ?? '',
-          'price': double.tryParse(
+          'price':
+              double.tryParse(
                 m['price']?.toString() ?? '0',
               )?.toStringAsFixed(0) ??
               '0',
