@@ -48,7 +48,7 @@ class AppFilterChips extends StatelessWidget {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 7,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.primary : Colors.white,

@@ -1,3 +1,4 @@
+// lib/features/auth/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
@@ -53,12 +54,12 @@ class LoginPage extends StatelessWidget {
                       label: 'Nama',
                       hint: 'Nama admin',
                     ),
-                    // Password field terpisah supaya toggle obscure
-                    // tidak rebuild seluruh form
-                    Obx(() => _PasswordField(
+                    Obx(() => AppTextField(
                           controller: controller.passwordC,
-                          obscure: controller.obscurePassword.value,
-                          onToggle: controller.toggleObscure,
+                          label: 'Password',
+                          hint: 'Masukkan password',
+                          obscureText: controller.obscurePassword.value,
+                          onObscureToggle: controller.toggleObscure,
                         )),
                   ],
                 ),
@@ -104,81 +105,6 @@ class LoginPage extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Password Field ────────────────────────────────────────────────────────────
-
-class _PasswordField extends StatelessWidget {
-  final TextEditingController controller;
-  final bool obscure;
-  final VoidCallback onToggle;
-
-  const _PasswordField({
-    required this.controller,
-    required this.obscure,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Password',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.subtext,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 5),
-          TextField(
-            controller: controller,
-            obscureText: obscure,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Masukkan password',
-              hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: AppColors.primary.withAlpha(80),
-                  width: 1.5,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              suffixIcon: GestureDetector(
-                onTap: onToggle,
-                child: Icon(
-                  obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 18,
-                  color: Colors.grey.shade400,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -19,22 +19,18 @@ class TransactionPage extends StatefulWidget {
 }
 
 class _TransactionPageState extends State<TransactionPage> {
-  late final TransactionController _controller;
+  late final TransactionController _c;
 
   @override
   void initState() {
     super.initState();
-    _controller = Get.find<TransactionController>();
-
-    // Baca args dan apply filter SETELAH frame pertama selesai.
-    // Ini juga handle kasus balik dari detail page — filter di-reset ke default,
-    // kecuali kalau ada statusFilter dari dashboard.
+    _c = Get.find<TransactionController>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = Get.arguments;
       if (args is Map && args['statusFilter'] != null) {
-        _controller.updateStatus(args['statusFilter'] as String);
+        _c.updateStatus(args['statusFilter'] as String);
       } else {
-        _controller.updateStatus(null);
+        _c.updateStatus(null);
       }
     });
   }
@@ -60,21 +56,20 @@ class _TransactionPageState extends State<TransactionPage> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Row(
               children: [
                 Expanded(
                   child: AppSearchBar(
                     hintText: 'Cari invoice atau nama pelanggan...',
-                    onChanged: _controller.updateSearch,
+                    onChanged: _c.updateSearch,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Obx(
                   () => AppFilterButton(
-                    isActive: _controller.hasActiveDateFilter,
-                    onTap: () =>
-                        showTransactionFilterSheet(context, _controller),
+                    isActive: _c.hasActiveDateFilter,
+                    onTap: () => showTransactionFilterSheet(context, _c),
                   ),
                 ),
               ],
@@ -84,26 +79,22 @@ class _TransactionPageState extends State<TransactionPage> {
       ),
       body: Column(
         children: [
-          // ── Status filter chips ──────────────────────────────────────
-          Obx(
-            () => AppFilterChips(
-              items: TransactionController.statusTabs
-                  .map((t) => FilterChipItem(label: t.label))
-                  .toList(),
-              selectedLabel: TransactionController.statusTabs
-                  .firstWhere(
-                    (t) => t.value == _controller.selectedStatus.value,
-                    orElse: () => TransactionController.statusTabs.first,
-                  )
-                  .label,
-              onChipTap: (label) {
-                final tab = TransactionController.statusTabs
-                    .firstWhere((t) => t.label == label);
-                _controller.updateStatus(tab.value);
-              },
-            ),
-          ),
-
+          Obx(() => AppFilterChips(
+                items: TransactionController.statusTabs
+                    .map((t) => FilterChipItem(label: t.label))
+                    .toList(),
+                selectedLabel: TransactionController.statusTabs
+                    .firstWhere(
+                      (t) => t.value == _c.selectedStatus.value,
+                      orElse: () => TransactionController.statusTabs.first,
+                    )
+                    .label,
+                onChipTap: (label) {
+                  final tab = TransactionController.statusTabs
+                      .firstWhere((t) => t.label == label);
+                  _c.updateStatus(tab.value);
+                },
+              )),
           Obx(() => _summaryBar()),
           Expanded(child: _transactionList()),
         ],
@@ -114,24 +105,26 @@ class _TransactionPageState extends State<TransactionPage> {
   Widget _summaryBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: _summaryCard(
-              label: 'Total transaksi',
-              value: '${_controller.filteredTransactions.length}',
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _summaryCard(
+                label: 'Total transaksi',
+                value: '${_c.filteredTransactions.length}',
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _summaryCard(
-              label: 'Total pendapatan',
-              value: _controller.formattedTotalRevenue,
-              valueColor: AppColors.primary,
-              valueFontSize: 14,
+            const SizedBox(width: 10),
+            Expanded(
+              child: _summaryCard(
+                label: 'Total pendapatan',
+                value: _c.formattedTotalRevenue,
+                valueColor: AppColors.primary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -140,7 +133,6 @@ class _TransactionPageState extends State<TransactionPage> {
     required String label,
     required String value,
     Color? valueColor,
-    double valueFontSize = 18,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -152,15 +144,12 @@ class _TransactionPageState extends State<TransactionPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 2),
           Text(
             value,
             style: TextStyle(
-              fontSize: valueFontSize,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: valueColor ?? AppColors.title,
             ),
@@ -173,23 +162,23 @@ class _TransactionPageState extends State<TransactionPage> {
 
   Widget _transactionList() {
     return Obx(() {
-      if (_controller.isLoading.value) {
+      if (_c.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
 
-      if (_controller.hasError.value) {
+      if (_c.hasError.value) {
         return AppErrorState(
-          message: _controller.errorMessage.value,
-          onRetry: _controller.fetchTransactions,
+          message: _c.errorMessage.value,
+          onRetry: _c.fetchTransactions,
         );
       }
 
-      final list = _controller.filteredTransactions;
+      final list = _c.filteredTransactions;
 
       if (list.isEmpty) {
         return RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: _controller.fetchTransactions,
+          onRefresh: _c.fetchTransactions,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: SizedBox(
@@ -198,11 +187,8 @@ class _TransactionPageState extends State<TransactionPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 48,
-                      color: Colors.grey.shade300,
-                    ),
+                    Icon(Icons.receipt_long_outlined,
+                        size: 48, color: Colors.grey.shade300),
                     const SizedBox(height: 12),
                     Text(
                       'Tidak ada transaksi',
@@ -212,10 +198,10 @@ class _TransactionPageState extends State<TransactionPage> {
                         color: AppColors.subtext,
                       ),
                     ),
-                    if (_controller.hasActiveDateFilter) ...[
+                    if (_c.hasActiveDateFilter) ...[
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: _controller.resetDateFilter,
+                        onPressed: _c.resetDateFilter,
                         child: const Text('Reset filter tanggal'),
                       ),
                     ],
@@ -229,7 +215,7 @@ class _TransactionPageState extends State<TransactionPage> {
 
       return RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: _controller.fetchTransactions,
+        onRefresh: _c.fetchTransactions,
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           itemCount: list.length,

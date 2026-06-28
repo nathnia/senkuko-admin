@@ -12,7 +12,6 @@ import 'package:senkukoadmin/features/products/controllers/product_variant_contr
 import 'package:senkukoadmin/features/products/controllers/unit_controller.dart';
 import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
-import 'package:senkukoadmin/constant/save_button.dart';
 
 class VariantFormPage extends StatelessWidget {
   VariantFormPage({super.key});
@@ -62,11 +61,17 @@ class VariantFormPage extends StatelessWidget {
             ),
           ),
           centerTitle: true,
-          actions: [
-            AppSaveButton(
-              onTap: () {
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: _VariantSaveButton(
+              nameController: isEditing ? c.dialogNameC : c.variantNameC,
+              label: isEditing ? 'Simpan Perubahan' : 'Simpan Varian',
+              onSave: () {
                 if (isEditing) {
                   c.saveEditVariant(index);
+                  Get.back();
                 } else {
                   final beforeCount = isEditMode
                       ? c.editVariantsTemp.length
@@ -82,7 +87,7 @@ class VariantFormPage extends StatelessWidget {
                 }
               },
             ),
-          ],
+          ),
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -113,9 +118,8 @@ class VariantFormPage extends StatelessWidget {
                     AppTextField(
                       label: 'Barcode',
                       hint: 'cth: 8999999004001',
-                      controller: isEditing
-                          ? c.dialogBarcodeC
-                          : c.variantBarcodeC,
+                      controller:
+                          isEditing ? c.dialogBarcodeC : c.variantBarcodeC,
                       onChanged: isEditing
                           ? (_) => controller.isDirty.value = true
                           : null,
@@ -191,9 +195,8 @@ class VariantFormPage extends StatelessWidget {
                       : 'Pilih Unit',
                   style: TextStyle(
                     fontSize: 14,
-                    color: selected != null
-                        ? Colors.black87
-                        : AppColors.subtext,
+                    color:
+                        selected != null ? Colors.black87 : AppColors.subtext,
                   ),
                 ),
               ),
@@ -204,9 +207,6 @@ class VariantFormPage extends StatelessWidget {
       }),
     );
   }
-
-  // FILE: lib/features/products/pages/variant_form_page.dart
-  // Only _openUnitPopup changes — rest of the file is identical to what you have.
 
   void _openUnitPopup(BuildContext context) {
     final nameC = TextEditingController();
@@ -229,7 +229,6 @@ class VariantFormPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                // ── Header ──
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                   child: Column(
@@ -256,8 +255,6 @@ class VariantFormPage extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // ── Unit list ──
                 Expanded(
                   child: Obx(
                     () => ListView.builder(
@@ -299,7 +296,6 @@ class VariantFormPage extends StatelessWidget {
                                       size: 16,
                                     ),
                                   ),
-                                // Delete button
                                 GestureDetector(
                                   onTap: () async {
                                     final confirm = await AppDialog.confirm(
@@ -326,8 +322,6 @@ class VariantFormPage extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // ── Add form ──
                 Container(
                   padding: EdgeInsets.fromLTRB(
                     16,
@@ -412,9 +406,8 @@ class VariantFormPage extends StatelessWidget {
         return Column(
           children: priceC.sortedPriceListMaster.map((pl) {
             return Obx(() {
-              final priceMap = isEditing
-                  ? priceC.dialogPrices
-                  : priceC.formPrices;
+              final priceMap =
+                  isEditing ? priceC.dialogPrices : priceC.formPrices;
               final enabled = priceMap[pl.id]?['enabled'] as bool? ?? false;
               final priceController = isEditing
                   ? priceC.dialogPriceC[pl.id]
@@ -451,9 +444,8 @@ class VariantFormPage extends StatelessWidget {
                           hintText: '0',
                           prefixText: 'Rp ',
                           filled: true,
-                          fillColor: enabled
-                              ? Colors.white
-                              : Colors.grey.shade100,
+                          fillColor:
+                              enabled ? Colors.white : Colors.grey.shade100,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
@@ -470,7 +462,8 @@ class VariantFormPage extends StatelessWidget {
                           ),
                           disabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade200),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -515,6 +508,90 @@ class VariantFormPage extends StatelessWidget {
           }).toList(),
         );
       }),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VARIANT SAVE BUTTON — reactive to nama varian + prevents double-submit
+// ═══════════════════════════════════════════════════════════════
+class _VariantSaveButton extends StatefulWidget {
+  final TextEditingController nameController;
+  final VoidCallback onSave;
+  final String label;
+
+  const _VariantSaveButton({
+    required this.nameController,
+    required this.onSave,
+    required this.label,
+  });
+
+  @override
+  State<_VariantSaveButton> createState() => _VariantSaveButtonState();
+}
+
+class _VariantSaveButtonState extends State<_VariantSaveButton> {
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.nameController.addListener(_onNameChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.nameController.removeListener(_onNameChanged);
+    super.dispose();
+  }
+
+  void _onNameChanged() => setState(() {});
+
+  Future<void> _handleTap() async {
+    setState(() => _isSaving = true);
+    try {
+      widget.onSave();
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isNameEmpty = widget.nameController.text.trim().isEmpty;
+    final bool disabled = isNameEmpty || _isSaving;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          disabledBackgroundColor: Colors.grey.shade300,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        onPressed: disabled ? null : _handleTap,
+        child: _isSaving
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                widget.label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+      ),
     );
   }
 }

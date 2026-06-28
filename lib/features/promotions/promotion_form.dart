@@ -69,6 +69,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
           ),
           centerTitle: true,
         ),
+        bottomNavigationBar: _stickyButton(),
         body: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
@@ -79,9 +80,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
               _card(title: 'PERIODE & BATAS', child: _periodFields()),
               const SizedBox(height: 12),
               _card(title: 'PENGATURAN', child: _settingsFields()),
-              const SizedBox(height: 24),
-              _submitButton(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -206,53 +205,59 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
     );
   }
 
-  Widget _submitButton() {
-    return Obx(
-      () => SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 0,
-          ),
-          onPressed: controller.isSubmitting.value || !controller.isDirty.value
-              ? null 
-              : () async {
-                  final success = _isEdit
-                      ? await controller.updatePromotion(_editId!)
-                      : await controller.createPromotion();
-                  if (!mounted) return;
-                  if (success) {
-                    if (_isEdit) {
-                      Get.back();
-                    } else {
-                      Get.until(
-                        (route) => route.settings.name == AppRoutes.promotions,
-                      );
-                    }
-                  }
-                },
-          child: controller.isSubmitting.value
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Text(
-                  _isEdit ? 'Simpan Perubahan' : 'Buat Promosi',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+  Widget _stickyButton() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Obx(
+          () => SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 0,
+              ),
+              onPressed: controller.isSubmitting.value || !controller.isDirty.value
+                  ? null
+                  : () async {
+                      final success = _isEdit
+                          ? await controller.updatePromotion(_editId!)
+                          : await controller.createPromotion();
+                      if (!mounted) return;
+                      if (success) {
+                        if (_isEdit) {
+                          Get.back();
+                        } else {
+                          Get.until(
+                            (route) => route.settings.name == AppRoutes.promotions,
+                          );
+                        }
+                      }
+                    },
+              child: controller.isSubmitting.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      _isEdit ? 'Simpan Perubahan' : 'Buat Promosi',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
         ),
       ),
     );

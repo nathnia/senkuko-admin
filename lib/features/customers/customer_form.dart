@@ -5,6 +5,7 @@ import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
+import 'package:senkukoadmin/constant/save_button.dart';
 import 'package:senkukoadmin/constant/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/customers/customer_controller.dart';
 import 'package:senkukoadmin/features/customers/customer_model.dart';
@@ -44,6 +45,50 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
   Future<bool> _onWillPop() async {
     if (!_c.isDirty.value) return true;
     return UnsavedChangesDialog.show();
+  }
+
+  Widget _stickyButton() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Obx(
+          () => SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _c.isSubmitting.value || !_c.isDirty.value
+                  ? null
+                  : _onSubmit,
+              child: _c.isSubmitting.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Simpan Pelanggan',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _onSubmit() async {
@@ -86,7 +131,20 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
             ),
           ),
           centerTitle: true,
+          actions: _isEdit
+              ? [
+                  Obx(
+                    () => AppSaveButton(
+                      isLoading: _c.isSubmitting.value,
+                      isDisabled: !_c.isDirty.value,
+                      label: 'Simpan',
+                      onTap: _onSubmit,
+                    ),
+                  ),
+                ]
+              : null,
         ),
+        bottomNavigationBar: _isEdit ? null : _stickyButton(),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -191,47 +249,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // ── Save Button ───────────────────────────────────────
-              Obx(
-                () => SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _c.isSubmitting.value || !_c.isDirty.value
-                        ? null
-                        : _onSubmit,
-                    child: _c.isSubmitting.value
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            _isEdit ? 'Simpan Perubahan' : 'Simpan Pelanggan',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
             ],
           ),
         ),

@@ -66,6 +66,50 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
         ),
         centerTitle: true,
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Obx(
+            () => SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: _ctrl.isSubmitting.value || !_ctrl.isRewardFormDirty.value
+                    ? null
+                    : () async {
+                        final ok = await _ctrl.addReward(_promotionId);
+                        if (ok && context.mounted) Get.back();
+                      },
+                child: _ctrl.isSubmitting.value
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Simpan Reward',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -109,46 +153,7 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            Obx(
-              () => SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: _ctrl.isSubmitting.value ||
-                          !_ctrl.isRewardFormDirty.value
-                      ? null
-                      : () async {
-                          final ok = await _ctrl.addReward(_promotionId);
-                          if (ok && context.mounted) Get.back();
-                        },
-                  child: _ctrl.isSubmitting.value
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Simpan Reward',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),

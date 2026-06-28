@@ -9,7 +9,6 @@ import 'package:senkukoadmin/features/products/controllers/product_variant_contr
 import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/features/products/widgets/product_image_section.dart';
 import 'package:senkukoadmin/features/products/widgets/product_info_form.dart';
-import 'package:senkukoadmin/constant/save_button.dart';
 import 'package:senkukoadmin/constant/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/products/widgets/variant_item_card.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -79,19 +78,51 @@ class _EditProductPageState extends State<EditProductPage> {
             ),
           ),
           centerTitle: true,
-          actions: [
-            Obx(
-              () => AppSaveButton(
-                isLoading: controller.isSubmitting.value,
-                isDisabled: !controller.isDirty.value,
-                onTap: () async {
-                  await controller.updateFullProduct();
-                  await controller.loadProductDetail(_productId!);
-                  Get.back();
-                },
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Obx(
+              () => SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: controller.isSubmitting.value || !controller.isDirty.value
+                      ? null
+                      : () async {
+                          await controller.updateFullProduct();
+                          await controller.loadProductDetail(_productId!);
+                          Get.back();
+                        },
+                  child: controller.isSubmitting.value
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Simpan Perubahan',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
               ),
             ),
-          ],
+          ),
         ),
         body: Obx(() {
           if (controller.isLoadingDetail.value) {

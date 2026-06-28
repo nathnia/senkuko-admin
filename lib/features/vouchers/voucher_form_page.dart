@@ -102,6 +102,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
           ),
           centerTitle: true,
         ),
+        bottomNavigationBar: _stickyButton(),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -162,51 +163,60 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Obx(
-                () => SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed:
-                        controller.isSubmitting.value ||
-                            !controller.isDirty.value
-                        ? null
-                        : () async {
-                            final success = _isEdit
-                                ? await controller.updateVoucher(_editId!)
-                                : await controller.createVoucher();
-                            if (!mounted) return;
-                            if (success) Get.back();
-                          },
-                    child: controller.isSubmitting.value
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            _isEdit ? 'Simpan Perubahan' : 'Terbitkan',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 16),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Sticky bottom button (create mode only) ──────────────────────────────
+
+  Widget _stickyButton() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Obx(
+          () => SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              onPressed: controller.isSubmitting.value || !controller.isDirty.value
+                  ? null
+                  : () async {
+                      final success = _isEdit
+                          ? await controller.updateVoucher(_editId!)
+                          : await controller.createVoucher();
+                      if (!mounted) return;
+                      if (success) Get.back();
+                    },
+              child: controller.isSubmitting.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      _isEdit ? 'Simpan Perubahan' : 'Terbitkan',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
           ),
         ),
       ),

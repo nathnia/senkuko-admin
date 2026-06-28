@@ -29,7 +29,7 @@ class AppColors {
   ); // fg — juga dipakai untuk diskon/negatif
   static const dangerBg = Color(0xFFFCEBEB); // bg badge
 
-  static const Color shipped = Color(0xFF6D3DB5);
+  static const Color shipped = Color.fromARGB(255, 76, 176, 80);
   static const Color shippedBg = Color(0xFFF0EAFA);
   static const Color neutralBg = Color(0xFFF3F4F6); // untuk cancelled, default
 }

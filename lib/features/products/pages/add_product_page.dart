@@ -58,8 +58,9 @@ class AddProductPage extends StatelessWidget {
           ),
           centerTitle: true,
         ),
+        bottomNavigationBar: _submitButton(),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           child: Column(
             children: [
               ProductImageSection(
@@ -71,9 +72,7 @@ class AddProductPage extends StatelessWidget {
               ProductInfoForm(controller: controller),
               const SizedBox(height: 12),
               _variantSection(),
-              const SizedBox(height: 20),
-              _submitButton(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -149,45 +148,51 @@ class AddProductPage extends StatelessWidget {
   }
 
   Widget _submitButton() {
-    return Obx(
-      () => SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            backgroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            elevation: 0,
-          ),
-          onPressed: controller.isSubmitting.value || !controller.isDirty.value
-              ? null
-              : () async {
-                  final success = await controller.createFullProduct();
-                  if (success) {
-                    Get.until(
-                      (route) => route.settings.name == AppRoutes.product,
-                    );
-                  }
-                },
-          child: controller.isSubmitting.value
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : const Text(
-                  'Simpan Produk',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Obx(
+          () => SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
+                elevation: 0,
+              ),
+              onPressed: controller.isSubmitting.value || !controller.isDirty.value
+                  ? null
+                  : () async {
+                      final success = await controller.createFullProduct();
+                      if (success) {
+                        Get.until(
+                          (route) => route.settings.name == AppRoutes.product,
+                        );
+                      }
+                    },
+              child: controller.isSubmitting.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Simpan Produk',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
         ),
       ),
     );
