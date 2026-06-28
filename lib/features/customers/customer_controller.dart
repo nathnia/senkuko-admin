@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
@@ -19,7 +20,7 @@ class CustomerController extends GetxController {
   final hasError = false.obs;
   final errorMessage = ''.obs;
 
-  // ===================== FORM STATE (shared Add & Edit) =====================
+  // ===================== FORM STATE =====================
   final isSubmitting = false.obs;
   final isDirty = false.obs;
   final nameC = TextEditingController();
@@ -54,6 +55,7 @@ class CustomerController extends GetxController {
         subregionC,
       ];
 
+  // ===================== LIFECYCLE =====================
   @override
   void onInit() {
     super.onInit();
@@ -68,8 +70,24 @@ class CustomerController extends GetxController {
     super.onClose();
   }
 
-  // ===================== FORM HELPERS =====================
+  // ===================== GENERATE KODE =====================
+  // Format: CUST-XXXXXX (6 karakter alphanumeric uppercase)
+  // Dipanggil saat resetForAdd() — user tetap bisa edit manual.
+String _generateCustomerCode() {
+  const chars = '0123456789';
+  final rng = Random.secure();
+  final suffix = List.generate(9, (_) => chars[rng.nextInt(chars.length)]).join();
+  return '0$suffix';
+}
 
+  // Regenerate kode baru — dipanggil dari tombol refresh di form
+  void regenerateCode() {
+    codeC.text = _generateCustomerCode();
+    // Add mode: cek dirty setelah regenerate
+    _checkAddDirty();
+  }
+
+  // ===================== FORM HELPERS =====================
   void _removeListeners(VoidCallback fn) {
     for (final c in _formControllers) {
       c.removeListener(fn);
@@ -104,7 +122,6 @@ class CustomerController extends GetxController {
         customerGroup.value != _snapGroup;
   }
 
-  /// Dipanggil dari onChanged dropdown di edit mode
   void onGroupChanged(CustomerGroup val) {
     customerGroup.value = val;
     _checkEditDirty();
@@ -119,6 +136,10 @@ class CustomerController extends GetxController {
     customerGroup.value = CustomerGroup.general;
     isDirty.value = false;
     isSubmitting.value = false;
+
+    // Auto-generate kode customer saat form add dibuka
+    codeC.text = _generateCustomerCode();
+
     _addListeners(_checkAddDirty);
   }
 
@@ -159,7 +180,6 @@ class CustomerController extends GetxController {
   }
 
   // ===================== FILTER =====================
-
   void _applyFilter() {
     final lower = searchText.value.toLowerCase();
     filteredCustomers.assignAll(
@@ -219,7 +239,6 @@ class CustomerController extends GetxController {
   }
 
   // ===================== FETCH =====================
-
   Future<void> fetchCustomers() async {
     if (isLoading.value) return;
     isLoading.value = true;
@@ -260,7 +279,6 @@ class CustomerController extends GetxController {
   }
 
   // ===================== CREATE =====================
-
   Future<bool> createCustomer() async {
     if (!_validateForm()) return false;
 
@@ -275,7 +293,8 @@ class CustomerController extends GetxController {
         if (addressC.text.trim().isNotEmpty) 'address': addressC.text.trim(),
         if (cityC.text.trim().isNotEmpty) 'city': cityC.text.trim(),
         if (regionC.text.trim().isNotEmpty) 'region': regionC.text.trim(),
-        if (subregionC.text.trim().isNotEmpty) 'subregion': subregionC.text.trim(),
+        if (subregionC.text.trim().isNotEmpty)
+          'subregion': subregionC.text.trim(),
       };
 
       final res = await CustomerService.createCustomer(body);
@@ -288,8 +307,18 @@ class CustomerController extends GetxController {
         resetForAdd();
         return true;
       } else {
-        debugPrint('createCustomer failed — ${res.statusCode}: ${res.body}');
-        AppToast.show(ApiHelper.parseError(res.body, 'Gagal menambahkan pelanggan'));
+        // Kalau kode sudah dipakai, generate ulang otomatis
+        final errMsg = ApiHelper.parseError(res.body, '');
+        final isDuplicateCode = errMsg.toLowerCase().contains('code') ||
+            errMsg.toLowerCase().contains('kode') ||
+            res.statusCode == 409;
+
+        if (isDuplicateCode) {
+          codeC.text = _generateCustomerCode();
+          AppToast.show('Kode sudah dipakai, kode baru sudah di-generate');
+        } else {
+          AppToast.show(ApiHelper.parseError(res.body, 'Gagal menambahkan pelanggan'));
+        }
         return false;
       }
     } catch (e) {
@@ -302,7 +331,6 @@ class CustomerController extends GetxController {
   }
 
   // ===================== UPDATE =====================
-
   Future<bool> updateCustomer(String id) async {
     if (!_validateForm()) return false;
 
@@ -330,8 +358,9 @@ class CustomerController extends GetxController {
         AppToast.show('Pelanggan berhasil diperbarui');
         return true;
       } else {
-        debugPrint('updateCustomer failed — ${res.statusCode}: ${res.body}');
-        AppToast.show(ApiHelper.parseError(res.body, 'Gagal memperbarui pelanggan'));
+        AppToast.show(
+          ApiHelper.parseError(res.body, 'Gagal memperbarui pelanggan'),
+        );
         return false;
       }
     } catch (e) {
@@ -344,18 +373,20 @@ class CustomerController extends GetxController {
   }
 
   // ===================== TOGGLE STATUS =====================
-
   Future<bool> toggleCustomerStatus(CustomerData customer) async {
-    final newStatus = customer.isActive
-        ? CustomerStatus.inactive
-        : CustomerStatus.active;
-    final label = newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
+    final newStatus =
+        customer.isActive ? CustomerStatus.inactive : CustomerStatus.active;
+    final label =
+        newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
 
     final confirmed = await AppDialog.confirm(
-      title: '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
+      title:
+          '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
       content: 'Yakin ingin $label "${customer.name}"?',
-      confirmLabel: newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
-      confirmColor: newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
+      confirmLabel:
+          newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
+      confirmColor:
+          newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
     );
 
     if (!confirmed) return false;
@@ -389,8 +420,7 @@ class CustomerController extends GetxController {
     }
   }
 
-  // ===================== PRIVATE HELPERS =====================
-
+  // ===================== VALIDATION =====================
   bool _validateForm() {
     if (nameC.text.trim().isEmpty) {
       AppToast.show('Nama pelanggan wajib diisi');

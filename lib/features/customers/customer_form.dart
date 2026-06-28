@@ -5,7 +5,6 @@ import 'package:senkukoadmin/constant/app_card.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dropdown.dart';
 import 'package:senkukoadmin/constant/app_textfield.dart';
-import 'package:senkukoadmin/constant/save_button.dart';
 import 'package:senkukoadmin/constant/unsaved_changes_dialog.dart';
 import 'package:senkukoadmin/features/customers/customer_controller.dart';
 import 'package:senkukoadmin/features/customers/customer_model.dart';
@@ -22,7 +21,7 @@ class CustomerFormPage extends StatefulWidget {
 class _CustomerFormPageState extends State<CustomerFormPage> {
   late final CustomerController _c;
   late final CustomerFormMode _mode;
-  CustomerData? _customer; // null kalau add mode
+  CustomerData? _customer;
 
   @override
   void initState() {
@@ -36,7 +35,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
       _c.populateEditForm(args);
     } else {
       _mode = CustomerFormMode.add;
-      _c.resetForAdd();
+      _c.resetForAdd(); // auto-generate kode di sini
     }
   }
 
@@ -45,50 +44,6 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
   Future<bool> _onWillPop() async {
     if (!_c.isDirty.value) return true;
     return UnsavedChangesDialog.show();
-  }
-
-  Widget _stickyButton() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Obx(
-          () => SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.shade300,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: _c.isSubmitting.value || !_c.isDirty.value
-                  ? null
-                  : _onSubmit,
-              child: _c.isSubmitting.value
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text(
-                      'Simpan Pelanggan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> _onSubmit() async {
@@ -131,25 +86,13 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
             ),
           ),
           centerTitle: true,
-          actions: _isEdit
-              ? [
-                  Obx(
-                    () => AppSaveButton(
-                      isLoading: _c.isSubmitting.value,
-                      isDisabled: !_c.isDirty.value,
-                      label: 'Simpan',
-                      onTap: _onSubmit,
-                    ),
-                  ),
-                ]
-              : null,
         ),
-        bottomNavigationBar: _isEdit ? null : _stickyButton(),
+        bottomNavigationBar: _StickyButton(c: _c, isEdit: _isEdit, onSubmit: _onSubmit),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // ── Informasi Utama ───────────────────────────────────
+              // ── Informasi Utama ──────────────────────────────────
               AppCard(
                 title: 'INFORMASI UTAMA',
                 child: Column(
@@ -160,12 +103,19 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                       hint: 'Masukkan nama pelanggan',
                       textCapitalization: TextCapitalization.words,
                     ),
-                    AppTextField(
-                      controller: _c.codeC,
-                      label: 'Kode Pelanggan',
-                      hint: 'Contoh: CUST001',
-                      textCapitalization: TextCapitalization.characters,
-                    ),
+
+                    // Kode customer — add mode punya tombol refresh untuk
+                    // generate ulang, edit mode field biasa
+                    if (_isEdit)
+                      AppTextField(
+                        controller: _c.codeC,
+                        label: 'Kode Pelanggan',
+                        hint: 'Contoh: CUST-A3X9B2',
+                        textCapitalization: TextCapitalization.characters,
+                      )
+                    else
+                      _CodeFieldWithRefresh(c: _c),
+
                     Obx(
                       () => AppDropdown<CustomerGroup>(
                         label: 'Grup Pelanggan',
@@ -251,6 +201,113 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
 
               const SizedBox(height: 16),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Kode field dengan tombol refresh (add mode only) ─────────────────────────
+
+class _CodeFieldWithRefresh extends StatelessWidget {
+  final CustomerController c;
+  const _CodeFieldWithRefresh({required this.c});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: AppTextField(
+            controller: c.codeC,
+            label: 'Kode Pelanggan',
+            hint: 'CUST-XXXXXX',
+            textCapitalization: TextCapitalization.characters,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Tombol generate ulang — muncul hanya di add mode
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Tooltip(
+            message: 'Generate kode baru',
+            child: InkWell(
+              onTap: c.regenerateCode,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.successBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.refresh_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Sticky submit button ──────────────────────────────────────────────────────
+
+class _StickyButton extends StatelessWidget {
+  final CustomerController c;
+  final bool isEdit;
+  final VoidCallback onSubmit;
+
+  const _StickyButton({
+    required this.c,
+    required this.isEdit,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Obx(
+          () => SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed:
+                  c.isSubmitting.value || !c.isDirty.value ? null : onSubmit,
+              child: c.isSubmitting.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      isEdit ? 'Simpan Perubahan' : 'Simpan Pelanggan',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
           ),
         ),
       ),
