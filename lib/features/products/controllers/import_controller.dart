@@ -238,8 +238,10 @@ class ImportController extends GetxController {
         }
 
         // ── Create variant + prices ───────────────────────────────────────
+        // Key di-trim biar konsisten sama priceColMap yang juga sudah exact
+        // match ke nama master (lihat _parseExcelBytes).
         final priceListMap = {
-          for (final pl in _priceC.priceListMaster) pl.name: pl.id,
+          for (final pl in _priceC.priceListMaster) pl.name.trim(): pl.id,
         };
 
         int variantOk = 0;
@@ -272,20 +274,41 @@ class ImportController extends GetxController {
           final newVariantId =
               json.decode(variantRes.body)['data']['id']?.toString() ?? '';
 
-          // Buat semua harga secara parallel
-          await Future.wait(
-            row.prices.entries
-                .where(
-                  (e) => e.value > 0 && priceListMap.containsKey(e.key),
-                )
-                .map(
-                  (e) => ProductService.createPrice(
-                    variantId: newVariantId,
-                    priceListId: priceListMap[e.key]!,
-                    price: e.value,
-                  ),
-                ),
+          // Buat semua harga secara parallel — sekarang dicek satu-satu,
+          // jadi kalau ada yang gagal (mismatch nama / error backend) bakal
+          // kelihatan di log, bukan silent-fail kayak sebelumnya.
+          final priceEntries =
+              row.prices.entries.where((e) => e.value > 0).toList();
+
+          final priceResults = await Future.wait(
+            priceEntries.map((e) async {
+              final plId = priceListMap[e.key.trim()];
+              if (plId == null) {
+                submitLog.add(
+                  '  ⚠️  "${row.variantName}": price list "${e.key}" tidak ditemukan di master',
+                );
+                return false;
+              }
+              final res = await ProductService.createPrice(
+                variantId: newVariantId,
+                priceListId: plId,
+                price: e.value,
+              );
+              if (res.statusCode != 201) {
+                submitLog.add(
+                  '  ⚠️  "${row.variantName}": gagal simpan harga "${e.key}" (${res.statusCode})',
+                );
+                return false;
+              }
+              return true;
+            }),
           );
+
+          if (priceEntries.isNotEmpty && !priceResults.contains(true)) {
+            submitLog.add(
+              '  ⚠️  "${row.variantName}": semua harga gagal tersimpan',
+            );
+          }
 
           row.status = ImportRowStatus.imported;
           variantOk++;
@@ -412,7 +435,9 @@ List<int> _buildTemplateBytes(List<String> priceListNames) {
     final cell = sheet.cell(
       CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0),
     );
-    cell.value = TextCellValue('Harga $plName');
+    // plName sudah nama asli dari master (mis. "Harga Normal"),
+    // jangan tambah prefix "Harga " lagi biar gak jadi "Harga Harga Normal"
+    cell.value = TextCellValue(plName);
     cell.cellStyle = priceHeaderStyle();
     col++;
   }
@@ -442,19 +467,19 @@ List<int> _buildTemplateBytes(List<String> priceListNames) {
   writeRow(
     1,
     ['Aqua', 'PRD-001', 'Minuman', 'Aqua 600ml', 'Pieces', 100],
-    priceListNames.map((n) => n.toLowerCase() == 'normal' ? 4000.0 : 3500.0).toList(),
+    priceListNames.map((n) => n.toLowerCase().contains('normal') ? 4000.0 : 3500.0).toList(),
   );
 
   writeRow(
     2,
     ['Aqua', 'PRD-001', 'Minuman', 'Aqua 1500ml', 'Pieces', 50],
-    priceListNames.map((n) => n.toLowerCase() == 'normal' ? 7000.0 : 6000.0).toList(),
+    priceListNames.map((n) => n.toLowerCase().contains('normal') ? 7000.0 : 6000.0).toList(),
   );
 
   writeRow(
     3,
     ['Sprite', 'PRD-002', 'Minuman', 'Sprite 330ml', 'Pieces', 80],
-    priceListNames.map((n) => n.toLowerCase() == 'normal' ? 5000.0 : 4500.0).toList(),
+    priceListNames.map((n) => n.toLowerCase().contains('normal') ? 5000.0 : 4500.0).toList(),
   );
 
   // ── Catatan ───────────────────────────────────────────────────────────────
@@ -513,14 +538,16 @@ _ParseResult _parseExcelBytes(_ParsePayload payload) {
   final colUnit = findCol('satuan');
   final colStock = findCol('stok');
 
-  // Kolom harga dinamis
+  // Kolom harga dinamis — cocokkan header LANGSUNG ke nama price list master
+  // (bukan strip-prefix-rebuild manual, biar gak mismatch sama nama asli di DB
+  // yang sudah mengandung kata "Harga", misal "Harga Normal")
   final priceColMap = <int, String>{};
   for (int i = 0; i < headers.length; i++) {
-    final h = headers[i];
-    if (h.startsWith('harga ')) {
-      final raw = h.replaceFirst('harga ', '').trim();
-      if (raw.isNotEmpty) {
-        priceColMap[i] = raw[0].toUpperCase() + raw.substring(1);
+    final h = headers[i].trim();
+    for (final plName in payload.priceListNames) {
+      if (h == plName.trim().toLowerCase()) {
+        priceColMap[i] = plName; // simpan nama PERSIS sesuai master
+        break;
       }
     }
   }
