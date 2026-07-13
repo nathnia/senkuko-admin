@@ -53,6 +53,52 @@ class _TransactionPageState extends State<TransactionPage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          Obx(
+            () => GestureDetector(
+              onTap: _c.isExporting.value ? null : _c.exportRecap,
+              child: Container(
+                margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.successBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _c.isExporting.value
+                        ? SizedBox(
+                            width: 13,
+                            height: 13,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : Icon(
+                            Icons.file_download_outlined,
+                            size: 13,
+                            color: AppColors.primary,
+                          ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Export',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Padding(
@@ -79,22 +125,25 @@ class _TransactionPageState extends State<TransactionPage> {
       ),
       body: Column(
         children: [
-          Obx(() => AppFilterChips(
-                items: TransactionController.statusTabs
-                    .map((t) => FilterChipItem(label: t.label))
-                    .toList(),
-                selectedLabel: TransactionController.statusTabs
-                    .firstWhere(
-                      (t) => t.value == _c.selectedStatus.value,
-                      orElse: () => TransactionController.statusTabs.first,
-                    )
-                    .label,
-                onChipTap: (label) {
-                  final tab = TransactionController.statusTabs
-                      .firstWhere((t) => t.label == label);
-                  _c.updateStatus(tab.value);
-                },
-              )),
+          Obx(
+            () => AppFilterChips(
+              items: TransactionController.statusTabs
+                  .map((t) => FilterChipItem(label: t.label))
+                  .toList(),
+              selectedLabel: TransactionController.statusTabs
+                  .firstWhere(
+                    (t) => t.value == _c.selectedStatus.value,
+                    orElse: () => TransactionController.statusTabs.first,
+                  )
+                  .label,
+              onChipTap: (label) {
+                final tab = TransactionController.statusTabs.firstWhere(
+                  (t) => t.label == label,
+                );
+                _c.updateStatus(tab.value);
+              },
+            ),
+          ),
           Obx(() => _summaryBar()),
           Expanded(child: _transactionList()),
         ],
@@ -187,8 +236,11 @@ class _TransactionPageState extends State<TransactionPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.receipt_long_outlined,
-                        size: 48, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 48,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Tidak ada transaksi',

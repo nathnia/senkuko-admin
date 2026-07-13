@@ -6,6 +6,7 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_model.dart';
 import 'package:senkukoadmin/features/transactions/transaction_service.dart';
+import 'package:senkukoadmin/features/transactions/transaction_export_service.dart';
 
 class TransactionController extends GetxController {
   final isLoading = false.obs;
@@ -301,6 +302,7 @@ class TransactionController extends GetxController {
       isUpdatingStatus.value = false;
     }
   }
+  
 
   // ===================== SUMMARY =====================
 
@@ -311,4 +313,26 @@ class TransactionController extends GetxController {
       .fold(0, (sum, t) => sum + t.grandTotal);
 
   String get formattedTotalRevenue => CurrencyFormatter.format(totalRevenue);
+
+  final isExporting = false.obs;
+
+Future<void> exportRecap() async {
+  if (isExporting.value) return;
+  isExporting.value = true;
+  try {
+    await TransactionExportService.exportRecap(filteredTransactions);
+  } catch (e) {
+    Get.snackbar(
+      'Gagal',
+      'Gagal export rekap. Coba lagi.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.dangerBg,
+      colorText: AppColors.danger,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+    );
+  } finally {
+    isExporting.value = false;
+  }
+}
 }
