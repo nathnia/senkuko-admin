@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
+import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/auth/auth_controller.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -220,54 +221,99 @@ class DashboardPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Colors.black.withAlpha(10), width: 0.5),
           ),
-          child: Obx(() => Column(
-                children: [
-                  _orderRow(
-                    icon: Icons.inbox_rounded,
-                    title: 'Pesanan Baru',
-                    subtitle: 'COD menunggu konfirmasi',
-                    count: _countByStatus(txC, 'pending_payment'),
-                    isLast: false,
-                    onTap: () => Get.toNamed(
-                      AppRoutes.transaction,
-                      arguments: {'statusFilter': 'pending_payment'},
-                    ),
+          child: Obx(() {
+            final pendingList = txC.transactionList
+                .where((t) => t.status == 'pending_payment')
+                .toList();
+
+            final pendingTotalRupiah =
+                pendingList.fold(0.0, (sum, t) => sum + t.grandTotal);
+
+            final oldestPendingDays = pendingList.isEmpty
+                ? 0
+                : pendingList
+                    .map((t) => DateTime.now()
+                        .difference(t.transactedAt)
+                        .inHours ~/
+                        24)
+                    .reduce((a, b) => a > b ? a : b);
+
+            final pendingSubtitle = pendingList.isEmpty
+                ? 'Menunggu konfirmasi admin'
+                : 'Estimasi ${CurrencyFormatter.format(pendingTotalRupiah)}';
+
+            final pendingWarning = oldestPendingDays >= 1
+                ? 'Sudah $oldestPendingDays hari menunggu konfirmasi'
+                : null;
+
+            final processingList = txC.transactionList
+                .where((t) => t.status == 'processing')
+                .toList();
+
+            final oldestProcessingDays = processingList.isEmpty
+                ? 0
+                : processingList
+                    .map((t) => DateTime.now()
+                        .difference(t.transactedAt)
+                        .inHours ~/
+                        24)
+                    .reduce((a, b) => a > b ? a : b);
+
+            final processingWarning = oldestProcessingDays >= 1
+                ? 'Sudah $oldestProcessingDays hari belum dikemas'
+                : null;
+
+            return Column(
+              children: [
+                _orderRow(
+                  icon: Icons.access_time_rounded,
+                  title: 'COD Perlu Konfirmasi',
+                  subtitle: pendingSubtitle,
+                  warningText: pendingWarning,
+                  count: pendingList.length,
+                  isLast: false,
+                  onTap: () => Get.toNamed(
+                    AppRoutes.transaction,
+                    arguments: {'statusFilter': 'pending_payment'},
                   ),
-                  _orderRow(
-                    icon: Icons.access_time_rounded,
-                    title: 'Diproses',
-                    subtitle: 'Pesanan siap diproses',
-                    count: _countByStatus(txC, 'processing'),
-                    isLast: false,
-                    onTap: () => Get.toNamed(
-                      AppRoutes.transaction,
-                      arguments: {'statusFilter': 'processing'},
-                    ),
+                ),
+                _orderRow(
+                  icon: Icons.inbox_rounded,
+                  title: 'Perlu Dikemas',
+                  subtitle: 'Menunggu dikemas & dikirim',
+                  warningText: processingWarning,
+                  count: processingList.length,
+                  isLast: false,
+                  onTap: () => Get.toNamed(
+                    AppRoutes.transaction,
+                    arguments: {'statusFilter': 'processing'},
                   ),
-                  _orderRow(
-                    icon: Icons.local_shipping_outlined,
-                    title: 'Dikirim',
-                    subtitle: 'Pesanan sedang dikirim',
-                    count: _countByStatus(txC, 'shipped'),
-                    isLast: false,
-                    onTap: () => Get.toNamed(
-                      AppRoutes.transaction,
-                      arguments: {'statusFilter': 'shipped'},
-                    ),
+                ),
+                _orderRow(
+                  icon: Icons.local_shipping_outlined,
+                  title: 'Dikirim',
+                  subtitle: 'Pesanan sedang dikirim',
+                  count: _countByStatus(txC, 'shipped'),
+                  isLast: false,
+                  onTap: () => Get.toNamed(
+                    AppRoutes.transaction,
+                    arguments: {'statusFilter': 'shipped'},
                   ),
-                  _orderRow(
-                    icon: Icons.cancel_outlined,
-                    title: 'Dibatalkan',
-                    subtitle: 'Transaksi dibatalkan',
-                    count: _countByStatus(txC, 'cancelled'),
-                    isLast: true,
-                    onTap: () => Get.toNamed(
-                      AppRoutes.transaction,
-                      arguments: {'statusFilter': 'cancelled'},
-                    ),
+                ),
+                _orderRow(
+                  icon: Icons.cancel_outlined,
+                  title: 'Dibatalkan',
+                  subtitle: 'Transaksi dibatalkan',
+                  count: _countByStatus(txC, 'cancelled'),
+                  isLast: true,
+                  onTap: () => Get.toNamed(
+                    AppRoutes.transaction,
+                    arguments: {'statusFilter': 'cancelled'},
                   ),
-                ],
-              )),
+                ),
+              ],
+            );
+          }),
         ),
       ],
     );
@@ -280,7 +326,10 @@ class DashboardPage extends StatelessWidget {
     required int count,
     required bool isLast,
     required VoidCallback onTap,
+    String? warningText,
   }) {
+    final hasWarning = warningText != null;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -294,15 +343,22 @@ class DashboardPage extends StatelessWidget {
                 ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 32,
               height: 32,
+              margin: const EdgeInsets.only(top: 1),
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(18),
+                color: (hasWarning ? AppColors.danger : AppColors.primary)
+                    .withAlpha(18),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 15),
+              child: Icon(
+                icon,
+                color: hasWarning ? AppColors.danger : AppColors.primary,
+                size: 15,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -325,25 +381,51 @@ class DashboardPage extends StatelessWidget {
                       color: AppColors.subtext,
                     ),
                   ),
+                  if (hasWarning) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 11, color: AppColors.danger),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            warningText,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.danger,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
             if (count > 0) ...[
-              _badge(count),
+              _badge(count, isWarning: hasWarning),
               const SizedBox(width: 6),
             ],
-            Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child:
+                  Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _badge(int count) {
+  Widget _badge(int count, {bool isWarning = false}) {
+    final color = isWarning ? AppColors.danger : AppColors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.primary.withAlpha(18),
+        color: color.withAlpha(18),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -351,7 +433,7 @@ class DashboardPage extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: AppColors.primary,
+          color: color,
         ),
       ),
     );

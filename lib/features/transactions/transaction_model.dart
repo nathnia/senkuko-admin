@@ -110,13 +110,13 @@ class StatusStyle {
         return const StatusStyle(
           color: AppColors.warning,
           background: AppColors.warningBg,
-          label: 'Pesanan Baru',
+          label: 'Konfirmasi COD',
         );
       case 'processing':
         return const StatusStyle(
           color: AppColors.secondary,
           background: AppColors.secondaryBg,
-          label: 'Diproses',
+          label: 'Perlu Dikemas', // ← was 'Diproses'
         );
       case 'shipped':
         return const StatusStyle(
@@ -229,9 +229,7 @@ class TransactionData {
 
   /// Hanya status yang relevan secara bisnis yang dihitung sebagai revenue.
   bool get isCountableRevenue =>
-      status == 'completed' ||
-      status == 'processing' ||
-      status == 'shipped';
+      status == 'completed' || status == 'processing' || status == 'shipped';
 
   // ── Formatters ────────────────────────────────────────────────────────────
   String get formattedGrandTotal => CurrencyFormatter.format(grandTotal);
@@ -266,22 +264,19 @@ class TransactionItem {
     required this.subtotal,
   });
 
-  factory TransactionItem.fromJson(Map<String, dynamic> json) =>
-      TransactionItem(
-        id: json['id'],
-        productVariantId: json['product_variant_id'],
-        variantName: json['variant_name'],
-        priceListName: json['price_list_name'],
-        qty: json['qty'] is int
-            ? json['qty']
-            : int.parse(json['qty'].toString()),
-        unitPrice: double.parse(json['unit_price'].toString()),
-        originalPrice: double.parse(json['original_price'].toString()),
-        discountAmount: double.parse(
-          (json['discount_amount'] ?? '0').toString(),
-        ),
-        subtotal: double.parse(json['subtotal'].toString()),
-      );
+  factory TransactionItem.fromJson(
+    Map<String, dynamic> json,
+  ) => TransactionItem(
+    id: json['id'],
+    productVariantId: json['product_variant_id'],
+    variantName: json['variant_name'],
+    priceListName: json['price_list_name'],
+    qty: json['qty'] is int ? json['qty'] : int.parse(json['qty'].toString()),
+    unitPrice: double.parse(json['unit_price'].toString()),
+    originalPrice: double.parse(json['original_price'].toString()),
+    discountAmount: double.parse((json['discount_amount'] ?? '0').toString()),
+    subtotal: double.parse(json['subtotal'].toString()),
+  );
 
   String get formattedUnitPrice => CurrencyFormatter.format(unitPrice);
   String get formattedSubtotal => CurrencyFormatter.format(subtotal);
@@ -310,9 +305,7 @@ class TransactionPromotion {
         promotionName: json['promotion_name'],
         promotionCode: json['promotion_code'],
         voucherCode: json['voucher_code'],
-        discountGiven: double.parse(
-          (json['discount_given'] ?? '0').toString(),
-        ),
+        discountGiven: double.parse((json['discount_given'] ?? '0').toString()),
       );
 
   /// Label yang ditampilkan di UI — nama promo atau kode voucher.
@@ -427,16 +420,14 @@ class TransactionDetail {
 
   /// Apakah transaksi sudah di terminal state (tidak bisa diubah lagi).
   bool get isTerminal =>
-      status == 'completed' ||
-      status == 'cancelled' ||
-      status == 'failed';
+      status == 'completed' || status == 'cancelled' || status == 'failed';
 
   /// Bagian alamat baris kedua: subregion, region, city
   String get addressLine2 => [
-        deliverySubregion,
-        deliveryRegion,
-        deliveryCity,
-      ].whereType<String>().join(', ');
+    deliverySubregion,
+    deliveryRegion,
+    deliveryCity,
+  ].whereType<String>().join(', ');
 
   // ── Formatters ────────────────────────────────────────────────────────────
   String get formattedGrandTotal => CurrencyFormatter.format(grandTotal);

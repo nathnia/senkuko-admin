@@ -46,8 +46,8 @@ class TransactionController extends GetxController {
   /// karena dikelola otomatis oleh webhook — lihat fetchTransactions().
   static const List<({String label, String? value})> statusTabs = [
     (label: 'Semua', value: null),
-    (label: 'Pesanan Baru', value: 'pending_payment'),
-    (label: 'Diproses', value: 'processing'),
+    (label: 'Konfirmasi COD', value: 'pending_payment'),
+    (label: 'Perlu Dikemas', value: 'processing'),
     (label: 'Dikirim', value: 'shipped'),
     (label: 'Selesai', value: 'completed'),
     (label: 'Dibatalkan', value: 'cancelled'),
@@ -89,12 +89,18 @@ class TransactionController extends GetxController {
               t.transactedAt.month == now.month &&
               t.transactedAt.day == now.day;
         } else if (quickDate == '7 Hari') {
-          final from = DateTime(now.year, now.month, now.day)
-              .subtract(const Duration(days: 6));
+          final from = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 6));
           matchDate = !t.transactedAt.isBefore(from);
         } else if (quickDate == '30 Hari') {
-          final from = DateTime(now.year, now.month, now.day)
-              .subtract(const Duration(days: 29));
+          final from = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 29));
           matchDate = !t.transactedAt.isBefore(from);
         } else if (quickDate == 'Custom') {
           if (range != null) {
@@ -165,10 +171,7 @@ class TransactionController extends GetxController {
       lastDate: now,
       initialDateRange:
           selectedDateRange.value ??
-          DateTimeRange(
-            start: now.subtract(const Duration(days: 7)),
-            end: now,
-          ),
+          DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now),
       builder: (context, child) {
         return Theme(
           data: ThemeData(
@@ -215,9 +218,9 @@ class TransactionController extends GetxController {
         // COD pending_payment tetap tampil karena admin perlu konfirmasi order.
         final all = transactionModelFromJson(res.body).data;
         transactionList.assignAll(
-          all.where((t) =>
-            !(t.status == 'pending_payment' && !t.isCod)
-          ).toList(),
+          all
+              .where((t) => !(t.status == 'pending_payment' && !t.isCod))
+              .toList(),
         );
         _applyFilter();
       } else {
@@ -302,7 +305,6 @@ class TransactionController extends GetxController {
       isUpdatingStatus.value = false;
     }
   }
-  
 
   // ===================== SUMMARY =====================
 
@@ -316,23 +318,23 @@ class TransactionController extends GetxController {
 
   final isExporting = false.obs;
 
-Future<void> exportRecap() async {
-  if (isExporting.value) return;
-  isExporting.value = true;
-  try {
-    await TransactionExportService.exportRecap(filteredTransactions);
-  } catch (e) {
-    Get.snackbar(
-      'Gagal',
-      'Gagal export rekap. Coba lagi.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.dangerBg,
-      colorText: AppColors.danger,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-    );
-  } finally {
-    isExporting.value = false;
+  Future<void> exportRecap() async {
+    if (isExporting.value) return;
+    isExporting.value = true;
+    try {
+      await TransactionExportService.exportRecap(filteredTransactions);
+    } catch (e) {
+      Get.snackbar(
+        'Gagal',
+        'Gagal export rekap. Coba lagi.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.dangerBg,
+        colorText: AppColors.danger,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+      );
+    } finally {
+      isExporting.value = false;
+    }
   }
-}
 }
