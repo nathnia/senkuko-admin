@@ -58,8 +58,8 @@ class VoucherController extends GetxController {
   }
 
   void _checkDirtyCreate() {
-    isDirty.value = codeC.text.trim().isNotEmpty &&
-        promotionIdC.text.trim().isNotEmpty;
+    isDirty.value =
+        codeC.text.trim().isNotEmpty && promotionIdC.text.trim().isNotEmpty;
   }
 
   void resetForm() {
@@ -85,7 +85,16 @@ class VoucherController extends GetxController {
     codeC.text = v.code;
     promotionIdC.text = v.promotionId;
     usageLimitC.text = v.usageLimit.toString();
-    status.value = v.status;
+
+    // Backend bisa aja ngirim value gak terduga ("Active", "used", "expired",
+    // ada spasi, dll). Normalize + clamp ke cuma 2 value yang dikenal dropdown,
+    // biar DropdownButtonFormField gak pernah nerima value yang gak match
+    // item manapun (itu penyebab assertion crash-nya).
+    final normalized = v.status.trim().toLowerCase();
+    status.value = (normalized == 'active' || normalized == 'inactive')
+        ? normalized
+        : 'active';
+
     isDirty.value = false;
     selectedPromotionObs.value = null;
 

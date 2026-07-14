@@ -25,6 +25,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
 
   late final bool _isEdit;
   late final String? _editId;
+
   /// Non-null when navigated from a promotion detail page.
   late final PromotionData? _prefilledPromotion;
 
@@ -35,7 +36,9 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     final args = Get.arguments;
     _isEdit = args is Map && args['isEdit'] == true;
     _editId = _isEdit ? args['id'] as String? : null;
-    _prefilledPromotion = _isEdit ? null : (args is PromotionData ? args : null);
+    _prefilledPromotion = _isEdit
+        ? null
+        : (args is PromotionData ? args : null);
 
     if (_isEdit && _editId != null) {
       final existing = controller.voucherList.firstWhereOrNull(
@@ -142,9 +145,53 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                     ),
 
                     // ── Status (edit mode only) ───────────────────────────
+                    // ── Status (edit mode only) ───────────────────────────
                     if (_isEdit)
-                      Obx(
-                        () => AppDropdown<String>(
+                      Obx(() {
+                        final voucher = controller.voucherList.firstWhereOrNull(
+                          (v) => v.id == _editId,
+                        );
+                        final isUsed = voucher?.isUsed ?? false;
+
+                        // Voucher yang sudah habis kuota (isUsed) statusnya derived dari
+                        // usageCount/usageLimit, bukan field yang bisa diedit manual jadi
+                        // "Aktif"/"Tidak Aktif" lewat dropdown ini. Jadi sembunyikan dropdown
+                        // dan kasih info aja, biar gak ada ambiguitas dan gak perlu maksa
+                        // status ke salah satu dari dua pilihan yang gak sesuai kondisi asli.
+                        if (isUsed) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 16,
+                                  color: AppColors.warning,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Voucher ini sudah habis kuota pemakaian dan tidak bisa diubah statusnya.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.warning,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return AppDropdown<String>(
                           label: 'Status',
                           value: controller.status.value,
                           items: const [
@@ -158,8 +205,8 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                             ),
                           ],
                           onChanged: (v) => controller.status.value = v!,
-                        ),
-                      ),
+                        );
+                      }),
                   ],
                 ),
               ),
@@ -190,7 +237,8 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                 ),
                 elevation: 0,
               ),
-              onPressed: controller.isSubmitting.value || !controller.isDirty.value
+              onPressed:
+                  controller.isSubmitting.value || !controller.isDirty.value
                   ? null
                   : () async {
                       final success = _isEdit
@@ -353,7 +401,6 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-
 
   Widget _card({required Widget child}) => Container(
     width: double.infinity,
