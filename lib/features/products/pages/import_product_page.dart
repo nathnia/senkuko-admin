@@ -95,108 +95,108 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.table_chart_outlined,
-                size: 36,
-                color: AppColors.primary,
-              ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Import Produk dari Excel',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
+            child: Icon(
+              Icons.table_chart_outlined,
+              size: 36,
+              color: AppColors.primary,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Download template, isi data produk,\nlalu upload kembali.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Import Produk dari Excel',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 32),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Download template, isi data produk,\nlalu upload kembali.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 32),
 
-            // Step indicators
-            _StepRow(
-              number: '1',
-              label: 'Download template Excel',
-              action: Obx(
-                () => _OutlineButton(
-                  label: 'Download Template',
-                  icon: Icons.download_rounded,
-                  isLoading: importC.isDownloadingTemplate.value,
-                  onTap: importC.downloadTemplate,
-                ),
+          _StepRow(
+            number: '1',
+            label: 'Download template Excel',
+            action: Obx(
+              () => _OutlineButton(
+                label: 'Download Template',
+                icon: Icons.download_rounded,
+                isLoading: importC.isDownloadingTemplate.value,
+                onTap: importC.downloadTemplate,
               ),
             ),
-            const SizedBox(height: 16),
-            _StepRow(
-              number: '2',
-              label: 'Isi data produk di Excel',
-              action: Text(
-                'Isi sesuai format, hapus baris contoh',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+          ),
+          const SizedBox(height: 16),
+          _StepRow(
+            number: '2',
+            label: 'Isi data produk di Excel',
+            action: Text(
+              'Isi sesuai format, hapus baris contoh',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _StepRow(
+            number: '3',
+            label: 'Upload file yang sudah diisi',
+            action: Obx(
+              () => _OutlineButton(
+                label: 'Pilih File .xlsx',
+                icon: Icons.upload_file_rounded,
+                isLoading: importC.isParsing.value,
+                onTap: importC.pickAndParseFile,
               ),
             ),
-            const SizedBox(height: 16),
-            _StepRow(
-              number: '3',
-              label: 'Upload file yang sudah diisi',
-              action: Obx(
-                () => _OutlineButton(
-                  label: 'Pilih File .xlsx',
-                  icon: Icons.upload_file_rounded,
-                  isLoading: importC.isParsing.value,
-                  onTap: importC.pickAndParseFile,
-                ),
-              ),
-            ),
+          ),
 
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.amber.shade200),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      size: 16, color: Colors.amber.shade700),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Satuan produk harus sesuai dengan nama satuan yang sudah ada di master data. '
-                      'Kategori yang belum ada akan dibuat otomatis.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.amber.shade800,
-                        height: 1.4,
-                      ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: Colors.amber.shade700,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Satuan produk harus sesuai dengan nama satuan yang sudah ada di master data. '
+                    'Kategori yang belum ada akan dibuat otomatis.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber.shade800,
+                      height: 1.4,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -359,10 +359,7 @@ class _PreviewView extends StatelessWidget {
                 const Spacer(),
                 Text(
                   '${importC.importRows.length} baris total',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
               ],
             ),
@@ -460,8 +457,7 @@ class _PreviewRowCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color:
-                      hasError ? Colors.red.shade700 : Colors.grey.shade600,
+                  color: hasError ? Colors.red.shade700 : Colors.grey.shade600,
                 ),
               ),
             ),
@@ -476,17 +472,13 @@ class _PreviewRowCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color:
-                        hasError ? Colors.red.shade800 : Colors.black87,
+                    color: hasError ? Colors.red.shade800 : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   row.displaySubtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
                 if (row.prices.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -513,8 +505,11 @@ class _PreviewRowCard extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 2),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline_rounded,
-                              size: 12, color: Colors.red.shade600),
+                          Icon(
+                            Icons.error_outline_rounded,
+                            size: 12,
+                            color: Colors.red.shade600,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -534,9 +529,7 @@ class _PreviewRowCard extends StatelessWidget {
             ),
           ),
           Icon(
-            hasError
-                ? Icons.cancel_rounded
-                : Icons.check_circle_rounded,
+            hasError ? Icons.cancel_rounded : Icons.check_circle_rounded,
             size: 18,
             color: hasError ? Colors.red.shade400 : Colors.green.shade400,
           ),
@@ -721,8 +714,8 @@ class _SubmitView extends StatelessWidget {
                           color: isError
                               ? Colors.red.shade300
                               : isWarning
-                                  ? Colors.yellow.shade300
-                                  : Colors.green.shade300,
+                              ? Colors.yellow.shade300
+                              : Colors.green.shade300,
                         ),
                       ),
                     );
