@@ -544,10 +544,12 @@ class ProductController extends GetxController {
   }
 
   // ===================== UPDATE PRODUCT =====================
-  Future<void> updateFullProduct() async {
+  // CHANGED: return bool — caller only navigates back on real success,
+  // instead of always closing the page regardless of outcome.
+  Future<bool> updateFullProduct() async {
     if (editingProductId.value.isEmpty) {
       AppToast.show('Product ID tidak ditemukan');
-      return;
+      return false;
     }
 
     isSubmitting.value = true;
@@ -566,12 +568,12 @@ class ProductController extends GetxController {
 
       if (ApiHelper.isNetworkError(productRes)) {
         AppToast.show(ApiHelper.parseError(productRes.body));
-        return;
+        return false;
       }
 
       if (productRes.statusCode < 200 || productRes.statusCode >= 300) {
         AppToast.show('Gagal update informasi produk');
-        return;
+        return false;
       }
 
       for (var v in variantC.editVariantsTemp) {
@@ -605,8 +607,10 @@ class ProductController extends GetxController {
       hasDirtyVariants.value = false; // ADDED
 
       AppToast.show('Produk berhasil diupdate');
+      return true;
     } catch (e) {
       AppToast.show('Terjadi kesalahan saat menyimpan perubahan');
+      return false;
     } finally {
       isSubmitting.value = false;
     }

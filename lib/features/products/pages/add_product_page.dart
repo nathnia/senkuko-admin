@@ -98,13 +98,6 @@ class AddProductPage extends StatelessWidget {
                     variant: v,
                     mode: VariantCardMode.add,
                     index: i,
-                    onEdit: () {
-                      variantC.prepareEditVariant(i);
-                      Get.toNamed(
-                        AppRoutes.variantForm,
-                        arguments: {'index': i, 'isEditMode': false},
-                      );
-                    },
                     onDelete: () =>
                         variantC.removeTempVariant(i, isEditMode: false),
                   ),

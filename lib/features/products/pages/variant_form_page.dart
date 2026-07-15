@@ -61,13 +61,10 @@ class VariantFormPage extends StatelessWidget {
             ),
           ),
           centerTitle: true,
-        ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: _VariantSaveButton(
+          actions: [
+            _VariantSaveAction(
               nameController: isEditing ? c.dialogNameC : c.variantNameC,
-              label: isEditing ? 'Simpan Perubahan' : 'Simpan Varian',
+              label: isEditing ? 'Terapkan' : 'Simpan',
               onSave: () {
                 if (isEditing) {
                   c.saveEditVariant(index);
@@ -87,7 +84,8 @@ class VariantFormPage extends StatelessWidget {
                 }
               },
             ),
-          ),
+            const SizedBox(width: 8),
+          ],
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -513,24 +511,28 @@ class VariantFormPage extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// VARIANT SAVE BUTTON — reactive to nama varian + prevents double-submit
+// VARIANT SAVE ACTION — compact AppBar button, reactive to nama varian
+// + prevents double-submit. Lives in the AppBar (not bottomNavigationBar)
+// so it's visually distinct from the parent product page's save button,
+// avoiding "which button do I press" confusion when navigating between
+// the two screens.
 // ═══════════════════════════════════════════════════════════════
-class _VariantSaveButton extends StatefulWidget {
+class _VariantSaveAction extends StatefulWidget {
   final TextEditingController nameController;
   final VoidCallback onSave;
   final String label;
 
-  const _VariantSaveButton({
+  const _VariantSaveAction({
     required this.nameController,
     required this.onSave,
     required this.label,
   });
 
   @override
-  State<_VariantSaveButton> createState() => _VariantSaveButtonState();
+  State<_VariantSaveAction> createState() => _VariantSaveActionState();
 }
 
-class _VariantSaveButtonState extends State<_VariantSaveButton> {
+class _VariantSaveActionState extends State<_VariantSaveAction> {
   bool _isSaving = false;
 
   @override
@@ -561,23 +563,25 @@ class _VariantSaveButtonState extends State<_VariantSaveButton> {
     final isNameEmpty = widget.nameController.text.trim().isEmpty;
     final bool disabled = isNameEmpty || _isSaving;
 
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          disabledBackgroundColor: Colors.grey.shade300,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: TextButton(
         onPressed: disabled ? null : _handleTap,
+        style: TextButton.styleFrom(
+          backgroundColor: disabled
+              ? Colors.grey.shade200
+              : AppColors.primary,
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.grey.shade400,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
         child: _isSaving
             ? const SizedBox(
-                width: 20,
-                height: 20,
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2,
@@ -586,9 +590,8 @@ class _VariantSaveButtonState extends State<_VariantSaveButton> {
             : Text(
                 widget.label,
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
                 ),
               ),
       ),

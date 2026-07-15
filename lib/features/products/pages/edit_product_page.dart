@@ -98,9 +98,11 @@ class _EditProductPageState extends State<EditProductPage> {
                   onPressed: controller.isSubmitting.value || !controller.isDirty.value
                       ? null
                       : () async {
-                          await controller.updateFullProduct();
-                          await controller.loadProductDetail(_productId!);
-                          Get.back();
+                          final success = await controller.updateFullProduct();
+                          if (success) {
+                            await controller.loadProductDetail(_productId!);
+                            Get.back();
+                          }
                         },
                   child: controller.isSubmitting.value
                       ? const SizedBox(
