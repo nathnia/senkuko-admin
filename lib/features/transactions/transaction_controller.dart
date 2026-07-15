@@ -25,6 +25,9 @@ class TransactionController extends GetxController {
   // null = semua status (chip "Semua")
   final selectedStatus = Rxn<String>();
 
+  // 'terbaru' = tanggal transaksi terbaru duluan (default), 'terlama' = kebalikannya
+  final sortOrder = 'terbaru'.obs;
+
   final hasError = false.obs;
   final errorMessage = ''.obs;
   final hasDetailError = false.obs;
@@ -122,7 +125,10 @@ class TransactionController extends GetxController {
         final matchStatus = status == null || t.status == status;
 
         return matchSearch && matchDate && matchStatus;
-      }).toList(),
+      }).toList()
+        ..sort((a, b) => sortOrder.value == 'terlama'
+            ? a.transactedAt.compareTo(b.transactedAt)
+            : b.transactedAt.compareTo(a.transactedAt)),
     );
   }
 
@@ -142,9 +148,15 @@ class TransactionController extends GetxController {
     _applyFilter();
   }
 
+  void updateSortOrder(String value) {
+    sortOrder.value = value;
+    _applyFilter();
+  }
+
   void resetDateFilter() {
     selectedQuickDate.value = 'Semua';
     selectedDateRange.value = null;
+    sortOrder.value = 'terbaru';
     _applyFilter();
   }
 
@@ -153,11 +165,13 @@ class TransactionController extends GetxController {
     selectedDateRange.value = null;
     selectedStatus.value = null;
     searchText.value = '';
+    sortOrder.value = 'terbaru';
     _applyFilter();
   }
 
-  /// True kalau date filter bukan default — untuk dot indicator di filter button.
-  bool get hasActiveDateFilter => selectedQuickDate.value != 'Semua';
+  /// True kalau date filter atau sort bukan default — untuk dot indicator di filter button.
+  bool get hasActiveDateFilter =>
+      selectedQuickDate.value != 'Semua' || sortOrder.value != 'terbaru';
 
   /// True kalau ada filter apapun aktif — untuk empty state reset button.
   bool get hasActiveFilters =>

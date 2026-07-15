@@ -41,42 +41,76 @@ void showTransactionFilterSheet(
           ),
           const SizedBox(height: 20),
 
-          // ── Header ───────────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Filter Tanggal',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: Colors.black87,
+          // ── Reset (kanan) ────────────────────────────────────────────
+          Obx(() {
+            if (!controller.hasActiveDateFilter) {
+              return const SizedBox.shrink();
+            }
+            return Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () {
+                  controller.resetDateFilter();
+                  Get.back();
+                },
+                child: Text(
+                  'Reset',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              Obx(() {
-                if (!controller.hasActiveDateFilter) {
-                  return const SizedBox.shrink();
-                }
-                return GestureDetector(
-                  onTap: () {
-                    controller.resetDateFilter();
-                    Get.back();
-                  },
-                  child: Text(
-                    'Reset',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.danger,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                );
-              }),
-            ],
+            );
+          }),
+          const SizedBox(height: 12),
+
+          // ── Sort order ───────────────────────────────────────────────
+          Text(
+            'URUTKAN',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              letterSpacing: 0.5,
+              color: Colors.grey.shade500,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
+          Obx(
+            () => Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _FilterPillChip(
+                  label: 'Terbaru',
+                  icon: Icons.arrow_downward_rounded,
+                  isSelected: controller.sortOrder.value == 'terbaru',
+                  onTap: () => controller.updateSortOrder('terbaru'),
+                ),
+                _FilterPillChip(
+                  label: 'Terlama',
+                  icon: Icons.arrow_upward_rounded,
+                  isSelected: controller.sortOrder.value == 'terlama',
+                  onTap: () => controller.updateSortOrder('terlama'),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 18),
 
           // ── Date chips ───────────────────────────────────────────────
+          Text(
+            'TANGGAL',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              letterSpacing: 0.5,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 10),
           Obx(() {
             final current = controller.selectedQuickDate.value;
             final range = controller.selectedDateRange.value;
