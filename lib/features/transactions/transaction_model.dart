@@ -282,6 +282,80 @@ class TransactionItem {
   String get formattedSubtotal => CurrencyFormatter.format(subtotal);
 }
 
+// ── TransactionFreeItem — item gratis yang didapat dari reward free_item ──────
+
+class TransactionFreeItem {
+  final String id;
+  final String transactionPromotionId;
+  final String productVariantId;
+  final String variantName;
+  final int qty;
+  final double unitPrice;
+
+  TransactionFreeItem({
+    required this.id,
+    required this.transactionPromotionId,
+    required this.productVariantId,
+    required this.variantName,
+    required this.qty,
+    required this.unitPrice,
+  });
+
+  factory TransactionFreeItem.fromJson(Map<String, dynamic> json) =>
+      TransactionFreeItem(
+        id: json['id'],
+        transactionPromotionId: json['transaction_promotion_id'],
+        productVariantId: json['product_variant_id'],
+        variantName: json['variant_name'],
+        qty: json['qty'] is int
+            ? json['qty']
+            : int.parse(json['qty'].toString()),
+        unitPrice: double.parse(json['unit_price'].toString()),
+      );
+
+  String get formattedUnitPrice => CurrencyFormatter.format(unitPrice);
+}
+
+// ── AppliedReward — detail reward yang dipakai (dari kolom applied_rewards) ───
+
+class AppliedReward {
+  final String rewardType;
+  final double? discountValue;
+  final String? discountMode;
+
+  AppliedReward({
+    required this.rewardType,
+    this.discountValue,
+    this.discountMode,
+  });
+
+  factory AppliedReward.fromJson(Map<String, dynamic> json) => AppliedReward(
+        rewardType: json['reward_type'] ?? '',
+        discountValue: json['discount_value'] != null
+            ? double.tryParse(json['discount_value'].toString())
+            : null,
+        discountMode: json['discount_mode'],
+      );
+
+  String get modeLabel =>
+      discountMode == 'per_item' ? 'Per Item' : 'Per Transaksi';
+
+  /// Deskripsi singkat reward — dipakai buat nampilin value promo ke admin.
+  String get description {
+    switch (rewardType) {
+      case 'discount_percent':
+        final val = discountValue?.toStringAsFixed(0) ?? '0';
+        return 'Diskon $val% • $modeLabel';
+      case 'discount_fixed':
+        return 'Potongan ${CurrencyFormatter.format(discountValue ?? 0)} • $modeLabel';
+      case 'free_item':
+        return 'Reward Gratis Item';
+      default:
+        return rewardType;
+    }
+  }
+}
+
 // ── TransactionPromotion — promo yang diterapkan ─────────────────────────────
 
 class TransactionPromotion {
@@ -290,6 +364,8 @@ class TransactionPromotion {
   final String? promotionCode;
   final String? voucherCode;
   final double discountGiven;
+  final List<TransactionFreeItem> freeItems;
+  final List<AppliedReward> appliedRewards;
 
   TransactionPromotion({
     required this.id,
@@ -297,6 +373,8 @@ class TransactionPromotion {
     this.promotionCode,
     this.voucherCode,
     required this.discountGiven,
+    this.freeItems = const [],
+    this.appliedRewards = const [],
   });
 
   factory TransactionPromotion.fromJson(Map<String, dynamic> json) =>
@@ -306,13 +384,39 @@ class TransactionPromotion {
         promotionCode: json['promotion_code'],
         voucherCode: json['voucher_code'],
         discountGiven: double.parse((json['discount_given'] ?? '0').toString()),
+        freeItems: (json['free_items'] as List<dynamic>? ?? [])
+            .map((e) => TransactionFreeItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        appliedRewards: _parseAppliedRewards(json['applied_rewards']),
       );
+
+  /// applied_rewards dikirim backend sebagai JSON *string* (bukan array
+  /// langsung), jadi perlu di-decode dulu. Dibungkus try-catch biar kalau
+  /// formatnya berubah/null, UI tetap jalan tanpa crash.
+  static List<AppliedReward> _parseAppliedRewards(dynamic raw) {
+    if (raw == null) return [];
+    try {
+      final decoded = raw is String ? jsonDecode(raw) : raw;
+      if (decoded is! List) return [];
+      return decoded
+          .map((e) => AppliedReward.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
 
   /// Label yang ditampilkan di UI — nama promo atau kode voucher.
   String get displayLabel =>
       promotionName ?? voucherCode ?? promotionCode ?? '-';
 
+  /// Gabungan deskripsi semua reward yang dipakai, misal "Diskon 10% • Per Transaksi".
+  String get rewardSummary =>
+      appliedRewards.map((r) => r.description).join(' + ');
+
   String get formattedDiscount => CurrencyFormatter.format(discountGiven);
+
+  bool get hasFreeItems => freeItems.isNotEmpty;
 }
 
 // ── TransactionDetail — response GET /transactions/:id ───────────────────────
@@ -428,6 +532,14 @@ class TransactionDetail {
     deliveryRegion,
     deliveryCity,
   ].whereType<String>().join(', ');
+
+  /// Set product_variant_id yang merupakan item gratis dari promo apapun
+  /// di transaksi ini. Dipakai buat nandain item di "Item Pembelian" yang
+  /// sebenarnya adalah hasil reward free_item, bukan pembelian biasa.
+  Set<String> get freeItemVariantIds => promotions
+      .expand((p) => p.freeItems)
+      .map((f) => f.productVariantId)
+      .toSet();
 
   // ── Formatters ────────────────────────────────────────────────────────────
   String get formattedGrandTotal => CurrencyFormatter.format(grandTotal);

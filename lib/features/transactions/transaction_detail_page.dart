@@ -192,6 +192,7 @@ class TransactionDetailPage extends StatelessWidget {
                   children: data.items.asMap().entries.map((entry) {
                     final item = entry.value;
                     final isLast = entry.key == data.items.length - 1;
+
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
@@ -248,29 +249,118 @@ class TransactionDetailPage extends StatelessWidget {
                 _sectionLabel('Promo & Diskon'),
                 _card(
                   child: Column(
-                    children: data.promotions.map((promo) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: data.promotions.asMap().entries.map((entry) {
+                      final promo = entry.value;
+                      final isLast =
+                          entry.key == data.promotions.length - 1;
+
+                      return Container(
+                        padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                        margin: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                        decoration: BoxDecoration(
+                          border: isLast
+                              ? null
+                              : const Border(
+                                  bottom:
+                                      BorderSide(color: Color(0xFFF0F0F0)),
+                                ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                promo.displayLabel,
+                            // Nama promo + amount di kanan
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    promo.displayLabel,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.title,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  promo.hasFreeItems
+                                      ? 'Gratis Item'
+                                      : '- ${promo.formattedDiscount}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: promo.hasFreeItems
+                                        ? AppColors.success
+                                        : AppColors.danger,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            // Kode promo + kode voucher yang dipakai
+                            Row(
+                              children: [
+                                if (promo.promotionCode != null &&
+                                    promo.promotionCode!.isNotEmpty)
+                                  _codeChip(promo.promotionCode!),
+                                if (promo.voucherCode != null &&
+                                    promo.voucherCode!.isNotEmpty) ...[
+                                  const SizedBox(width: 5),
+                                  _codeChip(promo.voucherCode!,
+                                      isVoucher: true),
+                                ],
+                              ],
+                            ),
+                            // Value reward — disembunyikan untuk free_item
+                            // karena udah cukup jelas dari baris item gratis
+                            // di bawah, ga perlu diulang.
+                            if (!promo.hasFreeItems &&
+                                promo.rewardSummary.isNotEmpty) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                promo.rewardSummary,
                                 style: const TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 11,
                                   color: Colors.grey,
                                 ),
                               ),
-                            ),
-                            Text(
-                              '- ${promo.formattedDiscount}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.danger,
-                                fontWeight: FontWeight.w500,
+                            ],
+                            // Rincian item gratis yang didapat dari promo ini
+                            if (promo.hasFreeItems)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: promo.freeItems
+                                      .map((f) => Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 2),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.card_giftcard_rounded,
+                                                  size: 12,
+                                                  color: AppColors.success,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Gratis ${f.qty}x ${f.variantName}',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      color: AppColors.success,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ))
+                                      .toList(),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       );
@@ -572,6 +662,27 @@ class TransactionDetailPage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      );
+
+  Widget _codeChip(String code, {bool isVoucher = false}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: isVoucher ? AppColors.secondaryBg : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(4),
+          border: isVoucher
+              ? null
+              : Border.all(color: Colors.grey.shade300, width: 0.5),
+        ),
+        child: Text(
+          isVoucher ? 'Kode: $code' : code,
+          style: TextStyle(
+            fontSize: 10,
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+            color: isVoucher ? AppColors.secondary : AppColors.title,
+          ),
         ),
       );
 }
