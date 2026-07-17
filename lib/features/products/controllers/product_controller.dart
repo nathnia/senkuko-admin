@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
+import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/category_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
@@ -312,6 +313,19 @@ class ProductController extends GetxController {
         unitC.fetchUnits(),
         variantC.fetchAllVariants(),
       ]);
+
+      // FIX: safety net. fetchProducts() bisa trigger rebuild (via
+      // productList.assignAll) SEBELUM priceC.fetchPrices() atau
+      // variantC.fetchAllVariants() selesai — jadi ProductCard sempat
+      // ngitung ProductSummary dari data yang belum lengkap dan
+      // ke-cache salah (mis. harga jadi 0). invalidateSummaryCache()
+      // sendiri gak nge-trigger rebuild karena bukan Rx, makanya
+      // dipaksa refresh manual di sini SETELAH semua fetch di atas
+      // beneran selesai — supaya user gak perlu pull-to-refresh dulu
+      // buat lihat angka yang benar.
+      variantC.invalidateSummaryCache();
+      productList.refresh();
+
       _rebuildTabs();
     } catch (e) {
       hasError.value = true;
@@ -325,12 +339,32 @@ class ProductController extends GetxController {
   final hasError = false.obs;
   final errorMessage = ''.obs;
 
-  Future<void> fetchProducts() async {
+  // ===================== FETCH PRODUCTS (cache-first) =====================
+  Future<void> fetchProducts({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = CacheService.instance.get(
+        CacheKeys.productList,
+        ttl: CacheKeys.productListTtl,
+      );
+      if (cached != null) {
+        final cachedList =
+            (cached as List).map((e) => ProductData.fromJson(e)).toList();
+        productList.assignAll(cachedList);
+        _seedImageCacheFromProducts(cachedList);
+        // sengaja gak return di sini — lanjut fetch fresh di background
+        // biar data ke-update walau tampilan udah instant dari cache
+      }
+    }
+
     final res = await ProductService.getProducts();
     if (res.statusCode == 200) {
       final newProducts = productModelFromJson(res.body).data;
       productList.assignAll(newProducts);
       _seedImageCacheFromProducts(newProducts);
+      await CacheService.instance.set(
+        CacheKeys.productList,
+        newProducts.map((p) => p.toJson()).toList(),
+      );
     } else if (ApiHelper.isNetworkError(res)) {
       throw Exception(ApiHelper.parseError(res.body));
     } else {
@@ -526,11 +560,25 @@ class ProductController extends GetxController {
 
       await imageC.uploadPendingImages(newProductId);
 
+      // ADDED: invalidate product list cache before refetch — prevents
+      // race condition where stale cached list (still within TTL) gets
+      // returned instead of the freshly created product.
+      // Also invalidate allVariants/priceList — we just wrote new data,
+      // so the next fetch should skip cache-first (Pola B) entirely.
+      await CacheService.instance.invalidate(CacheKeys.productList);
+      await CacheService.instance.invalidate(CacheKeys.allVariants);
+      await CacheService.instance.invalidate(CacheKeys.priceList);
+
       await Future.wait([
-        variantC.fetchAllVariants(),
-        priceC.fetchPrices(),
+        variantC.fetchAllVariants(forceRefresh: true),
+        priceC.fetchPrices(forceRefresh: true),
         fetchProducts(),
       ]);
+
+      // FIX: same safety net as loadInitialData() — force a rebuild
+      // after all three finish, regardless of completion order.
+      variantC.invalidateSummaryCache();
+      productList.refresh();
 
       resetForAddProduct();
       AppToast.show('Produk berhasil ditambahkan');
@@ -590,11 +638,24 @@ class ProductController extends GetxController {
 
       await imageC.uploadPendingEditImages(editingProductId.value);
 
+      // ADDED: invalidate product list cache before refetch — same reason
+      // as createFullProduct(), avoids stale cache/fresh data race.
+      // Also invalidate allVariants/priceList — we just wrote new data,
+      // so the next fetch should skip cache-first (Pola B) entirely.
+      await CacheService.instance.invalidate(CacheKeys.productList);
+      await CacheService.instance.invalidate(CacheKeys.allVariants);
+      await CacheService.instance.invalidate(CacheKeys.priceList);
+
       await Future.wait([
-        variantC.fetchAllVariants(), // already calls invalidateSummaryCache
-        priceC.fetchPrices(),
+        variantC.fetchAllVariants(forceRefresh: true), // already calls invalidateSummaryCache
+        priceC.fetchPrices(forceRefresh: true),
         fetchProducts(),
       ]);
+
+      // FIX: same safety net as loadInitialData() — force a rebuild
+      // after all three finish, regardless of completion order.
+      variantC.invalidateSummaryCache();
+      productList.refresh();
 
       // Reset _dirty flag
       for (var i = 0; i < variantC.editVariantsTemp.length; i++) {
@@ -671,8 +732,6 @@ class ProductController extends GetxController {
     );
     _variantsTempWorker = ever(variantC.variantsTemp, (_) => checkDirty());
 
-    // ADDED: watch editVariantsTemp changes to update hasDirtyVariants in O(N)
-    // only when the list actually changes, not on every keypress
     _editVariantsDirtyWorker = ever(variantC.editVariantsTemp, (list) {
       hasDirtyVariants.value = list.any(
         (v) => v['id'] == '' || v['_dirty'] == true,

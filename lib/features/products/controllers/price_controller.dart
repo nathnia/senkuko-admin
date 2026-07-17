@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
+import 'package:senkukoadmin/features/products/controllers/product_variant_controller.dart';
 import 'package:senkukoadmin/features/products/models/product_price_model.dart';
 import 'package:senkukoadmin/features/products/models/product_pricelist_model.dart';
 import 'package:senkukoadmin/features/products/product_service.dart';
@@ -28,17 +30,73 @@ class PriceController extends GetxController {
   }
 
   // ===================== FETCH =====================
-  Future<void> fetchPrices() async {
+  // CHANGED: cache-first (Pola B, sama kayak fetchProducts()) — render
+  // instan dari cache kalau ada, TAPI tetep lanjut fetch fresh di
+  // background. TTL sengaja pendek (CacheKeys.stockPriceTtl) karena
+  // harga bisa berubah cukup sering, cache di sini cuma buat "instant
+  // paint" pas buka halaman, bukan sumber kebenaran.
+  Future<void> fetchPrices({bool forceRefresh = false}) async {
+    void notifySummaryCache() {
+      if (Get.isRegistered<ProductVariantController>()) {
+        Get.find<ProductVariantController>().invalidateSummaryCache();
+      }
+    }
+
+    if (!forceRefresh) {
+      final cached = CacheService.instance.get(
+        CacheKeys.priceList,
+        ttl: CacheKeys.stockPriceTtl,
+      );
+      if (cached != null) {
+        priceList.assignAll(
+          (cached as List).map((e) => PriceData.fromJson(e)).toList(),
+        );
+        notifySummaryCache();
+        // sengaja gak return — lanjut fetch fresh di background biar
+        // harga ke-update walau tampilan udah instant dari cache
+      }
+    }
+
     final res = await ProductService.getPrices();
     if (res.statusCode == 200) {
-      priceList.assignAll(productPriceModelFromJson(res.body).data);
+      final list = productPriceModelFromJson(res.body).data;
+      priceList.assignAll(list);
+      await CacheService.instance.set(
+        CacheKeys.priceList,
+        list.map((p) => p.toJson()).toList(),
+      );
+      // FIX: priceList adalah salah satu sumber data ProductSummary
+      // (lihat ProductVariantController._computeSummary). Sebelumnya
+      // cuma fetchAllVariants() yang invalidate summary cache, jadi
+      // kalau fetchPrices() selesai belakangan (race di Future.wait
+      // pas loadInitialData), harga produk ke-cache 0 secara permanen
+      // sampai ada trigger invalidate lain (mis. pull-to-refresh).
+      notifySummaryCache();
     }
   }
 
-  Future<void> fetchPriceLists() async {
+  Future<void> fetchPriceLists({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = CacheService.instance.get(
+        CacheKeys.priceListMaster,
+        ttl: CacheKeys.referenceDataTtl,
+      );
+      if (cached != null) {
+        priceListMaster.assignAll(
+          (cached as List).map((e) => PricelistData.fromJson(e)).toList(),
+        );
+        return;
+      }
+    }
+
     final res = await ProductService.getPriceLists();
     if (res.statusCode == 200) {
-      priceListMaster.assignAll(priceListModelFromJson(res.body).data);
+      final list = priceListModelFromJson(res.body).data;
+      priceListMaster.assignAll(list);
+      await CacheService.instance.set(
+        CacheKeys.priceListMaster,
+        list.map((p) => p.toJson()).toList(),
+      );
     }
   }
 

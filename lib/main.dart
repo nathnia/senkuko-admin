@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
+import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/constant/connectivity_banner.dart';
 import 'package:senkukoadmin/constant/connectivity_service.dart';
 import 'package:senkukoadmin/features/auth/auth_controller.dart';
@@ -10,12 +13,17 @@ import 'package:senkukoadmin/routes/routes.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init();
-  await initializeDateFormatting('id_ID');
-  Get.put(ConnectivityService(), permanent: true);
-  Get.put(AuthController(), permanent: true);
-  runApp(const MyApp());
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await GetStorage.init();
+    await CacheService.instance.init();
+    await initializeDateFormatting('id_ID');
+    Get.put(ConnectivityService(), permanent: true);
+    Get.put(AuthController(), permanent: true);
+    runApp(const MyApp());
+  }, (error, stack) {
+    debugPrint('Startup error: $error');
+  });
 }
 
 class MyApp extends StatelessWidget {

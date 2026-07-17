@@ -1,9 +1,8 @@
-// FILE: lib/features/products/controllers/category_controller.dart
-
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/features/products/models/category_model.dart';
 import 'package:senkukoadmin/features/products/product_service.dart';
 
@@ -36,18 +35,37 @@ class CategoryController extends GetxController {
   }
 
   // ===================== FETCH =====================
-  Future<void> fetchCategories() async {
+  /// forceRefresh=true skip cache — dipakai setelah create/delete.
+  Future<void> fetchCategories({bool forceRefresh = false}) async {
     if (isLoading.value) return;
+
+    // Cache-first: render instant kalau ada & masih fresh.
+    if (!forceRefresh) {
+      final cached = CacheService.instance.get(
+        CacheKeys.categories,
+        ttl: CacheKeys.referenceDataTtl,
+      );
+      if (cached != null) {
+        categoryList.assignAll(
+          (cached as List).map((e) => CategoryData.fromJson(e)).toList(),
+        );
+        return; // cache masih valid, gak perlu network sama sekali
+      }
+    }
+
     isLoading.value = true;
     hasError.value = false;
     try {
       final res = await ProductService.getCategories();
       if (res.statusCode == 200) {
         final jsonData = json.decode(res.body);
-        categoryList.assignAll(
-          (jsonData['data'] as List? ?? [])
-              .map((e) => CategoryData.fromJson(e))
-              .toList(),
+        final list = (jsonData['data'] as List? ?? [])
+            .map((e) => CategoryData.fromJson(e))
+            .toList();
+        categoryList.assignAll(list);
+        await CacheService.instance.set(
+          CacheKeys.categories,
+          list.map((c) => c.toJson()).toList(),
         );
       } else {
         hasError.value = true;
@@ -67,7 +85,8 @@ class CategoryController extends GetxController {
         parentId: parentId,
       );
       if (res.statusCode == 201) {
-        await fetchCategories();
+        await CacheService.instance.invalidate(CacheKeys.categories);
+        await fetchCategories(forceRefresh: true);
         return json.decode(res.body)['data']['id'];
       } else {
         AppToast.show('Gagal tambah kategori');
@@ -84,6 +103,7 @@ class CategoryController extends GetxController {
       final res = await ProductService.deleteCategory(id);
       if (res.statusCode == 200) {
         categoryList.removeWhere((c) => c.id == id);
+        await CacheService.instance.invalidate(CacheKeys.categories);
         AppToast.show('Kategori berhasil dihapus');
       } else {
         AppToast.show(ApiHelper.parseError(res.body));

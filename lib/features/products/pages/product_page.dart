@@ -1,5 +1,3 @@
-// FILE: lib/features/products/pages/product_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
@@ -129,11 +127,20 @@ class _ProductPageState extends State<ProductPage> {
           _ActiveFilterChips(controller: controller),
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value) {
+              // CHANGED: spinner cuma muncul kalau loading DAN belum ada data
+              // sama sekali (first load tanpa cache). Kalau ada cache,
+              // langsung tampil list-nya sambil fetch fresh jalan di
+              // background.
+              if (controller.isLoading.value &&
+                  controller.productList.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (controller.hasError.value) {
+              // CHANGED: kalau ada cache, tetap tampilin data lama daripada
+              // full error screen — silent degrade buat kondisi koneksi
+              // jelek toko kecil.
+              if (controller.hasError.value &&
+                  controller.productList.isEmpty) {
                 return AppErrorState(
                   message: controller.errorMessage.value,
                   onRetry: controller.loadInitialData,

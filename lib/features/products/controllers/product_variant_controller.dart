@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/product_controller.dart';
 import 'package:senkukoadmin/features/products/controllers/unit_controller.dart';
@@ -243,17 +244,41 @@ class ProductVariantController extends GetxController {
   }
 
   // ===================== FETCH =====================
-  Future<void> fetchAllVariants() async {
+  // CHANGED: cache-first (Pola B, sama kayak fetchProducts() &
+  // priceC.fetchPrices()) — render instan dari cache kalau ada, TAPI
+  // tetep lanjut fetch fresh di background. TTL sengaja pendek
+  // (CacheKeys.stockPriceTtl) karena stok bisa berubah kapan aja (ada
+  // transaksi masuk dll) — cache di sini cuma buat "instant paint" pas
+  // buka halaman, bukan sumber kebenaran.
+  Future<void> fetchAllVariants({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = CacheService.instance.get(
+        CacheKeys.allVariants,
+        ttl: CacheKeys.stockPriceTtl,
+      );
+      if (cached != null) {
+        allVariants.assignAll(
+          (cached as List).map((e) => VariantData.fromJson(e)).toList(),
+        );
+        invalidateSummaryCache();
+        // sengaja gak return — lanjut fetch fresh di background biar
+        // stok ke-update walau tampilan udah instant dari cache
+      }
+    }
+
     final res = await ProductService.getAllVariants();
     if (res.statusCode == 200) {
       final jsonData = json.decode(res.body);
-      allVariants.assignAll(
-        (jsonData['data'] as List? ?? [])
-            .map((e) => VariantData.fromJson(e))
-            .toList(),
-      );
+      final list = (jsonData['data'] as List? ?? [])
+          .map((e) => VariantData.fromJson(e))
+          .toList();
+      allVariants.assignAll(list);
       // ADDED: invalidate cache whenever variants are refreshed
       invalidateSummaryCache();
+      await CacheService.instance.set(
+        CacheKeys.allVariants,
+        list.map((v) => v.toJson()).toList(),
+      );
     }
   }
 
@@ -375,13 +400,26 @@ class ProductVariantController extends GetxController {
       content: 'Varian ini akan dihapus permanen. Lanjutkan?',
       confirmLabel: 'Hapus',
     );
-
     if (!confirm) return;
 
     final res = await ProductService.deleteVariant(variantId);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       list.removeAt(index);
-      invalidateSummaryCache(); // ADDED
+
+      // FIX: prune allVariants & priceList lokal, bukan cuma clear cache.
+      // Tanpa ini, getSummaryForProduct() masih hitung ulang dari data basi.
+      allVariants.removeWhere((v) => v.id == variantId);
+      priceC.priceList.removeWhere((p) => p.productVariantId == variantId);
+
+      invalidateSummaryCache();
+
+      // ADDED: invalidate persisted cache juga — bukan cuma Rx list di
+      // memori. Tanpa ini, cold start berikutnya (dalam TTL 30 detik)
+      // bisa sempet render varian yang udah dihapus sebelum background
+      // refetch benerin lagi.
+      await CacheService.instance.invalidate(CacheKeys.allVariants);
+      await CacheService.instance.invalidate(CacheKeys.priceList);
+
       AppToast.show('Varian berhasil dihapus');
     } else {
       AppToast.show('Gagal menghapus varian');

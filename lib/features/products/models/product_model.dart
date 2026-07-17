@@ -72,6 +72,25 @@ factory ProductData.fromJson(Map<String, dynamic> json) {
         : null,
   );
 }
+
+  // ADDED: dipakai untuk simpan ke CacheService (fetchProducts di
+  // product_controller.dart) — key HARUS sama persis dengan yang
+  // dibaca di fromJson() di atas, biar round-trip cache aman.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'sku_code': skuCode,
+      'description': description,
+      'barcode': barcode,
+      'is_active': isActive,
+      'created_at': createdAt.toIso8601String(),
+      'category_name': categoryName,
+      'category_id': categoryId,
+      'images': images?.map((img) => img.toJson()).toList(),
+    };
+  }
+
   // Helper getter untuk mendapatkan list URL gambar (string)
   List<String> get imageUrls => 
       images?.map((img) => img.imageUrl)

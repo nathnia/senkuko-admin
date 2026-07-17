@@ -36,6 +36,21 @@ class ProductImageData {
     );
   }
 
+  // ADDED: dipakai untuk cache round-trip (dipanggil dari
+  // ProductData.toJson() -> images?.map((img) => img.toJson())).
+  // Key "image_url" dipilih (bukan "url") supaya konsisten — fromJson()
+  // di atas tetap bisa baca keduanya, jadi aman ke arah manapun.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'product_id': productId,
+      'image_url': imageUrl,
+      'public_id': publicId,
+      'is_primary': isPrimary,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+
   ProductImageData copyWith({
     String? id,
     String? productId,
