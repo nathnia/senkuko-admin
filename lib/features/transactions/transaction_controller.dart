@@ -125,10 +125,11 @@ class TransactionController extends GetxController {
         final matchStatus = status == null || t.status == status;
 
         return matchSearch && matchDate && matchStatus;
-      }).toList()
-        ..sort((a, b) => sortOrder.value == 'terlama'
+      }).toList()..sort(
+        (a, b) => sortOrder.value == 'terlama'
             ? a.transactedAt.compareTo(b.transactedAt)
-            : b.transactedAt.compareTo(a.transactedAt)),
+            : b.transactedAt.compareTo(a.transactedAt),
+      ),
     );
   }
 
@@ -228,8 +229,6 @@ class TransactionController extends GetxController {
     try {
       final res = await TransactionService.getAllTransactions();
       if (res.statusCode == 200) {
-        // Exclude pending_payment hanya untuk non-COD (Midtrans, QRIS, dll).
-        // COD pending_payment tetap tampil karena admin perlu konfirmasi order.
         final all = transactionModelFromJson(res.body).data;
         transactionList.assignAll(
           all
@@ -241,11 +240,12 @@ class TransactionController extends GetxController {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
             ? ApiHelper.parseError(res.body)
-            : 'Gagal memuat daftar transaksi.';
+            : 'Gagal memuat daftar transaksi. (${res.statusCode})';
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('fetchTransactions error: $e\n$st');
       hasError.value = true;
-      errorMessage.value = 'Gagal memuat data.';
+      errorMessage.value = 'Gagal memuat data: $e';
     } finally {
       isLoading.value = false;
     }

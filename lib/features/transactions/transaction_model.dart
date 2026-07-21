@@ -38,8 +38,17 @@ class PaymentStyle {
     required this.label,
   });
 
-  static PaymentStyle of(String method) {
+  static PaymentStyle of(String? method) {
     switch (method) {
+      case null:
+        // Belum ada metode pembayaran — misal transaksi pending/cancelled
+        // yang belum sempat dibayar.
+        return const PaymentStyle(
+          color: AppColors.subtext,
+          background: AppColors.neutralBg,
+          icon: Icons.remove_circle_outline,
+          label: 'Belum Dibayar',
+        );
       case 'cash':
       case 'cod':
         return const PaymentStyle(
@@ -168,7 +177,7 @@ class TransactionData {
   final double grandTotal;
   final double paidAmount;
   final double changeAmount;
-  final String paymentMethod;
+  final String? paymentMethod;
   final String? deliveryAddress;
   final String? deliveryCity;
   final String? deliveryRegion;
@@ -188,7 +197,7 @@ class TransactionData {
     required this.grandTotal,
     required this.paidAmount,
     required this.changeAmount,
-    required this.paymentMethod,
+    this.paymentMethod,
     this.deliveryAddress,
     this.deliveryCity,
     this.deliveryRegion,
@@ -435,7 +444,7 @@ class TransactionDetail {
   final double grandTotal;
   final double paidAmount;
   final double changeAmount;
-  final String paymentMethod;
+  final String? paymentMethod;
 
   // Internal Midtrans fields — not shown in admin UI.
   // Keep parsing to avoid JSON decode errors if backend sends them.
@@ -464,7 +473,7 @@ class TransactionDetail {
     required this.grandTotal,
     required this.paidAmount,
     required this.changeAmount,
-    required this.paymentMethod,
+    this.paymentMethod,
     this.midtransOrderId,
     this.midtransToken,
     this.midtransPdfUrl,
