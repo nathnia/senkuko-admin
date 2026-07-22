@@ -123,6 +123,7 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
                     () => AppDropdown<String>(
                       label: 'Tipe Reward',
                       hint: 'Pilih tipe reward',
+                      isRequired: true,
                       value: _ctrl.rewardType.value.isEmpty
                           ? null
                           : _ctrl.rewardType.value,
@@ -173,12 +174,14 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
                   : 'cth: 10000',
               controller: _ctrl.discountValueC,
               keyboardType: TextInputType.number,
+              isRequired: true,
             ),
           ),
           Obx(
             () => AppDropdown<String>(
               label: 'Mode Diskon',
               hint: 'Pilih mode diskon',
+              isRequired: true,
               value: _ctrl.discountMode.value.isEmpty
                   ? null
                   : _ctrl.discountMode.value,
@@ -217,6 +220,7 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
             hint: 'cth: 1',
             controller: _ctrl.freeQtyC,
             keyboardType: TextInputType.number,
+            isRequired: true,
           ),
         ],
       );
@@ -255,12 +259,26 @@ class _VariantPickerField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Variant Produk',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.subtext,
-              fontWeight: FontWeight.w500,
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Variant Produk',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.subtext,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 5),

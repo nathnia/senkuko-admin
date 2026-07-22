@@ -97,12 +97,14 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
           label: 'Nama Promosi',
           hint: 'cth: Promo Lebaran 2025',
           controller: controller.nameC,
+          isRequired: true,
         ),
         AppTextField(
           label: 'Kode Promo',
           hint: 'cth: LEBARAN25',
           controller: controller.codeC,
           textCapitalization: TextCapitalization.characters,
+          isRequired: true,
         ),
         _typeSelector(),
         AppTextField(
@@ -129,6 +131,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
             : controller.selectedType.value,
         label: 'Tipe Promosi', // ← pakai parameter yang sudah ada
         hint: 'Pilih tipe promosi',
+        isRequired: true,
         items: labels.entries
             .map(
               (e) =>
@@ -161,6 +164,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
                   hint: 'Pilih tanggal',
                   date: controller.validFrom.value,
                   onTap: () => _pickDate(isFrom: true),
+                  isRequired: true,
                 ),
               ),
             ),
@@ -172,6 +176,7 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
                   hint: 'Pilih tanggal',
                   date: controller.validTo.value,
                   onTap: () => _pickDate(isFrom: false),
+                  isRequired: true,
                 ),
               ),
             ),
@@ -195,8 +200,9 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
         Divider(height: 1, color: Colors.grey.shade100),
         Obx(
           () => _toggleTile(
-            label: 'Stackable',
-            subtitle: 'Bisa digabung dengan promo lain',
+            label: 'Gabungkan dengan Promo Lain',
+            subtitle:
+                'Aktifkan agar promo ini dapat digunakan bersamaan dengan promo lain',
             value: controller.stackable.value,
             onChanged: (v) => controller.stackable.value = v,
           ),
@@ -222,7 +228,8 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
                 ),
                 elevation: 0,
               ),
-              onPressed: controller.isSubmitting.value || !controller.isDirty.value
+              onPressed:
+                  controller.isSubmitting.value || !controller.isDirty.value
                   ? null
                   : () async {
                       final success = _isEdit
@@ -234,7 +241,8 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
                           Get.back();
                         } else {
                           Get.until(
-                            (route) => route.settings.name == AppRoutes.promotions,
+                            (route) =>
+                                route.settings.name == AppRoutes.promotions,
                           );
                         }
                       }
@@ -320,16 +328,32 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
     required String hint,
     required DateTime? date,
     required VoidCallback onTap,
+    bool isRequired = false,
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
+      RichText(
         // ← label text, sama style AppTextField
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          color: AppColors.subtext,
-          fontWeight: FontWeight.w500,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: label,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.subtext,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (isRequired)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
         ),
       ),
       const SizedBox(height: 5),

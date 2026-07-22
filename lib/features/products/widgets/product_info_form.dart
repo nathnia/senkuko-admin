@@ -23,11 +23,13 @@ class ProductInfoForm extends StatelessWidget {
             label: 'Nama Produk',
             hint: 'cth: Indomie Goreng',
             controller: controller.nameC,
+            isRequired: true,
           ),
           AppTextField(
             label: 'SKU Code',
             hint: 'cth: PRD-001',
             controller: controller.skuC,
+            isRequired: true,
           ),
           AppTextField(
             label: 'Deskripsi',
@@ -62,12 +64,26 @@ class _CategorySelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Kategori',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.subtext,
-            fontWeight: FontWeight.w500,
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Kategori',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.subtext,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 5),

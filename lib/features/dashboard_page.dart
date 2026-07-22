@@ -200,7 +200,7 @@ class DashboardPage extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _sectionLabel('Pesanan'),
+            _sectionLabel('Transaksi'),
             GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.transaction),
               child: Text(

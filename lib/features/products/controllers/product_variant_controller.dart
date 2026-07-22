@@ -171,8 +171,32 @@ class ProductVariantController extends GetxController {
     _editVariantSnapshot = null;
   }
 
-  void saveEditVariant(int index) {
-    if (index < 0 || index >= editVariantsTemp.length) return;
+  // ===================== PRICE VALIDATION =====================
+  // ADDED: minimal 1 price list harus aktif + terisi angka > 0, baik pas
+  // nambah variant baru maupun pas edit. Dipakai bareng di
+  // addVariantFromForm() dan saveEditVariant() biar aturannya konsisten.
+  bool _hasAtLeastOnePrice({required bool isDialog}) {
+    final priceMap = isDialog ? priceC.dialogPrices : priceC.formPrices;
+    final priceControllers = isDialog
+        ? priceC.dialogPriceC
+        : priceC.priceControllers;
+
+    return priceC.priceListMaster.any((pl) {
+      final enabled = priceMap[pl.id]?['enabled'] as bool? ?? false;
+      if (!enabled) return false;
+      final raw = priceControllers[pl.id]?.text.replaceAll('.', '') ?? '';
+      final value = double.tryParse(raw) ?? 0;
+      return value > 0;
+    });
+  }
+
+  bool saveEditVariant(int index) {
+    if (index < 0 || index >= editVariantsTemp.length) return false;
+
+    if (!_hasAtLeastOnePrice(isDialog: true)) {
+      AppToast.show('Aktifkan minimal 1 harga price list');
+      return false;
+    }
 
     // Build a lookup map once instead of scanning on every iteration
     final existingPricesById = <String, dynamic>{};
@@ -227,6 +251,7 @@ class ProductVariantController extends GetxController {
     // not a UI layer. Popping the variant form is handled by the caller
     // (variant_form_page.dart's onSave), otherwise we get a double-pop
     // that also closes the Edit Product page underneath it.
+    return true;
   }
 
   // ===================== LIFECYCLE =====================
@@ -336,13 +361,19 @@ class ProductVariantController extends GetxController {
     priceC.clearFormPrices(productC: productC);
   }
 
-  void addVariantFromForm({required bool isEditMode}) {
+  bool addVariantFromForm({required bool isEditMode}) {
     final stock = int.tryParse(variantStockC.text);
     if (variantNameC.text.isEmpty ||
         stock == null ||
         selectedUnitId.value.isEmpty) {
       AppToast.show('Lengkapi data variant');
-      return;
+      return false;
+    }
+
+    // ADDED: minimal 1 price list harus aktif sebelum variant bisa disimpan
+    if (!_hasAtLeastOnePrice(isDialog: false)) {
+      AppToast.show('Aktifkan minimal 1 harga price list');
+      return false;
     }
 
     final unit = unitC.unitList.firstWhere((u) => u.id == selectedUnitId.value);
@@ -377,6 +408,7 @@ class ProductVariantController extends GetxController {
     }
 
     clearVariantForm();
+    return true;
   }
 
   void removeTempVariant(int index, {required bool isEditMode}) {

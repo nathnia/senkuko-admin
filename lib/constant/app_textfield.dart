@@ -75,7 +75,7 @@ class AppTextField extends StatelessWidget {
                   ),
                   if (isRequired)
                     const TextSpan(
-                      text: '*',
+                      text: ' *',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.red,

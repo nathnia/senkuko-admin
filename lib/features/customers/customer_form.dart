@@ -102,6 +102,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                       label: 'Nama Pelanggan',
                       hint: 'Masukkan nama pelanggan',
                       textCapitalization: TextCapitalization.words,
+                      isRequired: true,
                     ),
 
                     // Kode customer — add mode punya tombol refresh untuk
@@ -112,6 +113,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                         label: 'Kode Pelanggan',
                         hint: 'Contoh: CUST-A3X9B2',
                         textCapitalization: TextCapitalization.characters,
+                        isRequired: true,
                       )
                     else
                       _CodeFieldWithRefresh(c: _c),
@@ -225,6 +227,7 @@ class _CodeFieldWithRefresh extends StatelessWidget {
             label: 'Kode Pelanggan',
             hint: 'CUST-XXXXXX',
             textCapitalization: TextCapitalization.characters,
+            isRequired: true,
           ),
         ),
         const SizedBox(width: 8),

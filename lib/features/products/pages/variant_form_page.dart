@@ -67,20 +67,11 @@ class VariantFormPage extends StatelessWidget {
               label: isEditing ? 'Terapkan' : 'Simpan',
               onSave: () {
                 if (isEditing) {
-                  c.saveEditVariant(index);
-                  Get.back();
+                  final ok = c.saveEditVariant(index);
+                  if (ok) Get.back();
                 } else {
-                  final beforeCount = isEditMode
-                      ? c.editVariantsTemp.length
-                      : c.variantsTemp.length;
-
-                  c.addVariantFromForm(isEditMode: isEditMode);
-
-                  final afterCount = isEditMode
-                      ? c.editVariantsTemp.length
-                      : c.variantsTemp.length;
-
-                  if (afterCount > beforeCount) Get.back();
+                  final ok = c.addVariantFromForm(isEditMode: isEditMode);
+                  if (ok) Get.back();
                 }
               },
             ),
@@ -102,6 +93,7 @@ class VariantFormPage extends StatelessWidget {
                       onChanged: isEditing
                           ? (_) => controller.isDirty.value = true
                           : null,
+                      isRequired: true,
                     ),
                     AppTextField(
                       label: 'Stok',
@@ -112,6 +104,7 @@ class VariantFormPage extends StatelessWidget {
                       onChanged: isEditing
                           ? (_) => controller.isDirty.value = true
                           : null,
+                      isRequired: true,
                     ),
                     AppTextField(
                       label: 'Barcode',
@@ -129,9 +122,37 @@ class VariantFormPage extends StatelessWidget {
 
               AppCard(
                 title: 'UNIT',
-                child: isEditing
-                    ? _unitDropdownEdit()
-                    : _unitDropdownAdd(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Pilih Unit',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.subtext,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const TextSpan(
+                            text: ' *',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    isEditing
+                        ? _unitDropdownEdit()
+                        : _unitDropdownAdd(context),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -402,7 +423,32 @@ class VariantFormPage extends StatelessWidget {
           );
         }
         return Column(
-          children: priceC.sortedPriceListMaster.map((pl) {
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Aktifkan minimal 1 price list',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.subtext,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...priceC.sortedPriceListMaster.map((pl) {
             return Obx(() {
               final priceMap =
                   isEditing ? priceC.dialogPrices : priceC.formPrices;
@@ -503,7 +549,8 @@ class VariantFormPage extends StatelessWidget {
                 ),
               );
             });
-          }).toList(),
+          }),
+          ],
         );
       }),
     );

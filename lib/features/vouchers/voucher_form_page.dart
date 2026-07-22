@@ -124,6 +124,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                       hint: 'cth: VOUCHER-SPESIAL-001',
                       controller: controller.codeC,
                       textCapitalization: TextCapitalization.characters,
+                      isRequired: true,
                     ),
 
                     // ── Batas Pemakaian ───────────────────────────────────
@@ -282,12 +283,26 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Promosi',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.subtext,
-              fontWeight: FontWeight.w500,
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Promosi',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.subtext,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 5),

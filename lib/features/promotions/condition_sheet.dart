@@ -134,6 +134,7 @@ class _PromotionConditionFormPageState
                     () => AppDropdown<String>(
                       label: 'Tipe Syarat',
                       hint: 'Pilih tipe syarat',
+                      isRequired: true,
                       value: _ctrl.conditionType.value.isEmpty
                           ? null
                           : _ctrl.conditionType.value,
@@ -166,6 +167,7 @@ class _PromotionConditionFormPageState
                     () => AppDropdown<String>(
                       label: 'Operator',
                       hint: 'Pilih operator',
+                      isRequired: true,
                       value: _ctrl.conditionOperator.value.isEmpty
                           ? null
                           : _ctrl.conditionOperator.value,
@@ -194,6 +196,7 @@ class _PromotionConditionFormPageState
                     label: 'Value',
                     hint: 'cth: 50000 atau member,reguler',
                     controller: _ctrl.conditionValueC,
+                    isRequired: true,
                   ),
                   Obx(() {
                     final type = _ctrl.conditionType.value;
@@ -264,12 +267,26 @@ class _TargetPickerField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.subtext,
-              fontWeight: FontWeight.w500,
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.subtext,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 5),
