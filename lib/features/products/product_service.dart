@@ -106,6 +106,7 @@ class ProductService {
     required String unitId,
     required String name,
     required int stock,
+    int crisisStock = 0,
     String? barcode,
     bool isBaseUnit = false,
   }) => _safe(
@@ -119,6 +120,7 @@ class ProductService {
         'barcode': (barcode == null || barcode.isEmpty) ? null : barcode,
         'stock_qty': stock,
         'min_stock_qty': 1,
+        'crisis_stock': crisisStock,
         'conversion_factor': 1,
         'is_base_unit': isBaseUnit,
         'is_active': true,
@@ -132,6 +134,7 @@ class ProductService {
     required int stock,
     required String unitId,
     required bool isBaseUnit,
+    int crisisStock = 0,
     String? barcode,
   }) => _safe(
     http.put(
@@ -143,6 +146,7 @@ class ProductService {
         'unit_id': unitId,
         'barcode': (barcode == null || barcode.isEmpty) ? null : barcode,
         'min_stock_qty': 1,
+        'crisis_stock': crisisStock,
         'conversion_factor': 1,
         'is_base_unit': isBaseUnit,
         'is_active': true,

@@ -18,6 +18,7 @@ class ProductSummary {
   final double mainPriceValue;
   final int additionalPriceCount;
   final int variantCount;
+  final int crisisStockThreshold;
 
   const ProductSummary({
     required this.totalStock,
@@ -25,6 +26,7 @@ class ProductSummary {
     required this.mainPriceValue,
     required this.additionalPriceCount,
     required this.variantCount,
+    required this.crisisStockThreshold,
   });
 }
 
@@ -55,6 +57,7 @@ class ProductVariantController extends GetxController {
   // ===================== ADD VARIANT FORM =====================
   final variantNameC = TextEditingController();
   final variantStockC = TextEditingController();
+  final variantCrisisStockC = TextEditingController();
   final variantBarcodeC = TextEditingController();
   final selectedUnitId = ''.obs;
 
@@ -62,11 +65,13 @@ class ProductVariantController extends GetxController {
   final dialogUnitId = ''.obs;
   final dialogNameC = TextEditingController();
   final dialogStockC = TextEditingController();
+  final dialogCrisisStockC = TextEditingController();
   final dialogBarcodeC = TextEditingController();
 
   // ===================== DIRTY TRACKING — ADD VARIANT FORM =====================
   String _snapName = '';
   String _snapStock = '';
+  String _snapCrisisStock = '';
   String _snapBarcode = '';
   String _snapUnitId = '';
   Map<String, bool> _snapPricesEnabled = {};
@@ -76,6 +81,7 @@ class ProductVariantController extends GetxController {
   void takeVariantSnapshot() {
     _snapName = variantNameC.text;
     _snapStock = variantStockC.text;
+    _snapCrisisStock = variantCrisisStockC.text;
     _snapBarcode = variantBarcodeC.text;
     _snapUnitId = selectedUnitId.value;
     _snapPricesEnabled = {
@@ -101,6 +107,7 @@ class ProductVariantController extends GetxController {
     productC.isDirty.value =
         variantNameC.text != _snapName ||
         variantStockC.text != _snapStock ||
+        variantCrisisStockC.text != _snapCrisisStock ||
         variantBarcodeC.text != _snapBarcode ||
         selectedUnitId.value != _snapUnitId ||
         pricesChanged;
@@ -110,7 +117,12 @@ class ProductVariantController extends GetxController {
 
   void listenVariantFormChanges(ProductController productC) {
     if (_variantDirtyListener != null) {
-      for (final ctrl in [variantNameC, variantStockC, variantBarcodeC]) {
+      for (final ctrl in [
+        variantNameC,
+        variantStockC,
+        variantCrisisStockC,
+        variantBarcodeC,
+      ]) {
         ctrl.removeListener(_variantDirtyListener!);
       }
       for (final ctrl in priceC.priceControllers.values) {
@@ -120,7 +132,12 @@ class ProductVariantController extends GetxController {
 
     _variantDirtyListener = () => checkVariantDirty(productC);
 
-    for (final ctrl in [variantNameC, variantStockC, variantBarcodeC]) {
+    for (final ctrl in [
+      variantNameC,
+      variantStockC,
+      variantCrisisStockC,
+      variantBarcodeC,
+    ]) {
       ctrl.addListener(_variantDirtyListener!);
     }
     for (final ctrl in priceC.priceControllers.values) {
@@ -133,7 +150,12 @@ class ProductVariantController extends GetxController {
 
   void _removeVariantListeners() {
     if (_variantDirtyListener == null) return;
-    for (final ctrl in [variantNameC, variantStockC, variantBarcodeC]) {
+    for (final ctrl in [
+      variantNameC,
+      variantStockC,
+      variantCrisisStockC,
+      variantBarcodeC,
+    ]) {
       ctrl.removeListener(_variantDirtyListener!);
     }
     for (final ctrl in priceC.priceControllers.values) {
@@ -153,6 +175,7 @@ class ProductVariantController extends GetxController {
     final v = editVariantsTemp[index];
     dialogNameC.text = v['name']?.toString() ?? '';
     dialogStockC.text = v['stock_qty']?.toString() ?? '0';
+    dialogCrisisStockC.text = v['crisis_stock']?.toString() ?? '0';
     dialogBarcodeC.text = v['barcode']?.toString() ?? '';
     dialogUnitId.value = v['unit_id']?.toString() ?? '';
 
@@ -231,6 +254,7 @@ class ProductVariantController extends GetxController {
       ...editVariantsTemp[index],
       'name': dialogNameC.text.trim(),
       'stock_qty': int.tryParse(dialogStockC.text.trim()) ?? 0,
+      'crisis_stock': int.tryParse(dialogCrisisStockC.text.trim()) ?? 0,
       'barcode': dialogBarcodeC.text.trim().isEmpty
           ? null
           : dialogBarcodeC.text.trim(),
@@ -261,9 +285,11 @@ class ProductVariantController extends GetxController {
     _unitIdWorker?.dispose();
     variantNameC.dispose();
     variantStockC.dispose();
+    variantCrisisStockC.dispose();
     variantBarcodeC.dispose();
     dialogNameC.dispose();
     dialogStockC.dispose();
+    dialogCrisisStockC.dispose();
     dialogBarcodeC.dispose();
     super.onClose();
   }
@@ -325,6 +351,7 @@ class ProductVariantController extends GetxController {
           'id': v.id,
           'name': v.name,
           'stock_qty': v.stockQty,
+          'crisis_stock': v.crisisStock,
           'barcode': v.barcode ?? '',
           'unit_id': resolveUnitId(v),
           'unit_name': v.unitName ?? '',
@@ -356,6 +383,7 @@ class ProductVariantController extends GetxController {
     _removeVariantListeners();
     variantNameC.clear();
     variantStockC.clear();
+    variantCrisisStockC.clear();
     variantBarcodeC.clear();
     selectedUnitId.value = '';
     priceC.clearFormPrices(productC: productC);
@@ -391,6 +419,7 @@ class ProductVariantController extends GetxController {
       'id': '',
       'name': variantNameC.text.trim(),
       'stock_qty': stock,
+      'crisis_stock': int.tryParse(variantCrisisStockC.text.trim()) ?? 0,
       'barcode': variantBarcodeC.text.isEmpty
           ? null
           : variantBarcodeC.text.trim(),
@@ -477,6 +506,8 @@ class ProductVariantController extends GetxController {
       unitId: variantData['unit_id']?.toString() ?? '',
       name: variantData['name']?.toString() ?? '',
       stock: int.tryParse(variantData['stock_qty']?.toString() ?? '0') ?? 0,
+      crisisStock:
+          int.tryParse(variantData['crisis_stock']?.toString() ?? '0') ?? 0,
       barcode: variantData['barcode']?.toString().trim(),
       isBaseUnit: variantData['is_base_unit'] as bool? ?? false,
     );
@@ -505,6 +536,8 @@ class ProductVariantController extends GetxController {
   Future<void> updateExistingVariant(Map<String, dynamic> v) async {
     final variantId = v['id'].toString();
     final unitId = v['unit_id']?.toString() ?? '';
+    final crisisStock =
+        int.tryParse(v['crisis_stock']?.toString() ?? '0') ?? 0;
     final barcode = v['barcode']?.toString().trim() ?? '';
     final isBaseUnit = v['is_base_unit'] as bool? ?? false;
 
@@ -514,6 +547,7 @@ class ProductVariantController extends GetxController {
       id: variantId,
       name: v['name']?.toString() ?? '',
       stock: int.tryParse(v['stock_qty']?.toString() ?? '0') ?? 0,
+      crisisStock: crisisStock,
       unitId: unitId,
       barcode: barcode.isEmpty ? null : barcode,
       isBaseUnit: isBaseUnit,
@@ -590,12 +624,18 @@ class ProductVariantController extends GetxController {
         ? mainVariantPrices.length - 1
         : 0;
 
+    // ADDED: ambil crisis_stock dari varian utama (base unit), bukan
+    // angka hardcode — beda produk bisa punya ambang stok kritis beda-beda
+    // sesuai yang di-set lewat backend.
+    final crisisStockThreshold = mainVariant?.crisisStock ?? 0;
+
     return ProductSummary(
       totalStock: totalStock,
       isOutOfStock: isOutOfStock,
       mainPriceValue: mainPriceValue,
       additionalPriceCount: additionalPriceCount,
       variantCount: variants.length,
+      crisisStockThreshold: crisisStockThreshold,
     );
   }
 }

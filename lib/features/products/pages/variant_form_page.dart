@@ -107,6 +107,18 @@ class VariantFormPage extends StatelessWidget {
                       isRequired: true,
                     ),
                     AppTextField(
+                      label: 'Stok Kritis',
+                      hint: 'cth: 5 (batas minimal sebelum stok menipis)',
+                      controller: isEditing
+                          ? c.dialogCrisisStockC
+                          : c.variantCrisisStockC,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: isEditing
+                          ? (_) => controller.isDirty.value = true
+                          : null,
+                    ),
+                    AppTextField(
                       label: 'Barcode',
                       hint: 'cth: 8999999004001',
                       controller:
@@ -549,7 +561,7 @@ class VariantFormPage extends StatelessWidget {
                 ),
               );
             });
-          }),
+          }).toList(),
           ],
         );
       }),

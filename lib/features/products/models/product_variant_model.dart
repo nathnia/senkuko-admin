@@ -38,6 +38,7 @@ class VariantData {
   String? barcode;
   int stockQty;
   int minStockQty;
+  int crisisStock;
   String conversionFactor;
   int isBaseUnit;
   int isActive;
@@ -54,6 +55,7 @@ class VariantData {
     this.barcode,
     required this.stockQty,
     required this.minStockQty,
+    required this.crisisStock,
     required this.conversionFactor,
     required this.isBaseUnit,
     required this.isActive,
@@ -72,6 +74,7 @@ class VariantData {
       barcode: json["barcode"],
       stockQty: json["stock_qty"] ?? 0,
       minStockQty: json["min_stock_qty"] ?? 0,
+      crisisStock: json["crisis_stock"] ?? 0,
       conversionFactor: json["conversion_factor"]?.toString() ?? "1.0",
       isBaseUnit: json["is_base_unit"] ?? 0,
       isActive: json["is_active"] ?? 0,
@@ -90,6 +93,7 @@ class VariantData {
     "barcode": barcode,
     "stock_qty": stockQty,
     "min_stock_qty": minStockQty,
+    "crisis_stock": crisisStock,
     "conversion_factor": conversionFactor,
     "is_base_unit": isBaseUnit,
     "is_active": isActive,

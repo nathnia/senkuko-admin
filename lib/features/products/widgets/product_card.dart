@@ -201,7 +201,10 @@ class _ProductInfo extends StatelessWidget {
                   label: '$variantCount varian',
                   type: _BadgeType.neutral,
                 ),
-                _StockBadge(stock: summary.totalStock),
+                _StockBadge(
+                  stock: summary.totalStock,
+                  crisisStock: summary.crisisStockThreshold,
+                ),
               ],
             ),
           ),
@@ -269,10 +272,14 @@ class _Badge extends StatelessWidget {
   }
 }
 
+// ── Stock badge — pakai crisis_stock dari backend, bukan angka hardcode.
+// Kalau crisis_stock belum di-set (0 / tidak ada di backend), badge cuma
+// bedain "habis" vs "ada stok" — gak nebak-nebak ambang batas sendiri.
 class _StockBadge extends StatelessWidget {
   final int stock;
+  final int crisisStock;
 
-  const _StockBadge({required this.stock});
+  const _StockBadge({required this.stock, required this.crisisStock});
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +290,7 @@ class _StockBadge extends StatelessWidget {
         type: _BadgeType.danger,
       );
     }
-    if (stock <= 10) {
+    if (crisisStock > 0 && stock <= crisisStock) {
       return _Badge(
         icon: Icons.warning_amber_rounded,
         label: '$stock stok',
