@@ -47,8 +47,16 @@ class ProductController extends GetxController {
   // ADDED: stock status filters for inventory workflows
   final showLowStockOnly = false.obs;
   final showOutOfStockOnly = false.obs;
-  // Threshold configurable per business — default 5 units
-  final lowStockThreshold = 5.obs;
+  // CHANGED: no more global hardcoded threshold — "low stock" is now
+  // evaluated per-product against ProductSummary.crisisStockThreshold
+  // (from crisis_stock on the base-unit variant), same source of truth
+  // as the warning badge on ProductCard. Kept as a getter only for
+  // any old call sites that might still reference it during migration.
+  @Deprecated(
+    'Gunakan ProductSummary.crisisStockThreshold per produk lewat '
+    'variantC.getSummaryForProduct(id) — bukan angka global.',
+  )
+  int get lowStockThreshold => 0;
 
   // PRICE FILTER
   final minPrice = RxnDouble();
@@ -171,10 +179,17 @@ class ProductController extends GetxController {
     }
 
     // LOW STOCK FILTER
+    // CHANGED: pakai crisis_stock per produk (dari base-unit variant),
+    // bukan angka global hardcode. Produk yang belum di-set crisis_stock-nya
+    // (threshold 0) sengaja gak dianggap "menipis" — sama kayak logic badge
+    // di ProductCard, biar konsisten dan gak nebak-nebak ambang batas sendiri.
     if (showLowStockOnly.value) {
       products = products.where((p) {
-        final stock = variantC.getSummaryForProduct(p.id).totalStock;
-        return stock > 0 && stock <= lowStockThreshold.value;
+        final summary = variantC.getSummaryForProduct(p.id);
+        final threshold = summary.crisisStockThreshold;
+        return threshold > 0 &&
+            summary.totalStock > 0 &&
+            summary.totalStock <= threshold;
       }).toList();
     }
 
