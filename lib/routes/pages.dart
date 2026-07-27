@@ -3,9 +3,7 @@ import 'package:senkukoadmin/features/auth/auth_binding.dart';
 import 'package:senkukoadmin/features/auth/login_page.dart';
 import 'package:senkukoadmin/features/auth/splash_page.dart';
 import 'package:senkukoadmin/features/customers/customer_form.dart';
-import 'package:senkukoadmin/features/dashboard_binding.dart';
 import 'package:senkukoadmin/features/dashboard_page.dart';
-import 'package:senkukoadmin/features/customers/customer_binding.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
 import 'package:senkukoadmin/features/products/pages/add_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/detail_product_page.dart';
@@ -13,39 +11,35 @@ import 'package:senkukoadmin/features/products/pages/edit_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/import_product_page.dart';
 import 'package:senkukoadmin/features/products/pages/manage_categories_page.dart';
 import 'package:senkukoadmin/features/products/pages/variant_form_page.dart';
-import 'package:senkukoadmin/features/products/product_binding.dart';
 import 'package:senkukoadmin/features/products/pages/product_page.dart';
 import 'package:senkukoadmin/features/promotions/condition_sheet.dart';
 import 'package:senkukoadmin/features/promotions/promotion_detail_page.dart';
 import 'package:senkukoadmin/features/promotions/promotion_form.dart';
 import 'package:senkukoadmin/features/promotions/promotion_page.dart';
-import 'package:senkukoadmin/features/promotions/promotion_binding.dart';
 import 'package:senkukoadmin/features/promotions/promotion_reward_form.dart';
-import 'package:senkukoadmin/features/vouchers/voucher_binding.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_form_page.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_page.dart';
-import 'package:senkukoadmin/features/transactions/transaction_binding.dart';
 import 'package:senkukoadmin/features/transactions/transaction_detail_page.dart';
 import 'package:senkukoadmin/features/transactions/transaction_page.dart';
 import 'package:senkukoadmin/routes/routes.dart';
+
 
 class AppPages {
   static final pages = [
     GetPage(
       name: AppRoutes.splash,
       page: () => const SplashPage(),
-      binding: AuthBinding(), // AuthController sudah fenix: true, aman dipakai di sini
+      binding: AuthBinding(),
     ),
     GetPage(
       name: AppRoutes.login,
       page: () => const LoginPage(),
       binding: AuthBinding(),
     ),
-    GetPage(name: AppRoutes.dashboard, page: () => DashboardPage(), binding: DashboardBinding()),
+    GetPage(name: AppRoutes.dashboard, page: () => DashboardPage()),
     GetPage(
       name: AppRoutes.product,
       page: () => ProductPage(),
-      binding: ProductBinding(),
     ),
     GetPage(name: AppRoutes.addProduct, page: () => AddProductPage()),
     GetPage(name: AppRoutes.editProduct, page: () => EditProductPage()),
@@ -57,7 +51,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.customer,
       page: () => const CustomerPage(),
-      binding: CustomerBinding(),
     ),
     GetPage(
       name: AppRoutes.customerForm,
@@ -66,7 +59,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.transaction,
       page: () => TransactionPage(),
-      binding: TransactionBinding(),
     ),
     GetPage(
       name: AppRoutes.transactionDetail,
@@ -75,7 +67,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.promotions,
       page: () => PromotionPage(),
-      binding: PromotionBinding(),
     ),
     GetPage(name: AppRoutes.promotionDetail, page: () => PromotionDetailPage()),
     GetPage(name: AppRoutes.promotionForm, page: () => PromotionFormPage()),
@@ -91,12 +82,10 @@ class AppPages {
     GetPage(
       name: AppRoutes.vouchers,
       page: () => VoucherPage(),
-      binding: VoucherBinding(),
     ),
     GetPage(
       name: AppRoutes.voucherForm,
       page: () => VoucherFormPage(),
-      binding: VoucherBinding(),
     ),
     GetPage(name: AppRoutes.variantForm, page: () => VariantFormPage()),
     GetPage(

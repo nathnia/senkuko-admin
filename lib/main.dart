@@ -8,6 +8,7 @@ import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/constant/connectivity_banner.dart';
 import 'package:senkukoadmin/constant/connectivity_service.dart';
+import 'package:senkukoadmin/constant/core_binding.dart';
 import 'package:senkukoadmin/features/auth/auth_controller.dart';
 import 'package:senkukoadmin/routes/pages.dart';
 import 'package:senkukoadmin/routes/routes.dart';
@@ -39,7 +40,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         useMaterial3: true,
       ),
-      initialRoute: AppRoutes.splash, // ← mulai dari splash
+      initialBinding: CoreBinding(),
+      initialRoute: AppRoutes.splash,
       getPages: AppPages.pages,
       builder: (context, child) => Column(
         children: [

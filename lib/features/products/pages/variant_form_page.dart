@@ -561,7 +561,7 @@ class VariantFormPage extends StatelessWidget {
                 ),
               );
             });
-          }).toList(),
+          }),
           ],
         );
       }),
