@@ -45,22 +45,29 @@ class CustomerController extends GetxController {
   CustomerGroup _snapGroup = CustomerGroup.general;
 
   List<TextEditingController> get _formControllers => [
-        nameC,
-        codeC,
-        phoneC,
-        emailC,
-        addressC,
-        cityC,
-        regionC,
-        subregionC,
-      ];
+    nameC,
+    codeC,
+    phoneC,
+    emailC,
+    addressC,
+    cityC,
+    regionC,
+    subregionC,
+  ];
 
   // ===================== LIFECYCLE =====================
+  bool _hasLoadedOnce = false;
+
   @override
   void onInit() {
     super.onInit();
-    fetchCustomers();
+    if (!_hasLoadedOnce) {
+      fetchCustomers();
+      _hasLoadedOnce = true;
+    }
   }
+
+  Future<void> refreshCustomers() => fetchCustomers();
 
   @override
   void onClose() {
@@ -73,12 +80,15 @@ class CustomerController extends GetxController {
   // ===================== GENERATE KODE =====================
   // Format: CUST-XXXXXX (6 karakter alphanumeric uppercase)
   // Dipanggil saat resetForAdd() — user tetap bisa edit manual.
-String _generateCustomerCode() {
-  const chars = '0123456789';
-  final rng = Random.secure();
-  final suffix = List.generate(9, (_) => chars[rng.nextInt(chars.length)]).join();
-  return '0$suffix';
-}
+  String _generateCustomerCode() {
+    const chars = '0123456789';
+    final rng = Random.secure();
+    final suffix = List.generate(
+      9,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
+    return '0$suffix';
+  }
 
   // Regenerate kode baru — dipanggil dari tombol refresh di form
   void regenerateCode() {
@@ -155,26 +165,26 @@ String _generateCustomerCode() {
   }
 
   void populateEditForm(CustomerData c) {
-    _snapName      = c.name;
-    _snapCode      = c.code;
-    _snapPhone     = c.phone ?? '';
-    _snapEmail     = c.email ?? '';
-    _snapAddress   = c.address ?? '';
-    _snapCity      = c.city ?? '';
-    _snapRegion    = c.region ?? '';
+    _snapName = c.name;
+    _snapCode = c.code;
+    _snapPhone = c.phone ?? '';
+    _snapEmail = c.email ?? '';
+    _snapAddress = c.address ?? '';
+    _snapCity = c.city ?? '';
+    _snapRegion = c.region ?? '';
     _snapSubregion = c.subregion ?? '';
-    _snapGroup     = c.customerGroup;
+    _snapGroup = c.customerGroup;
 
-    nameC.text      = _snapName;
-    codeC.text      = _snapCode;
-    phoneC.text     = _snapPhone;
-    emailC.text     = _snapEmail;
-    addressC.text   = _snapAddress;
-    cityC.text      = _snapCity;
-    regionC.text    = _snapRegion;
+    nameC.text = _snapName;
+    codeC.text = _snapCode;
+    phoneC.text = _snapPhone;
+    emailC.text = _snapEmail;
+    addressC.text = _snapAddress;
+    cityC.text = _snapCity;
+    regionC.text = _snapRegion;
     subregionC.text = _snapSubregion;
     customerGroup.value = _snapGroup;
-    isDirty.value   = false;
+    isDirty.value = false;
 
     _addListeners(_checkEditDirty);
   }
@@ -309,7 +319,8 @@ String _generateCustomerCode() {
       } else {
         // Kalau kode sudah dipakai, generate ulang otomatis
         final errMsg = ApiHelper.parseError(res.body, '');
-        final isDuplicateCode = errMsg.toLowerCase().contains('code') ||
+        final isDuplicateCode =
+            errMsg.toLowerCase().contains('code') ||
             errMsg.toLowerCase().contains('kode') ||
             res.statusCode == 409;
 
@@ -317,7 +328,9 @@ String _generateCustomerCode() {
           codeC.text = _generateCustomerCode();
           AppToast.show('Kode sudah dipakai, kode baru sudah di-generate');
         } else {
-          AppToast.show(ApiHelper.parseError(res.body, 'Gagal menambahkan pelanggan'));
+          AppToast.show(
+            ApiHelper.parseError(res.body, 'Gagal menambahkan pelanggan'),
+          );
         }
         return false;
       }
@@ -374,19 +387,23 @@ String _generateCustomerCode() {
 
   // ===================== TOGGLE STATUS =====================
   Future<bool> toggleCustomerStatus(CustomerData customer) async {
-    final newStatus =
-        customer.isActive ? CustomerStatus.inactive : CustomerStatus.active;
-    final label =
-        newStatus == CustomerStatus.inactive ? 'nonaktifkan' : 'aktifkan';
+    final newStatus = customer.isActive
+        ? CustomerStatus.inactive
+        : CustomerStatus.active;
+    final label = newStatus == CustomerStatus.inactive
+        ? 'nonaktifkan'
+        : 'aktifkan';
 
     final confirmed = await AppDialog.confirm(
       title:
           '${newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan'} Pelanggan',
       content: 'Yakin ingin $label "${customer.name}"?',
-      confirmLabel:
-          newStatus == CustomerStatus.active ? 'Aktifkan' : 'Nonaktifkan',
-      confirmColor:
-          newStatus == CustomerStatus.active ? Colors.green : Colors.orange,
+      confirmLabel: newStatus == CustomerStatus.active
+          ? 'Aktifkan'
+          : 'Nonaktifkan',
+      confirmColor: newStatus == CustomerStatus.active
+          ? Colors.green
+          : Colors.orange,
     );
 
     if (!confirmed) return false;
