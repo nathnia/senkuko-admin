@@ -109,6 +109,26 @@ class AuthController extends GetxController {
     Get.offAllNamed(AppRoutes.login);
   }
 
+  // ── Unauthorized Handler (dipanggil oleh ApiClient) ───────────────────────
+  // Titik pusat buat nanganin 401 dari endpoint MANAPUN, dari page manapun
+  // request-nya dilempar. Beda sama _isTokenExpired() di checkSession() yang
+  // cuma cek expiry lokal pas app restart — ini nangkep kasus token
+  // invalid/di-revoke dari server SELAMA app lagi kebuka, gak perlu nunggu
+  // restart.
+  //
+  // Guard `_loggingOut` biar gak dobel logout/toast kalau beberapa request
+  // barengan (mis. Future.wait) sama-sama balik 401.
+  bool _loggingOut = false;
+
+  void handleUnauthorized() {
+    if (_loggingOut) return;
+    _loggingOut = true;
+
+    _clearSession();
+    AppToast.show('Sesi berakhir, silakan login kembali');
+    Get.offAllNamed(AppRoutes.login);
+  }
+
   // ── Token Expiry Check ────────────────────────────────────────────────────
   bool _isTokenExpired(String t) {
     if (t.isEmpty) return true;
@@ -138,6 +158,7 @@ class AuthController extends GetxController {
   void toggleObscure() => obscurePassword.toggle();
 
   void _saveSession(AuthResponse auth) {
+    _loggingOut = false;
     token.value = auth.data.token;
     currentUser.value = auth.data.user;
     _box.write(_keyToken, auth.data.token);

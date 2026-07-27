@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:senkukoadmin/constant/api_client.dart';
 import 'package:senkukoadmin/constant/api_constant.dart';
 
 class AuthService {
@@ -37,7 +38,7 @@ class AuthService {
 
   /// GET /me — ambil profil user dari token yang tersimpan
   static Future<http.Response> getMe() {
-    return http.get(
+    return ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/me'),
       headers: ApiConstants.headers,
     );

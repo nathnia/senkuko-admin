@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:senkukoadmin/constant/api_client.dart';
 import 'package:senkukoadmin/constant/api_constant.dart';
+import 'package:senkukoadmin/features/auth/auth_controller.dart';
 
 class ProductService {
   static const _timeout = Duration(seconds: 60);
@@ -27,11 +30,11 @@ class ProductService {
 
   // ===================== PRODUCTS =====================
   static Future<http.Response> getProducts() => _safe(
-    http.get(Uri.parse(ApiConstants.products), headers: ApiConstants.headers),
+    ApiClient.get(Uri.parse(ApiConstants.products), headers: ApiConstants.headers),
   );
 
   static Future<http.Response> getProductById(String id) => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/products/$id'),
       headers: ApiConstants.headers,
     ),
@@ -44,7 +47,7 @@ class ProductService {
     required String barcode,
     String? categoryId,
   }) => _safe(
-    http.post(
+    ApiClient.post(
       Uri.parse(ApiConstants.products),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -67,7 +70,7 @@ class ProductService {
     String? categoryId,
     bool isActive = true,
   }) => _safe(
-    http.put(
+    ApiClient.put(
       Uri.parse('${ApiConstants.baseUrl}/products/$id'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -83,19 +86,19 @@ class ProductService {
 
   static Future<http.Response> deleteProduct(String productId) {
     final url = '${ApiConstants.baseUrl}/products/$productId';
-    return _safe(http.delete(Uri.parse(url), headers: ApiConstants.headers));
+    return _safe(ApiClient.delete(Uri.parse(url), headers: ApiConstants.headers));
   }
 
   // ===================== VARIANTS =====================
   static Future<http.Response> getAllVariants() => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/product-variants'),
       headers: ApiConstants.headers,
     ),
   );
 
   static Future<http.Response> getVariants(String productId) => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/products/$productId/variants'),
       headers: ApiConstants.headers,
     ),
@@ -110,7 +113,7 @@ class ProductService {
     String? barcode,
     bool isBaseUnit = false,
   }) => _safe(
-    http.post(
+    ApiClient.post(
       Uri.parse('${ApiConstants.baseUrl}/product-variants'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -137,7 +140,7 @@ class ProductService {
     int crisisStock = 0,
     String? barcode,
   }) => _safe(
-    http.put(
+    ApiClient.put(
       Uri.parse('${ApiConstants.baseUrl}/product-variants/$id'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -156,7 +159,7 @@ class ProductService {
 
   // BARU — sebelumnya tidak ada sama sekali
   static Future<http.Response> deleteVariant(String variantId) => _safe(
-    http.delete(
+    ApiClient.delete(
       Uri.parse('${ApiConstants.baseUrl}/product-variants/$variantId'),
       headers: ApiConstants.headers,
     ),
@@ -164,14 +167,14 @@ class ProductService {
 
   // ===================== PRICES =====================
   static Future<http.Response> getPrices() => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse(ApiConstants.productPrices),
       headers: ApiConstants.headers,
     ),
   );
 
   static Future<http.Response> getPricesByVariant(String variantId) => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/product-prices/variant/$variantId'),
       headers: ApiConstants.headers,
     ),
@@ -182,7 +185,7 @@ class ProductService {
     required String priceListId,
     required double price,
   }) => _safe(
-    http.post(
+    ApiClient.post(
       Uri.parse('${ApiConstants.baseUrl}/product-prices'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -200,7 +203,7 @@ class ProductService {
     required String priceListId,
     required double price,
   }) => _safe(
-    http.put(
+    ApiClient.put(
       Uri.parse('${ApiConstants.baseUrl}/product-prices/$priceId'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -213,7 +216,7 @@ class ProductService {
   );
 
   static Future<http.Response> deletePrice(String priceId) => _safe(
-    http.delete(
+    ApiClient.delete(
       Uri.parse('${ApiConstants.baseUrl}/product-prices/$priceId'),
       headers: ApiConstants.headers,
     ),
@@ -221,7 +224,7 @@ class ProductService {
 
   // ===================== UNITS =====================
   static Future<http.Response> getUnits() => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/units'),
       headers: ApiConstants.headers,
     ),
@@ -232,7 +235,7 @@ class ProductService {
     required String symbol,
     String? description,
   }) => _safe(
-    http.post(
+    ApiClient.post(
       Uri.parse('${ApiConstants.baseUrl}/units'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -244,7 +247,7 @@ class ProductService {
   );
 
   static Future<http.Response> deleteUnit(String id) => _safe(
-    http.delete(
+    ApiClient.delete(
       Uri.parse('${ApiConstants.baseUrl}/units/$id'),
       headers: ApiConstants.headers,
     ),
@@ -252,7 +255,7 @@ class ProductService {
 
   // ===================== CATEGORIES =====================
   static Future<http.Response> getCategories() => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/categories'),
       headers: ApiConstants.headers,
     ),
@@ -262,7 +265,7 @@ class ProductService {
     required String name,
     String? parentId,
   }) => _safe(
-    http.post(
+    ApiClient.post(
       Uri.parse('${ApiConstants.baseUrl}/categories'),
       headers: ApiConstants.headers,
       body: jsonEncode({
@@ -276,7 +279,7 @@ class ProductService {
   );
 
   static Future<http.Response> deleteCategory(String id) => _safe(
-    http.delete(
+    ApiClient.delete(
       Uri.parse('${ApiConstants.baseUrl}/categories/$id'),
       headers: ApiConstants.headers,
     ),
@@ -284,7 +287,7 @@ class ProductService {
 
   // ===================== PRICE LISTS =====================
   static Future<http.Response> getPriceLists() => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/price-lists'),
       headers: ApiConstants.headers,
     ),
@@ -292,7 +295,7 @@ class ProductService {
 
   // ===================== IMAGES =====================
   static Future<http.Response> getProductImages(String productId) => _safe(
-    http.get(
+    ApiClient.get(
       Uri.parse('${ApiConstants.baseUrl}/products/$productId/images'),
       headers: ApiConstants.headers,
     ),
@@ -321,7 +324,16 @@ class ProductService {
       );
 
       final streamed = await request.send().timeout(_timeout);
-      return http.Response.fromStream(streamed);
+      final res = await http.Response.fromStream(streamed);
+
+      // Multipart request gak lewat ApiClient.post biasa (butuh
+      // MultipartRequest manual) — jadi cek 401-nya diulang di sini biar
+      // tetep konsisten kena auto-logout kayak endpoint lain.
+      if (res.statusCode == 401 && Get.isRegistered<AuthController>()) {
+        Get.find<AuthController>().handleUnauthorized();
+      }
+
+      return res;
     } on TimeoutException {
       return http.Response(
         jsonEncode({'success': false, 'message': 'Upload timeout, coba lagi'}),
@@ -339,7 +351,7 @@ class ProductService {
     String productId,
     String imageId,
   ) => _safe(
-    http.delete(
+    ApiClient.delete(
       Uri.parse('${ApiConstants.baseUrl}/products/$productId/images/$imageId'),
       headers: ApiConstants.headers,
     ),
