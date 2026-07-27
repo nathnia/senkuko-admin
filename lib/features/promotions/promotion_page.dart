@@ -9,17 +9,43 @@ import 'package:senkukoadmin/features/promotions/promotion_card.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class PromotionPage extends StatelessWidget {
+class PromotionPage extends StatefulWidget {
   const PromotionPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<PromotionController>();
+  State<PromotionPage> createState() => _PromotionPageState();
+}
 
-    if (controller.promotionList.isEmpty && !controller.isLoading.value) {
-      controller.fetchPromotions();
+class _PromotionPageState extends State<PromotionPage>
+    with WidgetsBindingObserver {
+  final controller = Get.find<PromotionController>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Controller permanent (onInit cuma jalan sekali seumur app), jadi
+    // cek staleness di sini tiap kali halaman ini dibuka/dikunjungi lagi.
+    controller.refreshIfStale();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama, balik lagi — data mungkin
+    // udah basi walau halamannya gak pernah "dibuka ulang" secara route.
+    if (state == AppLifecycleState.resumed) {
+      controller.refreshIfStale();
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

@@ -34,12 +34,12 @@ class PromotionController extends GetxController {
   final nameC = TextEditingController();
   final codeC = TextEditingController();
   final descC = TextEditingController();
-  final usageLimitC = TextEditingController(); // ← diubah (kosong)
+  final usageLimitC = TextEditingController();
 
   final validFrom = Rxn<DateTime>();
   final validTo = Rxn<DateTime>();
 
-  final selectedType = ''.obs; // ← diubah (kosong)
+  final selectedType = ''.obs;
   final isActive = true.obs;
   final stackable = false.obs;
 
@@ -48,15 +48,15 @@ class PromotionController extends GetxController {
     nameC.clear();
     codeC.clear();
     descC.clear();
-    usageLimitC.clear(); // ← kosong
+    usageLimitC.clear();
     validFrom.value = null;
     validTo.value = null;
-    selectedType.value = ''; // ← kosong
+    selectedType.value = '';
     isActive.value = true;
     stackable.value = false;
 
-    isDirty.value = false; // ← reset flag
-    _takeSnapshot(); // ← snapshot state kosong
+    isDirty.value = false;
+    _takeSnapshot();
     _listenFormChanges();
   }
 
@@ -68,12 +68,12 @@ class PromotionController extends GetxController {
     usageLimitC.text = p.usageLimit.toString();
     validFrom.value = p.validFrom;
     validTo.value = p.validTo;
-    selectedType.value = p.type; // ini tetap pakai data existing
+    selectedType.value = p.type;
     isActive.value = p.isActive;
     stackable.value = p.stackable;
 
-    isDirty.value = false; // ← reset flag
-    _takeSnapshot(); // ← snapshot data existing
+    isDirty.value = false;
+    _takeSnapshot();
     _listenFormChanges();
   }
 
@@ -86,13 +86,6 @@ class PromotionController extends GetxController {
   bool conditionNeedsTargetId(String type) =>
       type == 'specific_product' || type == 'specific_category';
 
-  // void resetConditionForm() {
-  //   conditionType.value = '';
-  //   conditionOperator.value = '';
-  //   conditionValueC.clear();
-  //   conditionTargetIdC.clear();
-  // }
-
   // ===================== REWARD FORM =====================
   final rewardType = ''.obs;
   final discountMode = ''.obs;
@@ -101,20 +94,16 @@ class PromotionController extends GetxController {
   final freeVariantIdC = TextEditingController();
   final freeQtyC = TextEditingController(text: '1');
 
-  // void resetRewardForm() {
-  //   rewardType.value = '';
-  //   discountMode.value = '';
-  //   discountValueC.clear();
-  //   maxDiscountC.text = '0';
-  //   freeVariantIdC.clear();
-  //   freeQtyC.text = '1';
-  // }
-
   // ===================== LIFECYCLE =====================
+  bool _hasLoadedOnce = false;
+
   @override
   void onInit() {
     super.onInit();
-    fetchPromotions();
+    if (!_hasLoadedOnce) {
+      fetchPromotions();
+      _hasLoadedOnce = true;
+    }
   }
 
   @override
@@ -137,7 +126,6 @@ class PromotionController extends GetxController {
     freeVariantIdC.removeListener(_checkRewardDirty);
     conditionValueC.removeListener(_checkConditionDirty);
 
-    // ← ini yang missing, perlu di-dispose
     discountValueC.dispose();
     freeVariantIdC.dispose();
     conditionValueC.dispose();
@@ -148,7 +136,6 @@ class PromotionController extends GetxController {
     super.onClose();
   }
 
-  // Di PromotionController
   final isRewardFormDirty = false.obs;
   final isConditionFormDirty = false.obs;
 
@@ -170,7 +157,6 @@ class PromotionController extends GetxController {
         conditionValueC.text.trim().isNotEmpty;
   }
 
-  // Update resetRewardForm & resetConditionForm
   void resetRewardForm() {
     rewardType.value = '';
     discountMode.value = '';
@@ -178,8 +164,8 @@ class PromotionController extends GetxController {
     maxDiscountC.text = '0';
     freeVariantIdC.clear();
     freeQtyC.text = '1';
-    isRewardFormDirty.value = false; // ← reset
-    _listenRewardFormChanges(); // ← mulai listen
+    isRewardFormDirty.value = false;
+    _listenRewardFormChanges();
   }
 
   void resetConditionForm() {
@@ -187,8 +173,8 @@ class PromotionController extends GetxController {
     conditionOperator.value = '';
     conditionValueC.clear();
     conditionTargetIdC.clear();
-    isConditionFormDirty.value = false; // ← reset
-    _listenConditionFormChanges(); // ← mulai listen
+    isConditionFormDirty.value = false;
+    _listenConditionFormChanges();
   }
 
   Worker? _rewardTypeWorker;
@@ -251,6 +237,30 @@ class PromotionController extends GetxController {
     _applyFilter();
   }
 
+  // ===================== STALENESS (TTL) =====================
+  // Dipakai supaya list promo tetap kerasa "hidup" walau controller-nya
+  // permanent — kalau admin lain nambah/edit promo dari device lain,
+  // admin di device ini tetap bakal lihat update tanpa perlu keluar-masuk
+  // halaman (yang gak akan trigger fetch lagi karena onInit cuma sekali).
+  //
+  // TTL 30 detik dipilih karena Promotion bukan data yang berubah tiap
+  // detik (beda dari Transaction yang lebih realtime-sensitive) — cukup
+  // buat nutup celah staleness tanpa bikin network call sia-sia.
+  DateTime? _lastFetchedAt;
+  static const _staleAfter = Duration(seconds: 30);
+
+  bool get _isStale =>
+      _lastFetchedAt == null ||
+      DateTime.now().difference(_lastFetchedAt!) > _staleAfter;
+
+  /// Panggil ini dari initState()/didChangeAppLifecycleState() halaman
+  /// PromotionPage — BUKAN dari onInit controller (karena onInit cuma
+  /// jalan sekali seumur controller, sementara ini perlu dicek tiap kali
+  /// halaman dibuka/resume).
+  void refreshIfStale() {
+    if (_isStale) fetchPromotions();
+  }
+
   // ===================== FETCH =====================
   Future<void> fetchPromotions() async {
     if (isLoading.value) return;
@@ -262,6 +272,7 @@ class PromotionController extends GetxController {
       if (res.statusCode == 200) {
         promotionList.assignAll(promotionListModelFromJson(res.body).data);
         _applyFilter();
+        _lastFetchedAt = DateTime.now();
       } else {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
@@ -516,9 +527,7 @@ class PromotionController extends GetxController {
   }
 
   // ===================== REWARDS =====================
-  // SESUDAH
   Future<bool> addReward(String promotionId) async {
-    // validasi dulu sebelum isSubmitting
     if (rewardType.value.isEmpty) {
       AppToast.show('Tipe reward harus dipilih');
       return false;
@@ -539,7 +548,7 @@ class PromotionController extends GetxController {
       }
     }
 
-    isSubmitting.value = true; // ← baru set di sini
+    isSubmitting.value = true;
     try {
       final Map<String, dynamic> payload;
       if (rewardType.value == 'free_item') {
@@ -751,12 +760,11 @@ class PromotionController extends GetxController {
       conditionOperator.value.isNotEmpty ||
       conditionValueC.text.trim().isNotEmpty;
 
-  // Di PromotionController, tambah method:
   Future<void> resolveConditionNames() async {
     final productC = Get.find<ProductController>();
     final categoryC = Get.find<CategoryController>();
     final variantC = Get.find<ProductVariantController>();
- 
+
     await Future.wait([
       if (productC.productList.isEmpty) productC.fetchProducts(),
       if (categoryC.categoryList.isEmpty) categoryC.fetchCategories(),

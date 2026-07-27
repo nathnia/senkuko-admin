@@ -17,21 +17,32 @@ class VoucherPage extends StatefulWidget {
   State<VoucherPage> createState() => _VoucherPageState();
 }
 
-class _VoucherPageState extends State<VoucherPage> {
+class _VoucherPageState extends State<VoucherPage> with WidgetsBindingObserver {
   final controller = Get.find<VoucherController>();
   late final PromotionData? _promotion;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _promotion = Get.arguments as PromotionData?;
     controller.initPage(_promotion);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     controller.resetInit();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama (misal ada voucher yang habis
+    // dipakai kasir lain), balik lagi ke app — data mungkin udah basi.
+    if (state == AppLifecycleState.resumed) {
+      controller.refreshIfStale();
+    }
   }
 
   @override

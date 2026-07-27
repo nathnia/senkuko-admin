@@ -114,19 +114,29 @@ class VoucherController extends GetxController {
   }
 
   // ===================== LIFECYCLE =====================
+  bool _hasLoadedOnce = false;
+
   @override
   void onInit() {
     super.onInit();
-    fetchVouchers();
+    if (!_hasLoadedOnce) {
+      fetchVouchers();
+      _hasLoadedOnce = true;
+    }
   }
 
   bool _initialized = false;
 
+  /// Dipanggil dari VoucherPage.initState(). Reset filter/search session
+  /// (perlu tiap buka halaman — misal pindah dari konteks promo A ke promo
+  /// B), TAPI data fetch-nya sekarang ngikutin staleness check, BUKAN
+  /// unconditional fetch. Controller udah permanent (CoreBinding), jadi
+  /// data yang udah ada di memori tetap valid selama belum "basi".
   void initPage(PromotionData? promotion) {
     if (_initialized) return;
     _initialized = true;
     resetPageState(promotion: promotion);
-    fetchVouchers();
+    refreshIfStale();
   }
 
   void resetInit() => _initialized = false;
@@ -182,13 +192,32 @@ class VoucherController extends GetxController {
     _applyFilter();
   }
 
+  // ===================== STALENESS (TTL) =====================
+  // Sama pattern kayak PromotionController. TTL agak lebih pendek karena
+  // usage_count voucher bisa berubah kapan aja pas dipakai di transaksi
+  // (dari kasir/device lain) — jadi lebih worth di-refresh lebih sering
+  // dibanding data promosi murni.
+  DateTime? _lastFetchedAt;
+  static const _staleAfter = Duration(seconds: 20);
+
+  bool get _isStale =>
+      _lastFetchedAt == null ||
+      DateTime.now().difference(_lastFetchedAt!) > _staleAfter;
+
+  /// Panggil dari initState()/didChangeAppLifecycleState() halaman Voucher
+  /// — BUKAN dari onInit controller.
+  void refreshIfStale() {
+    if (_isStale) fetchVouchers();
+  }
+
   // ===================== PROMOTION PREVIEW =====================
 
   /// Called by PromotionDetailPage in initState.
-  /// Derives from already-loaded voucherList if available, otherwise fetches first.
+  /// Derives from already-loaded voucherList kalau masih fresh, kalau
+  /// belum ada data ATAU udah basi baru fetch ulang.
   Future<void> fetchVouchersForPromotion(String promotionId) async {
     _previewPromotionId = promotionId;
-    if (voucherList.isEmpty) {
+    if (voucherList.isEmpty || _isStale) {
       await fetchVouchers();
     } else {
       _refreshPromotionVouchers();
@@ -219,6 +248,7 @@ class VoucherController extends GetxController {
         voucherList.assignAll(voucherListModelFromJson(res.body).data);
         _applyFilter();
         _refreshPromotionVouchers();
+        _lastFetchedAt = DateTime.now();
       } else {
         hasError.value = true;
         errorMessage.value = 'Gagal memuat daftar voucher';
