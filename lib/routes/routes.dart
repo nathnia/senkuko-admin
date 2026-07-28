@@ -27,4 +27,6 @@ class AppRoutes {
   static const variantForm = '/variant-form';
   static const manageCategories = '/manage-categories';
   static const importProduct = '/import-product';
+  static const bannerForm = '/bannerForm';
+  static const banner = '/banner';
 }

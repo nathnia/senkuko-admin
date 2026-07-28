@@ -2,6 +2,9 @@ import 'package:get/get.dart';
 import 'package:senkukoadmin/features/auth/auth_binding.dart';
 import 'package:senkukoadmin/features/auth/login_page.dart';
 import 'package:senkukoadmin/features/auth/splash_page.dart';
+import 'package:senkukoadmin/features/banners/banner_binding.dart';
+import 'package:senkukoadmin/features/banners/banner_form.dart';
+import 'package:senkukoadmin/features/banners/banner_page.dart';
 import 'package:senkukoadmin/features/customers/customer_form.dart';
 import 'package:senkukoadmin/features/dashboard_page.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
@@ -91,6 +94,15 @@ class AppPages {
     GetPage(
       name: AppRoutes.manageCategories,
       page: () => ManageCategoriesPage(),
+    ),
+     GetPage(
+      name: AppRoutes.bannerForm,
+      page: () => BannerFormPage(),
+    ),
+     GetPage(
+      name: AppRoutes.banner,
+      page: () => BannerPage(),
+      binding: BannerBinding()
     ),
   ];
 }

@@ -1,0 +1,10 @@
+// FILE: lib/features/banners/banner_binding.dart
+import 'package:get/get.dart';
+import 'package:senkukoadmin/features/banners/banner_controller.dart';
+
+class BannerBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut(() => BannerController(), fenix: true);
+  }
+}

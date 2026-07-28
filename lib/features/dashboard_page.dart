@@ -489,7 +489,63 @@ class DashboardPage extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        _bannerMenuTile(),
       ],
+    );
+  }
+
+  Widget _bannerMenuTile() {
+    return GestureDetector(
+      onTap: () => Get.toNamed(AppRoutes.banner),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black.withAlpha(10), width: 0.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(18),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(
+                Icons.image_outlined,
+                color: AppColors.primary,
+                size: 15,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Banner',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.title,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Kelola tampilan',
+                    style: TextStyle(fontSize: 12, color: AppColors.subtext),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 16, color: AppColors.subtext),
+          ],
+        ),
+      ),
     );
   }
 
