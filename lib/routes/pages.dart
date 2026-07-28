@@ -5,6 +5,7 @@ import 'package:senkukoadmin/features/auth/splash_page.dart';
 import 'package:senkukoadmin/features/banners/banner_binding.dart';
 import 'package:senkukoadmin/features/banners/banner_form.dart';
 import 'package:senkukoadmin/features/banners/banner_page.dart';
+import 'package:senkukoadmin/features/customers/customer_binding.dart';
 import 'package:senkukoadmin/features/customers/customer_form.dart';
 import 'package:senkukoadmin/features/dashboard_page.dart';
 import 'package:senkukoadmin/features/customers/customer_page.dart';
@@ -54,10 +55,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.customer,
       page: () => const CustomerPage(),
+      binding: CustomerBinding()
     ),
     GetPage(
       name: AppRoutes.customerForm,
       page: () => const CustomerFormPage(),
+      binding: CustomerBinding()
     ),
     GetPage(
       name: AppRoutes.transaction,

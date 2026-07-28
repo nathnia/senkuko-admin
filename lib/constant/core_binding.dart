@@ -10,7 +10,6 @@ import 'package:senkukoadmin/features/products/controllers/product_variant_contr
 import 'package:senkukoadmin/features/products/controllers/unit_controller.dart';
 import 'package:senkukoadmin/features/promotions/promotion_controller.dart';
 import 'package:senkukoadmin/features/vouchers/voucher_controller.dart';
-import 'package:senkukoadmin/features/customers/customer_controller.dart';
 import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────
@@ -38,15 +37,14 @@ import 'package:senkukoadmin/features/transactions/transaction_controller.dart';
 class CoreBinding extends Bindings {
   @override
   void dependencies() {
-    _putPermanent(() => ProductController());
     _putPermanent(() => ProductImageController());
     _putPermanent(() => ProductVariantController());
     _putPermanent(() => CategoryController());
     _putPermanent(() => UnitController());
     _putPermanent(() => PriceController());
+    _putPermanent(() => ProductController());
     _putPermanent(() => PromotionController());
     _putPermanent(() => VoucherController());
-    _putPermanent(() => CustomerController());
     _putPermanent(() => TransactionController());
 
     // ImportController jarang dipakai & cukup berat (isolate parsing utk
