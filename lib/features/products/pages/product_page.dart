@@ -22,7 +22,7 @@ class ProductPage extends StatefulWidget {
   State<ProductPage> createState() => _ProductPageState();
 }
 
-class _ProductPageState extends State<ProductPage> {
+class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
   final controller = Get.find<ProductController>();
   final variantC = Get.find<ProductVariantController>();
   final priceC = Get.find<PriceController>();
@@ -31,14 +31,49 @@ class _ProductPageState extends State<ProductPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     controller.resetPageState();
+    // FIX: ProductController permanent (CoreBinding) — onInit() cuma jalan
+    // sekali seumur app, jadi loadInitialData() HARUS dipanggil lagi di sini
+    // tiap kali halaman ini dibuka. Sebelumnya cuma resetPageState() (reset
+    // filter doang, gak fetch apa-apa) — akibatnya stok/harga yang berubah
+    // dari halaman lain (mis. transaksi dibatalin) gak pernah kelihatan
+    // sampai user pull-to-refresh manual. loadInitialData() aman dipanggil
+    // berkali-kali (ada guard isLoading di fetchProducts/fetchAllVariants),
+    // dan karena Pola B (cache-first-paint + selalu fetch fresh di
+    // background), pemanggilan ini murah dan sesuai trade-off "sengaja gak
+    // hemat demi fresh" yang emang niatnya.
+    //
+    // FIX 2: addPostFrameCallback WAJIB — fetchProducts/fetchAllVariants/
+    // fetchPrices SINKRON mutasi .obs kalau cache lagi hit (assignAll()
+    // sebelum ada `await`). Dipanggil langsung di initState() bikin crash
+    // "setState()/markNeedsBuild() called during build" karena halaman ini
+    // sendiri masih dalam proses dibangun (route transition-nya jalan di
+    // dalam Builder). Nunda ke post-frame callback nyelesain ini.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.loadInitialData();
+    });
     connectivityService.onReconnect = () => controller.loadInitialData();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     connectivityService.onReconnect = null;
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama (misal abis approve/cancel
+    // transaksi dari notifikasi), balik lagi ke app — stok/harga di
+    // halaman ini mungkin udah basi walau route-nya gak pernah "dibuka
+    // ulang" secara navigasi.
+    if (state == AppLifecycleState.resumed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.loadInitialData();
+      });
+    }
   }
 
   @override

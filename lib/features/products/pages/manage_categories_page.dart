@@ -9,10 +9,58 @@ import 'package:senkukoadmin/features/products/controllers/category_controller.d
 import 'package:senkukoadmin/features/products/models/category_model.dart';
 import 'package:senkukoadmin/features/products/widgets/add_category_sheet.dart';
 
-class ManageCategoriesPage extends StatelessWidget {
+class ManageCategoriesPage extends StatefulWidget {
   const ManageCategoriesPage({super.key});
 
-  CategoryController get _categoryC => Get.find<CategoryController>();
+  @override
+  State<ManageCategoriesPage> createState() => _ManageCategoriesPageState();
+}
+
+class _ManageCategoriesPageState extends State<ManageCategoriesPage>
+    with WidgetsBindingObserver {
+  final _categoryC = Get.find<CategoryController>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // FIX: sebelumnya StatelessWidget — gak ada initState() sama sekali,
+    // jadi gak ada trigger fetch pas halaman ini dibuka. CategoryController
+    // permanent (CoreBinding), onInit()-nya cuma jalan sekali seumur app.
+    // fetchCategories() pakai Pola A (skip network kalau masih dalam TTL
+    // referenceDataTtl 1 jam), jadi manggil ini tiap halaman dibuka itu
+    // murah — cuma beneran hit network kalau cache-nya udah basi.
+    //
+    // FIX 2: addPostFrameCallback WAJIB di sini — fetchCategories() itu
+    // SINKRON kalau cache lagi hit (categoryList.assignAll() jalan
+    // sebelum ada `await` apa pun). Kalau dipanggil langsung di
+    // initState(), mutasi .obs itu kejadian SAAT halaman ini masih dalam
+    // proses dibangun (route transition-nya sendiri jalan di dalam
+    // Builder) → GetX/Flutter lempar "setState()/markNeedsBuild() called
+    // during build". addPostFrameCallback nunda pemanggilannya sampai
+    // frame pertama kelar, jadi aman.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _categoryC.fetchCategories();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama, balik lagi — kategori mungkin
+    // udah basi (mis. ditambah/dihapus dari device admin lain) walau
+    // TTL-nya panjang.
+    if (state == AppLifecycleState.resumed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _categoryC.fetchCategories();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
