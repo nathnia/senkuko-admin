@@ -133,7 +133,7 @@ class _PromotionConditionFormPageState
                   Obx(
                     () => AppDropdown<String>(
                       label: 'Tipe Syarat',
-                      hint: 'Pilih tipe syarat',
+                      hint: 'Pilih syarat promo ini berlaku',
                       isRequired: true,
                       value: _ctrl.conditionType.value.isEmpty
                           ? null
@@ -141,23 +141,23 @@ class _PromotionConditionFormPageState
                       items: const [
                         DropdownMenuItem(
                           value: 'min_transaction_amount',
-                          child: Text('Min. Total Belanja'),
+                          child: Text('Minimal Total Belanja'),
                         ),
                         DropdownMenuItem(
                           value: 'min_qty',
-                          child: Text('Min. Jumlah Item'),
+                          child: Text('Minimal Jumlah Item Dibeli'),
                         ),
                         DropdownMenuItem(
                           value: 'specific_product',
-                          child: Text('Produk Tertentu'),
+                          child: Text('Harus Beli Produk Tertentu'),
                         ),
                         DropdownMenuItem(
                           value: 'specific_category',
-                          child: Text('Kategori Tertentu'),
+                          child: Text('Harus Beli dari Kategori Tertentu'),
                         ),
                         DropdownMenuItem(
                           value: 'member_type',
-                          child: Text('Tipe Member'),
+                          child: Text('Khusus Tipe Member Tertentu'),
                         ),
                       ],
                       onChanged: _onConditionTypeChanged,
@@ -165,8 +165,8 @@ class _PromotionConditionFormPageState
                   ),
                   Obx(
                     () => AppDropdown<String>(
-                      label: 'Operator',
-                      hint: 'Pilih operator',
+                      label: 'Ketentuan Nilai',
+                      hint: 'Pilih ketentuan',
                       isRequired: true,
                       value: _ctrl.conditionOperator.value.isEmpty
                           ? null
@@ -174,30 +174,35 @@ class _PromotionConditionFormPageState
                       items: const [
                         DropdownMenuItem(
                           value: 'gte',
-                          child: Text('Lebih besar atau sama dengan'),
+                          child: Text('Minimal (paling sedikit)'),
                         ),
                         DropdownMenuItem(
                           value: 'lte',
-                          child: Text('Lebih kecil atau sama dengan'),
+                          child: Text('Maksimal (paling banyak)'),
                         ),
                         DropdownMenuItem(
                           value: 'eq',
-                          child: Text('Sama dengan'),
+                          child: Text('Harus tepat/pas'),
                         ),
                         DropdownMenuItem(
                           value: 'in',
-                          child: Text('Salah satu dari'),
+                          child: Text('Salah satu dari beberapa pilihan'),
                         ),
                       ],
                       onChanged: (v) => _ctrl.conditionOperator.value = v!,
                     ),
                   ),
-                  AppTextField(
-                    label: 'Value',
-                    hint: 'cth: 50000 atau member,reguler',
-                    controller: _ctrl.conditionValueC,
-                    isRequired: true,
-                  ),
+                  Obx(() {
+                    final type = _ctrl.conditionType.value;
+                    final operator = _ctrl.conditionOperator.value;
+                    return AppTextField(
+                      label: _valueLabel(type),
+                      hint: _valueHint(type, operator),
+                      controller: _ctrl.conditionValueC,
+                      isRequired: true,
+                      keyboardType: _valueKeyboardType(type),
+                    );
+                  }),
                   Obx(() {
                     final type = _ctrl.conditionType.value;
                     if (!_ctrl.conditionNeedsTargetId(type)) {
@@ -227,6 +232,79 @@ class _PromotionConditionFormPageState
         ),
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // VALUE FIELD HELPERS — label & hint berubah ngikutin tipe syarat,
+  // biar orang awam gak bingung "Value" itu maksudnya apa.
+  // ═══════════════════════════════════════════════════════════════
+
+  String _valueLabel(String type) {
+    switch (type) {
+      case 'min_transaction_amount':
+        return 'Nominal Belanja (Rp)';
+      case 'min_qty':
+        return 'Jumlah Item';
+      case 'member_type':
+        return 'Nama Tipe Member';
+      case 'specific_product':
+        return 'Jumlah Produk Ini';
+      case 'specific_category':
+        return 'Jumlah dari Kategori Ini';
+      default:
+        return 'Value';
+    }
+  }
+
+  // Kata kerja yang cocok sama operator yang dipilih user, biar hint di
+  // Value field gak selalu bilang "minimal" walau operatornya "maksimal".
+  String _operatorPhrase(String operator) {
+    switch (operator) {
+      case 'gte':
+        return 'minimal';
+      case 'lte':
+        return 'maksimal';
+      case 'eq':
+        return 'harus tepat';
+      case 'in':
+        return 'salah satu dari';
+      default:
+        return '';
+    }
+  }
+
+  String _valueHint(String type, String operator) {
+    if (type.isEmpty) return 'Pilih tipe syarat terlebih dahulu';
+
+    final op = _operatorPhrase(operator);
+    final opText = op.isEmpty ? '' : '$op ';
+
+    switch (type) {
+      case 'min_transaction_amount':
+        return 'cth: 50000 (artinya ${opText}belanja Rp50.000)';
+      case 'min_qty':
+        return 'cth: 3 (artinya ${opText}beli 3 item)';
+      case 'member_type':
+        return 'cth: member, reguler (pisahkan dengan koma)';
+      case 'specific_product':
+        return 'cth: 2 (artinya ${opText}beli 2 item dari produk)';
+      case 'specific_category':
+        return 'cth: 2 (artinya ${opText}beli 2 item dari kategori)';
+      default:
+        return 'Pilih tipe syarat terlebih dahulu';
+    }
+  }
+
+  TextInputType _valueKeyboardType(String type) {
+    switch (type) {
+      case 'min_transaction_amount':
+      case 'min_qty':
+      case 'specific_product':
+      case 'specific_category':
+        return TextInputType.number;
+      default:
+        return TextInputType.text;
+    }
   }
 
   Widget _card({required Widget child}) => Container(

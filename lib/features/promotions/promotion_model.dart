@@ -241,9 +241,9 @@ class PromotionReward {
   String get discountModeLabel {
     switch (discountMode) {
       case 'per_transaction':
-        return 'Per Transaksi';
+        return 'Total Belanja';
       case 'per_item':
-        return 'Per Item';
+        return 'Per Barang';
       default:
         return discountMode ?? '';
     }

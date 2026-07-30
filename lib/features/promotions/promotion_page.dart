@@ -24,14 +24,16 @@ class _PromotionPageState extends State<PromotionPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Controller permanent (onInit cuma jalan sekali seumur app), jadi
-    // cek staleness di sini tiap kali halaman ini dibuka/dikunjungi lagi.
-    controller.refreshIfStale();
+    // initPage() resets search/filter session state (controller-nya
+    // permanent, jadi ini perlu tiap halaman dibuka lagi) DAN ngecek
+    // staleness sebelum fetch — sama pattern-nya kayak VoucherPage.
+    controller.initPage();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    controller.resetInit();
     super.dispose();
   }
 

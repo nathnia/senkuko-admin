@@ -25,7 +25,7 @@ class PromotionController extends GetxController {
 
   // ===================== PAGE STATE =====================
   final searchText = ''.obs;
-  final selectedFilter = 'Semua'.obs;
+  final selectedFilter = 'Aktif'.obs;
 
   final hasError = false.obs;
   final errorMessage = ''.obs;
@@ -106,6 +106,27 @@ class PromotionController extends GetxController {
     }
   }
 
+  bool _initialized = false;
+
+  /// Dipanggil dari PromotionPage.initState(). Controller-nya permanent,
+  /// jadi tanpa ini searchText/selectedFilter bakal "nempel" dari sesi
+  /// sebelumnya tiap halaman dibuka ulang — sama pattern-nya kayak
+  /// VoucherController.initPage().
+  void initPage() {
+    if (_initialized) return;
+    _initialized = true;
+    resetPageState();
+    refreshIfStale();
+  }
+
+  void resetInit() => _initialized = false;
+
+  void resetPageState() {
+    searchText.value = '';
+    selectedFilter.value = 'Aktif';
+    _applyFilter();
+  }
+
   @override
   void onClose() {
     for (final c in [nameC, codeC, descC, usageLimitC]) {
@@ -157,8 +178,8 @@ class PromotionController extends GetxController {
         conditionValueC.text.trim().isNotEmpty;
   }
 
-  void resetRewardForm() {
-    rewardType.value = '';
+  void resetRewardForm({String? defaultType}) {
+    rewardType.value = defaultType ?? '';
     discountMode.value = '';
     discountValueC.clear();
     maxDiscountC.text = '0';
@@ -540,6 +561,11 @@ class PromotionController extends GetxController {
     } else {
       if (discountValueC.text.trim().isEmpty) {
         AppToast.show('Nilai diskon harus diisi');
+        return false;
+      }
+      final parsedDiscountValue = double.tryParse(discountValueC.text.trim());
+      if (parsedDiscountValue == null || parsedDiscountValue <= 0) {
+        AppToast.show('Nilai diskon harus lebih besar dari 0');
         return false;
       }
       if (discountMode.value.isEmpty) {

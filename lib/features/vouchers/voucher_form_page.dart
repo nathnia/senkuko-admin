@@ -137,7 +137,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                     Padding(
                       padding: const EdgeInsets.only(top: 2, bottom: 10),
                       child: Text(
-                        '0 = unlimited  •  1 = sekali pakai',
+                        '0 = Tidak terbatas  •  1 = sekali pakai',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.subtext,

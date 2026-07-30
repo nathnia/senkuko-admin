@@ -21,13 +21,37 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
   late final String _promotionId;
 
   VariantData? _selectedVariant;
+  Worker? _maxDiscountResetWorker;
 
   @override
   void initState() {
     super.initState();
     _ctrl = Get.find<PromotionController>();
     _promotionId = Get.arguments as String;
-    _ctrl.resetRewardForm();
+    _ctrl.resetRewardForm(
+      defaultType: _ctrl.selectedPromotion.value?.type,
+    );
+
+    // Kalau kombinasi tipe+mode bikin field "Diskon Maksimal" disembunyikan,
+    // reset nilainya ke '0' biar gak ada nilai lama yang nyangkut dan
+    // ke-submit diam-diam.
+    _maxDiscountResetWorker = everAll(
+      [_ctrl.rewardType, _ctrl.discountMode],
+      (_) {
+        final isFixedPerTransaction =
+            _ctrl.rewardType.value == 'discount_fixed' &&
+                _ctrl.discountMode.value == 'per_transaction';
+        if (isFixedPerTransaction && _ctrl.maxDiscountC.text != '0') {
+          _ctrl.maxDiscountC.text = '0';
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _maxDiscountResetWorker?.dispose();
+    super.dispose();
   }
 
   Future<void> _openVariantPicker() async {
@@ -122,7 +146,7 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
                   Obx(
                     () => AppDropdown<String>(
                       label: 'Tipe Reward',
-                      hint: 'Pilih tipe reward',
+                      hint: 'Pilih keuntungan yang didapat customer',
                       isRequired: true,
                       value: _ctrl.rewardType.value.isEmpty
                           ? null
@@ -130,15 +154,15 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
                       items: const [
                         DropdownMenuItem(
                           value: 'discount_percent',
-                          child: Text('Diskon %'),
+                          child: Text('Diskon Persen (%)'),
                         ),
                         DropdownMenuItem(
                           value: 'discount_fixed',
-                          child: Text('Diskon Nominal'),
+                          child: Text('Diskon Potongan Harga (Rp)'),
                         ),
                         DropdownMenuItem(
                           value: 'free_item',
-                          child: Text('Gratis Item'),
+                          child: Text('Gratis Produk (Bonus)'),
                         ),
                       ],
                       onChanged: _onRewardTypeChanged,
@@ -167,11 +191,11 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
           Obx(
             () => AppTextField(
               label: _ctrl.rewardType.value == 'discount_percent'
-                  ? 'Nilai Diskon (%)'
-                  : 'Nilai Diskon (Rp)',
+                  ? 'Besar Diskon (%)'
+                  : 'Besar Potongan (Rp)',
               hint: _ctrl.rewardType.value == 'discount_percent'
-                  ? 'cth: 10 (artinya 10%)'
-                  : 'cth: 10000',
+                  ? 'cth: 10 (artinya diskon 10%)'
+                  : 'cth: 10000 (potongan Rp10.000 langsung)',
               controller: _ctrl.discountValueC,
               keyboardType: TextInputType.number,
               isRequired: true,
@@ -179,8 +203,8 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
           ),
           Obx(
             () => AppDropdown<String>(
-              label: 'Mode Diskon',
-              hint: 'Pilih mode diskon',
+              label: 'Diskon Dihitung Dari',
+              hint: 'Pilih cara hitung diskon',
               isRequired: true,
               value: _ctrl.discountMode.value.isEmpty
                   ? null
@@ -188,22 +212,32 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
               items: const [
                 DropdownMenuItem(
                   value: 'per_transaction',
-                  child: Text('Per Transaksi'),
+                  child: Text('Total Belanja (sekali potong)'),
                 ),
                 DropdownMenuItem(
                   value: 'per_item',
-                  child: Text('Per Item'),
+                  child: Text('Per Barang (dihitung tiap item)'),
                 ),
               ],
               onChanged: (v) => _ctrl.discountMode.value = v!,
             ),
           ),
-          AppTextField(
-            label: 'Maks Diskon',
-            hint: 'cth: 50000 (isi 0 jika tidak ada batas)',
-            controller: _ctrl.maxDiscountC,
-            keyboardType: TextInputType.number,
-          ),
+          // "Diskon Maksimal" cuma relevan kalau nilai diskonnya bisa
+          // membesar (persen dari transaksi, atau nominal tetap dikali
+          // banyak item). Untuk discount_fixed + per_transaction, nilai
+          // potongannya sudah pasti/flat, jadi field ini disembunyikan.
+          Obx(() {
+            final isFixedPerTransaction =
+                _ctrl.rewardType.value == 'discount_fixed' &&
+                    _ctrl.discountMode.value == 'per_transaction';
+            if (isFixedPerTransaction) return const SizedBox.shrink();
+            return AppTextField(
+              label: 'Diskon Maksimal (Rp)',
+              hint: 'cth: 50000 — isi 0 kalau tidak ingin dibatasi',
+              controller: _ctrl.maxDiscountC,
+              keyboardType: TextInputType.number,
+            );
+          }),
         ],
       );
 
@@ -216,8 +250,8 @@ class _PromotionRewardFormPageState extends State<PromotionRewardFormPage> {
             onTap: _openVariantPicker,
           ),
           AppTextField(
-            label: 'Jumlah Item Gratis',
-            hint: 'cth: 1',
+            label: 'Jumlah Produk Gratis',
+            hint: 'cth: 1 (jumlah barang yang digratiskan)',
             controller: _ctrl.freeQtyC,
             keyboardType: TextInputType.number,
             isRequired: true,
@@ -263,7 +297,7 @@ class _VariantPickerField extends StatelessWidget {
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: 'Variant Produk',
+                  text: 'Produk yang Digratiskan',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.subtext,
@@ -295,7 +329,7 @@ class _VariantPickerField extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      hasValue ? selectedVariant!.name : 'Pilih variant...',
+                      hasValue ? selectedVariant!.name : 'Pilih produk yang digratiskan...',
                       style: TextStyle(
                         fontSize: 14,
                         color: hasValue ? Colors.black87 : AppColors.subtext,
