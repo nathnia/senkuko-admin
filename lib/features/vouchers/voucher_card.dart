@@ -12,15 +12,19 @@ class VoucherCard extends StatelessWidget {
     required this.onTap,
   });
 
+  // Card di-dim (Opacity) kalau voucher gak lagi "usable" — baik karena
+  // dinonaktifkan admin, maupun karena usage-nya udah habis.
+  bool get _isDimmed => !voucher.isActive || voucher.isUsed;
+
   Color get _statusColor {
     if (!voucher.isActive) return AppColors.subtext;
-    if (voucher.isUsed) return AppColors.warning;
-    return AppColors.primary;
+    if (voucher.isUsed) return AppColors.danger;
+    return AppColors.success;
   }
 
   Color get _statusBg {
     if (!voucher.isActive) return AppColors.background;
-    if (voucher.isUsed) return AppColors.warningBg;
+    if (voucher.isUsed) return AppColors.dangerBg;
     return AppColors.successBg;
   }
 
@@ -53,7 +57,9 @@ class VoucherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Opacity(
+      opacity: _isDimmed ? 0.5 : 1.0,
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -157,24 +163,39 @@ class VoucherCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
 
-            // ── Status Badge ──────────────────────────────────────────────
+            // ── Status Badge (dot + pill, match CustomerCard) ──────────────
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: _statusBg,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                _statusLabel,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: _statusColor,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: _statusColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _statusLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _statusColor,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

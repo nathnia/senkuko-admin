@@ -28,7 +28,7 @@ class VoucherController extends GetxController {
 
   // ===================== PAGE STATE =====================
   final searchText = ''.obs;
-  final selectedFilter = 'Semua'.obs;
+  final selectedFilter = 'Aktif'.obs;
   final filterByPromotionId = Rxn<String>();
 
   // ===================== FORM =====================
@@ -187,7 +187,7 @@ class VoucherController extends GetxController {
 
   void resetPageState({PromotionData? promotion}) {
     searchText.value = '';
-    selectedFilter.value = 'Semua';
+    selectedFilter.value = 'Aktif';
     filterByPromotionId.value = promotion?.id;
     _applyFilter();
   }
