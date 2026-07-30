@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -7,6 +6,7 @@ import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
+import 'package:senkukoadmin/constant/cache_service.dart';
 import 'package:senkukoadmin/features/banners/banner_model.dart';
 import 'package:senkukoadmin/features/banners/banner_service.dart';
 
@@ -49,7 +49,8 @@ class BannerController extends GetxController {
     }
   }
 
-  Future<void> refreshBanners() => fetchBanners();
+  /// Dipanggil dari pull-to-refresh — selalu maksa network call, skip cache.
+  Future<void> refreshBanners() => fetchBanners(forceRefresh: true);
 
   @override
   void onClose() {
@@ -73,8 +74,6 @@ class BannerController extends GetxController {
   }
 
   // ===================== SORT ORDER HELPERS =====================
-  // Urutan berikutnya = urutan tertinggi yang ada + 1 (dipakai buat
-  // prefill form add, biar default-nya nggak nabrak yang udah ada).
   int get _nextSortOrder {
     if (bannerList.isEmpty) return 0;
     return bannerList.map((b) => b.sortOrder).reduce((a, b) => a > b ? a : b) +
@@ -202,16 +201,42 @@ class BannerController extends GetxController {
   }
 
   // ===================== FETCH =====================
-  Future<void> fetchBanners() async {
+  // CHANGED: dari staleness-only (in-memory) jadi full CacheService
+  // (Pola A, sama kayak CategoryController/UnitController). Banner masuk
+  // kategori reference data — jarang berubah, gak kritis kalau agak basi,
+  // dan ada pull-to-refresh sebagai manual override. TTL panjang
+  // (referenceDataTtl = 1 jam) BENERAN skip network call kalau masih
+  // fresh, beda sama allVariants/priceList yang instant-paint doang.
+  Future<void> fetchBanners({bool forceRefresh = false}) async {
     if (isLoading.value) return;
+
+    if (!forceRefresh) {
+      final cached = CacheService.instance.get(
+        CacheKeys.banners,
+        ttl: CacheKeys.referenceDataTtl,
+      );
+      if (cached != null) {
+        bannerList.assignAll(
+          (cached as List).map((e) => BannerData.fromJson(e)).toList(),
+        );
+        _applyFilter();
+        return; // cache masih valid, skip network sepenuhnya
+      }
+    }
+
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
     try {
       final res = await BannerService.getAllBanners();
       if (res.statusCode == 200) {
-        bannerList.assignAll(bannerModelFromJson(res.body).data);
+        final list = bannerModelFromJson(res.body).data;
+        bannerList.assignAll(list);
         _applyFilter();
+        await CacheService.instance.set(
+          CacheKeys.banners,
+          list.map((b) => b.toJson()).toList(),
+        );
       } else {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
@@ -253,10 +278,10 @@ class BannerController extends GetxController {
       );
 
       if (res.statusCode == 201) {
-        final newBanner = BannerData.fromJson(jsonDecode(res.body)['data']);
-        bannerList.add(newBanner);
-        bannerList.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-        _applyFilter();
+        // Invalidate + forceRefresh — biar admin yang sama langsung lihat
+        // banner barunya sendiri, gak nunggu TTL 1 jam abis.
+        await CacheService.instance.invalidate(CacheKeys.banners);
+        await fetchBanners(forceRefresh: true);
         AppToast.show('Banner berhasil ditambahkan');
         resetForAdd();
         return true;
@@ -276,9 +301,6 @@ class BannerController extends GetxController {
   }
 
   // ===================== UPDATE =====================
-  // Data (title/sort_order/is_active) lewat PUT /banners/:id.
-  // Kalau ada gambar baru dipilih, dilanjut PUT /banners/:id/image terpisah
-  // — sesuai API yang memisahkan update data vs update gambar.
   Future<bool> updateBanner(String id) async {
     if (!_validateForm(isAdd: false)) return false;
 
@@ -312,25 +334,22 @@ class BannerController extends GetxController {
         return false;
       }
 
-      var updated = BannerData.fromJson(jsonDecode(res.body)['data']);
-
       // Kalau user pilih gambar baru, upload sekarang
       if (pickedImage.value != null) {
         final imgRes = await BannerService.updateBannerImage(
           id,
           pickedImage.value!,
         );
-        if (imgRes.statusCode == 200) {
-          updated = BannerData.fromJson(jsonDecode(imgRes.body)['data']);
-        } else {
+        if (imgRes.statusCode != 200) {
           AppToast.show('Data tersimpan, tapi gagal mengganti gambar');
         }
       }
 
-      final idx = bannerList.indexWhere((b) => b.id == id);
-      if (idx != -1) bannerList[idx] = updated;
-      bannerList.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-      _applyFilter();
+      // Invalidate + forceRefresh — sekali fetch ulang dari server biar
+      // list ke-sync penuh (title, sort_order, is_active, DAN url gambar
+      // baru kalau ada), sekaligus refresh cache-nya.
+      await CacheService.instance.invalidate(CacheKeys.banners);
+      await fetchBanners(forceRefresh: true);
       AppToast.show('Banner berhasil diperbarui');
       return true;
     } catch (e) {
@@ -362,10 +381,8 @@ class BannerController extends GetxController {
         'is_active': newStatus ? 1 : 0,
       });
       if (res.statusCode == 200) {
-        final updated = BannerData.fromJson(jsonDecode(res.body)['data']);
-        final idx = bannerList.indexWhere((b) => b.id == banner.id);
-        if (idx != -1) bannerList[idx] = updated;
-        _applyFilter();
+        await CacheService.instance.invalidate(CacheKeys.banners);
+        await fetchBanners(forceRefresh: true);
         AppToast.show(newStatus ? 'Banner diaktifkan' : 'Banner dinonaktifkan');
         return true;
       }
@@ -396,8 +413,8 @@ class BannerController extends GetxController {
     try {
       final res = await BannerService.deleteBanner(banner.id);
       if (res.statusCode == 200) {
-        bannerList.removeWhere((b) => b.id == banner.id);
-        _applyFilter();
+        await CacheService.instance.invalidate(CacheKeys.banners);
+        await fetchBanners(forceRefresh: true);
         AppToast.show('Banner berhasil dihapus');
         return true;
       }

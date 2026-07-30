@@ -13,6 +13,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// (lihat product_variant_controller & price_controller). Cache di sini
 /// buat data stok/harga cuma berfungsi sebagai "instant paint" pas buka
 /// halaman, BUKAN sumber kebenaran — network tetap selalu dipanggil.
+///
+/// ADDED: `banners` — Banner masuk kategori REFERENCE DATA juga (jarang
+/// berubah, gak kritis kalau agak basi, ada pull-to-refresh sebagai
+/// manual override), jadi dikasih TTL panjang (referenceDataTtl) sama
+/// kayak categories/units — BUKAN pola instant-paint kayak allVariants.
 class CacheService {
   CacheService._();
   static final CacheService instance = CacheService._();
@@ -79,6 +84,9 @@ class CacheKeys {
   static const units = 'units';
   static const priceListMaster = 'price_list_master';
   static const productList = 'product_list';
+
+  // ADDED: banner — reference data, TTL panjang sama kayak categories/units.
+  static const banners = 'banners';
 
   // ADDED: cache buat data stok (allVariants) & harga (priceList).
   // Dipakai dengan pola cache-first + background refresh (Pola B) di

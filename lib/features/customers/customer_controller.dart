@@ -77,9 +77,26 @@ class CustomerController extends GetxController {
     super.onClose();
   }
 
+  // ===================== STALENESS (TTL) =====================
+  // Customer bisa berubah dari transaksi baru (total_spend) atau admin
+  // lain nambah/edit — TTL sedikit lebih ketat dari Banner, tapi tetap
+  // lebih longgar dari Voucher karena bukan data yang dipakai realtime
+  // pas checkout.
+  DateTime? _lastFetchedAt;
+  static const _staleAfter = Duration(seconds: 30);
+
+  bool get _isStale =>
+      _lastFetchedAt == null ||
+      DateTime.now().difference(_lastFetchedAt!) > _staleAfter;
+
+  /// Panggil dari CustomerPage.initState() — GANTIKAN fetchCustomers()
+  /// langsung. Controller sudah permanent (CoreBinding), jadi data yang
+  /// masih fresh gak perlu di-fetch ulang tiap kali halaman dibuka.
+  void refreshIfStale() {
+    if (_isStale) fetchCustomers();
+  }
+
   // ===================== GENERATE KODE =====================
-  // Format: CUST-XXXXXX (6 karakter alphanumeric uppercase)
-  // Dipanggil saat resetForAdd() — user tetap bisa edit manual.
   String _generateCustomerCode() {
     const chars = '0123456789';
     final rng = Random.secure();
@@ -90,10 +107,8 @@ class CustomerController extends GetxController {
     return '0$suffix';
   }
 
-  // Regenerate kode baru — dipanggil dari tombol refresh di form
   void regenerateCode() {
     codeC.text = _generateCustomerCode();
-    // Add mode: cek dirty setelah regenerate
     _checkAddDirty();
   }
 
@@ -110,15 +125,15 @@ class CustomerController extends GetxController {
     }
   }
 
-  // Add mode: dirty = required fields tidak kosong
   void _checkAddDirty() {
     isDirty.value =
         nameC.text.trim().isNotEmpty &&
         codeC.text.trim().isNotEmpty &&
-        phoneC.text.trim().isNotEmpty;
+        phoneC.text.trim().isNotEmpty &&
+        addressC.text.trim().isNotEmpty &&
+        cityC.text.trim().isNotEmpty;
   }
 
-  // Edit mode: dirty = ada yang berubah dari snapshot
   void _checkEditDirty() {
     isDirty.value =
         nameC.text.trim() != _snapName ||
@@ -147,7 +162,6 @@ class CustomerController extends GetxController {
     isDirty.value = false;
     isSubmitting.value = false;
 
-    // Auto-generate kode customer saat form add dibuka
     codeC.text = _generateCustomerCode();
 
     _addListeners(_checkAddDirty);
@@ -259,6 +273,7 @@ class CustomerController extends GetxController {
       if (res.statusCode == 200) {
         customerList.assignAll(customerModelFromJson(res.body).data);
         _applyFilter();
+        _lastFetchedAt = DateTime.now();
       } else {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
@@ -317,7 +332,6 @@ class CustomerController extends GetxController {
         resetForAdd();
         return true;
       } else {
-        // Kalau kode sudah dipakai, generate ulang otomatis
         final errMsg = ApiHelper.parseError(res.body, '');
         final isDuplicateCode =
             errMsg.toLowerCase().contains('code') ||
@@ -449,6 +463,14 @@ class CustomerController extends GetxController {
     }
     if (phoneC.text.trim().isEmpty) {
       AppToast.show('Nomor telepon wajib diisi');
+      return false;
+    }
+    if (addressC.text.trim().isEmpty) {
+      AppToast.show('Alamat wajib diisi');
+      return false;
+    }
+    if (cityC.text.trim().isEmpty) {
+      AppToast.show('Kota wajib diisi');
       return false;
     }
     return true;
