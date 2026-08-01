@@ -52,4 +52,14 @@ class TransactionService {
       body: json.encode({'status': status}),
     ),
   );
+
+  // Endpoint khusus admin — beda dari endpoint /cancel yang dipakai customer
+  // (yang ngecek ownership customer_id). /admin-cancel skip ownership check
+  // dan tetep jalanin restore stock + rollback promo/voucher/total_spend.
+  static Future<http.Response> cancelTransaction(String id) => _safe(
+    ApiClient.patch(
+      Uri.parse('${ApiConstants.baseUrl}/transactions/$id/admin-cancel'),
+      headers: ApiConstants.headers,
+    ),
+  );
 }

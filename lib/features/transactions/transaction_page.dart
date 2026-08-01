@@ -18,13 +18,15 @@ class TransactionPage extends StatefulWidget {
   State<TransactionPage> createState() => _TransactionPageState();
 }
 
-class _TransactionPageState extends State<TransactionPage> {
+class _TransactionPageState extends State<TransactionPage>
+    with WidgetsBindingObserver {
   late final TransactionController _c;
 
   @override
   void initState() {
     super.initState();
     _c = Get.find<TransactionController>();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = Get.arguments;
       if (args is Map && args['statusFilter'] != null) {
@@ -33,6 +35,30 @@ class _TransactionPageState extends State<TransactionPage> {
         _c.updateStatus(null);
       }
     });
+    // FIX: TransactionController permanent, onInit() cuma jalan sekali
+    // seumur app. refreshIfStale() udah ada di controller (staleness 15
+    // detik, komentarnya sendiri minta dipanggil dari sini) tapi gak
+    // pernah beneran dipanggil — jadi transaksi bisa basi tiap halaman
+    // ini dibuka ulang. fetchTransactions() gak pakai CacheService,
+    // murni network call, jadi aman dipanggil langsung tanpa perlu
+    // dibungkus addPostFrameCallback lagi.
+    _c.refreshIfStale();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama (mis. ada transaksi COD baru
+    // masuk atau status diubah admin lain), balik lagi — data mungkin
+    // udah basi walau halamannya gak pernah "dibuka ulang" secara route.
+    if (state == AppLifecycleState.resumed) {
+      _c.refreshIfStale();
+    }
   }
 
   @override

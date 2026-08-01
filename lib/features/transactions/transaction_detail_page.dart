@@ -57,7 +57,10 @@ class TransactionDetailPage extends StatelessWidget {
         }
 
         final nextStatuses = _nextStatuses(data.status, data.isCod);
-        final canCancel = !data.isTerminal;
+        // Cancel cuma valid selama status masih pending_payment — sesuai
+        // validasi backend (stock & promo/voucher usage baru di-restore
+        // untuk transaksi yang belum diproses sama sekali).
+        final canCancel = data.status == 'pending_payment';
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -451,8 +454,9 @@ class TransactionDetailPage extends StatelessWidget {
                   ),
                 ),
 
-                // Cancel button — tampil selama belum terminal state,
-                // termasuk untuk Midtrans pending_payment (admin bisa force cancel).
+                // Cancel button — hanya tampil selagi status pending_payment
+                // (COD maupun Midtrans). Begitu masuk processing/shipped,
+                // transaksi sudah tidak bisa dibatalkan.
                 if (canCancel)
                   Obx(
                     () => SizedBox(
@@ -460,12 +464,7 @@ class TransactionDetailPage extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: controller.isUpdatingStatus.value
                             ? null
-                            : () => _confirmStatusUpdate(
-                                  context,
-                                  controller,
-                                  id,
-                                  'cancelled',
-                                ),
+                            : () => _confirmCancel(context, controller, id),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.danger,
                           side: BorderSide(color: AppColors.danger),
@@ -540,9 +539,7 @@ class TransactionDetailPage extends StatelessWidget {
     String id,
     String newStatus,
   ) async {
-    final label = newStatus == 'cancelled'
-        ? 'membatalkan transaksi ini'
-        : 'mengubah status menjadi "${StatusStyle.of(newStatus).label}"';
+    final label = 'mengubah status menjadi "${StatusStyle.of(newStatus).label}"';
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -566,9 +563,7 @@ class TransactionDetailPage extends StatelessWidget {
             child: Text(
               'Ya, lanjutkan',
               style: TextStyle(
-                color: newStatus == 'cancelled'
-                    ? AppColors.danger
-                    : AppColors.primary,
+                color: AppColors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -579,6 +574,47 @@ class TransactionDetailPage extends StatelessWidget {
 
     if (confirmed == true) {
       await controller.updateTransactionStatus(id, newStatus);
+    }
+  }
+
+  Future<void> _confirmCancel(
+    BuildContext context,
+    TransactionController controller,
+    String id,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Konfirmasi',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Apakah kamu yakin ingin membatalkan transaksi ini?',
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Ya, lanjutkan',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await controller.cancelTransaction(id);
     }
   }
 

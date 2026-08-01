@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
 import 'package:senkukoadmin/constant/currency_formatter.dart';
@@ -17,15 +18,10 @@ class TransactionController extends GetxController {
   final selectedTransaction = Rxn<TransactionDetail>();
 
   final searchText = ''.obs;
-  final selectedDateRange = Rxn<DateTimeRange>();
+  final Rxn<DateTimeRange> selectedDateRange = Rxn<DateTimeRange>();
 
-  // Default "Semua" — volume transaksi masih kecil, admin perlu lihat semua
   final selectedQuickDate = 'Semua'.obs;
-
-  // null = semua status (chip "Semua")
-  final selectedStatus = Rxn<String>();
-
-  // 'terbaru' = tanggal transaksi terbaru duluan (default), 'terlama' = kebalikannya
+  final Rxn<String> selectedStatus = Rxn<String>();
   final sortOrder = 'terbaru'.obs;
 
   final hasError = false.obs;
@@ -41,12 +37,6 @@ class TransactionController extends GetxController {
     'Custom',
   ];
 
-  /// Status chips yang ditampilkan di transaction page.
-  /// null = semua transaksi, string = filter by status value.
-  ///
-  /// pending_payment tetap ditampilkan karena COD butuh konfirmasi admin.
-  /// Yang di-exclude dari list hanya pending_payment non-COD (Midtrans, QRIS, dll)
-  /// karena dikelola otomatis oleh webhook — lihat fetchTransactions().
   static const List<({String label, String? value})> statusTabs = [
     (label: 'Semua', value: null),
     (label: 'Konfirmasi COD', value: 'pending_payment'),
@@ -60,12 +50,32 @@ class TransactionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Cek apakah ada status filter yang di-pass dari dashboard
     final args = Get.arguments;
     if (args is Map && args['statusFilter'] != null) {
       selectedStatus.value = args['statusFilter'] as String;
     }
     fetchTransactions();
+  }
+
+  // ===================== STALENESS (TTL) =====================
+  // TTL sengaja PENDEK (15 detik) — jauh lebih ketat dari Voucher/Banner.
+  // Transaksi COD butuh konfirmasi admin secepat mungkin, dan status bisa
+  // berubah dari admin lain kapan aja. Ini CUMA buat nyegah spam fetch
+  // kalau user gerak cepat antar halaman (mis. buka-tutup dalam <15 detik),
+  // bukan buat nunda kebaruan data secara signifikan.
+  DateTime? _lastFetchedAt;
+  static const _staleAfter = Duration(seconds: 15);
+
+  bool get _isStale =>
+      _lastFetchedAt == null ||
+      DateTime.now().difference(_lastFetchedAt!) > _staleAfter;
+
+  /// Panggil dari TransactionPage.initState() — GANTIKAN fetchTransactions()
+  /// langsung. PENTING: mutations (updateTransactionStatus, cancelTransaction)
+  /// TETAP manggil fetchTransactions() langsung (lihat di bawah), BUKAN
+  /// method ini — abis mutasi harus selalu fresh, gak boleh ke-skip staleness.
+  void refreshIfStale() {
+    if (_isStale) fetchTransactions();
   }
 
   // ===================== FILTER =====================
@@ -79,12 +89,10 @@ class TransactionController extends GetxController {
 
     filteredTransactions.assignAll(
       transactionList.where((t) {
-        // Search
         final matchSearch =
             t.invoiceNumber.toLowerCase().contains(query) ||
             (t.customerName?.toLowerCase().contains(query) ?? false);
 
-        // Date
         bool matchDate = true;
         if (quickDate == 'Hari Ini') {
           matchDate =
@@ -121,7 +129,6 @@ class TransactionController extends GetxController {
           }
         }
 
-        // Status — null berarti semua
         final matchStatus = status == null || t.status == status;
 
         return matchSearch && matchDate && matchStatus;
@@ -170,11 +177,9 @@ class TransactionController extends GetxController {
     _applyFilter();
   }
 
-  /// True kalau date filter atau sort bukan default — untuk dot indicator di filter button.
   bool get hasActiveDateFilter =>
       selectedQuickDate.value != 'Semua' || sortOrder.value != 'terbaru';
 
-  /// True kalau ada filter apapun aktif — untuk empty state reset button.
   bool get hasActiveFilters =>
       selectedStatus.value != null || selectedQuickDate.value != 'Semua';
 
@@ -236,6 +241,7 @@ class TransactionController extends GetxController {
               .toList(),
         );
         _applyFilter();
+        _lastFetchedAt = DateTime.now();
       } else {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
@@ -280,19 +286,41 @@ class TransactionController extends GetxController {
 
   // ===================== UPDATE STATUS =====================
 
+  /// Parse pesan error dari response body dengan aman — SENGAJA dipisah
+  /// dari try/catch utama di updateTransactionStatus/cancelTransaction.
+  /// Kalau body-nya bukan JSON valid (mis. error HTML dari proxy/nginx,
+  /// bukan dari handler Express), json.decode bakal throw — dan kalau itu
+  /// kejadian DI DALAM try block utama, dia ketangkep catch(e) generik
+  /// yang nge-print "Terjadi kesalahan. Coba lagi." — pesan error asli
+  /// dari server (mis. "Forbidden: ...") jadi ke-mask dan susah didebug.
+  static String _extractErrorMessage(http.Response? res, String fallback) {
+    if (res == null) return fallback;
+    try {
+      final body = json.decode(res.body) as Map<String, dynamic>;
+      return body['message'] as String? ?? fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   Future<bool> updateTransactionStatus(String id, String status) async {
     isUpdatingStatus.value = true;
     try {
       final res = await TransactionService.updateTransactionStatus(id, status);
       if (res.statusCode == 200) {
         await fetchTransactionById(id);
-        // Fire and forget — list refresh di background, tidak perlu tunggu
+        // Sengaja TIDAK pakai refreshIfStale() — abis mutasi, list HARUS
+        // fresh, gak boleh ke-skip walau baru fetch <15 detik lalu.
         fetchTransactions();
         return true;
       } else {
-        final body = json.decode(res.body) as Map<String, dynamic>;
-        final msg =
-            body['message'] as String? ?? 'Gagal mengubah status transaksi.';
+        debugPrint(
+          'updateTransactionStatus failed: ${res.statusCode} ${res.body}',
+        );
+        final msg = _extractErrorMessage(
+          res,
+          'Gagal mengubah status transaksi.',
+        );
         Get.snackbar(
           'Gagal',
           msg,
@@ -305,6 +333,46 @@ class TransactionController extends GetxController {
         return false;
       }
     } catch (e) {
+      debugPrint('updateTransactionStatus error: $e');
+      Get.snackbar(
+        'Gagal',
+        'Terjadi kesalahan. Coba lagi.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.dangerBg,
+        colorText: AppColors.danger,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+      );
+      return false;
+    } finally {
+      isUpdatingStatus.value = false;
+    }
+  }
+
+  Future<bool> cancelTransaction(String id) async {
+    isUpdatingStatus.value = true;
+    try {
+      final res = await TransactionService.cancelTransaction(id);
+      if (res.statusCode == 200) {
+        await fetchTransactionById(id);
+        fetchTransactions();
+        return true;
+      } else {
+        debugPrint('cancelTransaction failed: ${res.statusCode} ${res.body}');
+        final msg = _extractErrorMessage(res, 'Gagal membatalkan transaksi.');
+        Get.snackbar(
+          'Gagal',
+          msg,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.dangerBg,
+          colorText: AppColors.danger,
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint('cancelTransaction error: $e');
       Get.snackbar(
         'Gagal',
         'Terjadi kesalahan. Coba lagi.',
@@ -322,8 +390,6 @@ class TransactionController extends GetxController {
 
   // ===================== SUMMARY =====================
 
-  /// Hanya hitung transaksi yang secara bisnis dianggap sebagai revenue:
-  /// processing, shipped, completed. Exclude cancelled dan failed.
   double get totalRevenue => filteredTransactions
       .where((t) => t.isCountableRevenue)
       .fold(0, (sum, t) => sum + t.grandTotal);
