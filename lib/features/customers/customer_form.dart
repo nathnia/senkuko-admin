@@ -87,7 +87,11 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ),
           centerTitle: true,
         ),
-        bottomNavigationBar: _StickyButton(c: _c, isEdit: _isEdit, onSubmit: _onSubmit),
+        bottomNavigationBar: _StickyButton(
+          c: _c,
+          isEdit: _isEdit,
+          onSubmit: _onSubmit,
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -193,6 +197,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                       label: 'Provinsi',
                       hint: 'DKI Jakarta',
                       textCapitalization: TextCapitalization.words,
+                      isRequired: true,
                     ),
                     AppTextField(
                       controller: _c.subregionC,
@@ -295,8 +300,9 @@ class _StickyButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed:
-                  c.isSubmitting.value || !c.isDirty.value ? null : onSubmit,
+              onPressed: c.isSubmitting.value || !c.isDirty.value
+                  ? null
+                  : onSubmit,
               child: c.isSubmitting.value
                   ? const SizedBox(
                       width: 20,

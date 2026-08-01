@@ -131,7 +131,8 @@ class CustomerController extends GetxController {
         codeC.text.trim().isNotEmpty &&
         phoneC.text.trim().isNotEmpty &&
         addressC.text.trim().isNotEmpty &&
-        cityC.text.trim().isNotEmpty;
+        cityC.text.trim().isNotEmpty &&
+        regionC.text.trim().isNotEmpty;
   }
 
   void _checkEditDirty() {
@@ -471,6 +472,10 @@ class CustomerController extends GetxController {
     }
     if (cityC.text.trim().isEmpty) {
       AppToast.show('Kota wajib diisi');
+      return false;
+    }
+    if (regionC.text.trim().isEmpty) {
+      AppToast.show('Provinsi wajib diisi');
       return false;
     }
     return true;
