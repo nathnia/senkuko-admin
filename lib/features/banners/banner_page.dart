@@ -9,13 +9,40 @@ import 'package:senkukoadmin/features/banners/banner_card.dart';
 import 'package:senkukoadmin/features/banners/banner_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class BannerPage extends StatelessWidget {
+class BannerPage extends StatefulWidget {
   const BannerPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<BannerController>();
+  State<BannerPage> createState() => _BannerPageState();
+}
 
+class _BannerPageState extends State<BannerPage> with WidgetsBindingObserver {
+  final controller = Get.find<BannerController>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    controller.fetchBanners();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama, balik lagi — banner mungkin
+    // udah basi (mis. ditambah/diedit dari device admin lain).
+    if (state == AppLifecycleState.resumed) {
+      controller.fetchBanners();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

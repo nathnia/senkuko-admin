@@ -30,11 +30,12 @@ class PriceController extends GetxController {
   }
 
   // ===================== FETCH =====================
-  // CHANGED: cache-first (Pola B, sama kayak fetchProducts()) — render
-  // instan dari cache kalau ada, TAPI tetep lanjut fetch fresh di
-  // background. TTL sengaja pendek (CacheKeys.stockPriceTtl) karena
-  // harga bisa berubah cukup sering, cache di sini cuma buat "instant
-  // paint" pas buka halaman, bukan sumber kebenaran.
+  // CHANGED: downgrade dari Pola B ke Pola A — skip network sepenuhnya
+  // kalau masih dalam TTL. Harga berubah lewat aksi admin (form edit),
+  // bukan efek samping otomatis dari transaksi kayak stok, jadi lebih
+  // mirip Product/Category ketimbang allVariants. Pakai CacheKeys.priceTtl
+  // (dipisah dari stockPriceTtl yang tetap dipakai allVariants/Pola B)
+  // biar TTL-nya gak ke-couple sama data stok yang beda karakteristik.
   Future<void> fetchPrices({bool forceRefresh = false}) async {
     void notifySummaryCache() {
       if (Get.isRegistered<ProductVariantController>()) {
@@ -45,15 +46,17 @@ class PriceController extends GetxController {
     if (!forceRefresh) {
       final cached = CacheService.instance.get(
         CacheKeys.priceList,
-        ttl: CacheKeys.stockPriceTtl,
+        ttl: CacheKeys.priceTtl,
       );
       if (cached != null) {
+        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
+        // crash build-phase kalau dipanggil dari initState() page.
+        await Future.microtask(() {});
         priceList.assignAll(
           (cached as List).map((e) => PriceData.fromJson(e)).toList(),
         );
         notifySummaryCache();
-        // sengaja gak return — lanjut fetch fresh di background biar
-        // harga ke-update walau tampilan udah instant dari cache
+        return; // cache masih valid, skip network sepenuhnya
       }
     }
 
@@ -82,6 +85,9 @@ class PriceController extends GetxController {
         ttl: CacheKeys.referenceDataTtl,
       );
       if (cached != null) {
+        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
+        // crash build-phase kalau dipanggil dari initState() page.
+        await Future.microtask(() {});
         priceListMaster.assignAll(
           (cached as List).map((e) => PricelistData.fromJson(e)).toList(),
         );

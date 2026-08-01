@@ -44,15 +44,11 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
     // background), pemanggilan ini murah dan sesuai trade-off "sengaja gak
     // hemat demi fresh" yang emang niatnya.
     //
-    // FIX 2: addPostFrameCallback WAJIB — fetchProducts/fetchAllVariants/
-    // fetchPrices SINKRON mutasi .obs kalau cache lagi hit (assignAll()
-    // sebelum ada `await`). Dipanggil langsung di initState() bikin crash
-    // "setState()/markNeedsBuild() called during build" karena halaman ini
-    // sendiri masih dalam proses dibangun (route transition-nya jalan di
-    // dalam Builder). Nunda ke post-frame callback nyelesain ini.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.loadInitialData();
-    });
+    // gak perlu addPostFrameCallback lagi — fetchProducts/fetchAllVariants/
+    // fetchPrices sekarang dijamin selalu async (fix di level controller,
+    // via `await Future.microtask(() {})` di jalur cache-hit), jadi aman
+    // dipanggil langsung di initState() tanpa risiko crash build-phase.
+    controller.loadInitialData();
     connectivityService.onReconnect = () => controller.loadInitialData();
   }
 
@@ -70,9 +66,7 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
     // halaman ini mungkin udah basi walau route-nya gak pernah "dibuka
     // ulang" secara navigasi.
     if (state == AppLifecycleState.resumed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.loadInitialData();
-      });
+      controller.loadInitialData();
     }
   }
 

@@ -46,6 +46,15 @@ class CategoryController extends GetxController {
         ttl: CacheKeys.referenceDataTtl,
       );
       if (cached != null) {
+        // FIX: await Future.microtask() di sini bikin jalur cache-hit
+        // gak PERNAH 100% sinkron — walau gak ada network call sama
+        // sekali. Tanpa ini, categoryList.assignAll() jalan sinkron
+        // sebelum `await` apa pun, dan kalau dipanggil dari initState()
+        // pas widget lain masih dalam proses dibangun, GetX/Flutter
+        // lempar "setState()/markNeedsBuild() called during build".
+        // Dengan fix ini, pemanggil (page mana pun) gak perlu lagi
+        // bungkus addPostFrameCallback sendiri-sendiri.
+        await Future.microtask(() {});
         categoryList.assignAll(
           (cached as List).map((e) => CategoryData.fromJson(e)).toList(),
         );

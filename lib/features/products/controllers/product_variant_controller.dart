@@ -308,6 +308,9 @@ class ProductVariantController extends GetxController {
         ttl: CacheKeys.stockPriceTtl,
       );
       if (cached != null) {
+        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
+        // crash build-phase kalau dipanggil dari initState() page.
+        await Future.microtask(() {});
         allVariants.assignAll(
           (cached as List).map((e) => VariantData.fromJson(e)).toList(),
         );

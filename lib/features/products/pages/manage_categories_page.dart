@@ -31,17 +31,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage>
     // referenceDataTtl 1 jam), jadi manggil ini tiap halaman dibuka itu
     // murah — cuma beneran hit network kalau cache-nya udah basi.
     //
-    // FIX 2: addPostFrameCallback WAJIB di sini — fetchCategories() itu
-    // SINKRON kalau cache lagi hit (categoryList.assignAll() jalan
-    // sebelum ada `await` apa pun). Kalau dipanggil langsung di
-    // initState(), mutasi .obs itu kejadian SAAT halaman ini masih dalam
-    // proses dibangun (route transition-nya sendiri jalan di dalam
-    // Builder) → GetX/Flutter lempar "setState()/markNeedsBuild() called
-    // during build". addPostFrameCallback nunda pemanggilannya sampai
-    // frame pertama kelar, jadi aman.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _categoryC.fetchCategories();
-    });
+    // gak perlu addPostFrameCallback lagi — fetchCategories() sekarang
+    // dijamin selalu async (fix di level controller, via
+    // `await Future.microtask(() {})` di jalur cache-hit), jadi aman
+    // dipanggil langsung di initState() tanpa risiko crash build-phase.
+    _categoryC.fetchCategories();
   }
 
   @override
@@ -56,9 +50,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage>
     // udah basi (mis. ditambah/dihapus dari device admin lain) walau
     // TTL-nya panjang.
     if (state == AppLifecycleState.resumed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _categoryC.fetchCategories();
-      });
+      _categoryC.fetchCategories();
     }
   }
 

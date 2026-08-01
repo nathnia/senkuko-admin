@@ -216,6 +216,11 @@ class BannerController extends GetxController {
         ttl: CacheKeys.referenceDataTtl,
       );
       if (cached != null) {
+        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
+        // crash "setState()/markNeedsBuild() called during build" kalau
+        // dipanggil dari initState() page. Lihat CategoryController
+        // buat penjelasan lengkap.
+        await Future.microtask(() {});
         bannerList.assignAll(
           (cached as List).map((e) => BannerData.fromJson(e)).toList(),
         );

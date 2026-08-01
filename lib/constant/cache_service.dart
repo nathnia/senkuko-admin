@@ -7,12 +7,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// PRINSIP PENTING: awalnya service ini cuma buat REFERENCE DATA
 /// (categories, units, price list master) dan PRODUCT LIST METADATA.
-/// Sekarang juga dipakai buat allVariants & priceList — TAPI dengan TTL
-/// pendek (CacheKeys.stockPriceTtl) dan selalu dipasangkan sama live
-/// background refetch + manual invalidation di controller masing-masing
-/// (lihat product_variant_controller & price_controller). Cache di sini
-/// buat data stok/harga cuma berfungsi sebagai "instant paint" pas buka
-/// halaman, BUKAN sumber kebenaran — network tetap selalu dipanggil.
+/// Sekarang juga dipakai buat allVariants & priceList — TAPI dengan
+/// pola yang beda:
+/// - allVariants (stok) tetap Pola B: TTL pendek (CacheKeys.stockPriceTtl),
+///   selalu dipasangkan sama live background refetch. Cache di sini cuma
+///   berfungsi sebagai "instant paint" pas buka halaman, BUKAN sumber
+///   kebenaran — network SELALU dipanggil apa pun TTL-nya. Sengaja gak
+///   dinaikin TTL-nya biar gampang dibedain intent-nya dari priceList.
+/// - priceList (harga) sekarang Pola A: TTL lebih panjang
+///   (CacheKeys.priceTtl), skip network SEPENUHNYA kalau masih fresh —
+///   sama kelasnya kayak productList/categories (harga cuma berubah
+///   lewat aksi admin, bukan efek otomatis dari transaksi kayak stok).
 ///
 /// ADDED: `banners` — Banner masuk kategori REFERENCE DATA juga (jarang
 /// berubah, gak kritis kalau agak basi, ada pull-to-refresh sebagai
@@ -89,17 +94,24 @@ class CacheKeys {
   static const banners = 'banners';
 
   // ADDED: cache buat data stok (allVariants) & harga (priceList).
-  // Dipakai dengan pola cache-first + background refresh (Pola B) di
-  // ProductVariantController.fetchAllVariants() & PriceController.fetchPrices()
   static const allVariants = 'all_variants';
   static const priceList = 'price_list';
 
   static const referenceDataTtl = Duration(hours: 1);
   static const productListTtl = Duration(minutes: 5);
 
-  // ADDED: TTL sengaja jauh lebih pendek dari data lain — allVariants
-  // (stok) & priceList (harga) bisa berubah kapan aja (ada transaksi
-  // masuk, harga diubah admin lain, dll). TTL ini cuma buat nge-cover
-  // jeda "instant paint" pas buka halaman, bukan buat nunda network call.
+  // allVariants (stok) — TETAP pendek & TETAP Pola B (selalu network-
+  // refresh apa pun hasil cache-nya). TTL ini CUMA ngatur seberapa lama
+  // cache lama masih dianggap layak dipakai buat instant-paint pas
+  // nunggu network — BUKAN keputusan skip-network. Jangan disamain sama
+  // priceTtl di bawah, dan jangan dinaikin buat "ngirit" — stok gak
+  // boleh punya window skip-network sama sekali (dipakai juga buat cek
+  // stok sebelum "Proses Pesanan").
   static const stockPriceTtl = Duration(seconds: 30);
+
+  // CHANGED: dipisah dari stockPriceTtl karena priceList sekarang Pola A
+  // (skip network sepenuhnya kalau masih dalam TTL ini) — beda pola sama
+  // allVariants yang tetap Pola B. Disamain kelasnya sama productListTtl
+  // karena sama-sama "cuma berubah lewat aksi admin".
+  static const priceTtl = Duration(minutes: 5);
 }

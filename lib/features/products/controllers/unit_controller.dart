@@ -19,6 +19,9 @@ class UnitController extends GetxController {
         ttl: CacheKeys.referenceDataTtl,
       );
       if (cached != null) {
+        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
+        // crash build-phase kalau dipanggil dari initState() page.
+        await Future.microtask(() {});
         unitList.assignAll(
           (cached as List).map((e) => UnitData.fromJson(e)).toList(),
         );

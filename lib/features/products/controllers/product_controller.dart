@@ -362,12 +362,20 @@ class ProductController extends GetxController {
         ttl: CacheKeys.productListTtl,
       );
       if (cached != null) {
+        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
+        // crash build-phase kalau dipanggil dari initState() page.
+        await Future.microtask(() {});
         final cachedList =
             (cached as List).map((e) => ProductData.fromJson(e)).toList();
         productList.assignAll(cachedList);
         _seedImageCacheFromProducts(cachedList);
-        // sengaja gak return di sini — lanjut fetch fresh di background
-        // biar data ke-update walau tampilan udah instant dari cache
+        // CHANGED: downgrade dari Pola B ke Pola A. Nama/SKU/deskripsi/
+        // kategori/gambar cuma berubah lewat form admin (bukan
+        // konsekuensi otomatis dari transaksi kayak stok), jadi aman
+        // skip network sepenuhnya kalau masih dalam TTL — beda sama
+        // fetchAllVariants() (stok) yang TETAP Pola B karena stok bisa
+        // berubah kapan aja dari transaksi device lain.
+        return;
       }
     }
 

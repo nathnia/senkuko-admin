@@ -9,13 +9,48 @@ import 'package:senkukoadmin/features/customers/customer_card.dart';
 import 'package:senkukoadmin/features/customers/customer_controller.dart';
 import 'package:senkukoadmin/routes/routes.dart';
 
-class CustomerPage extends StatelessWidget {
+class CustomerPage extends StatefulWidget {
   const CustomerPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<CustomerController>();
+  State<CustomerPage> createState() => _CustomerPageState();
+}
 
+class _CustomerPageState extends State<CustomerPage>
+    with WidgetsBindingObserver {
+  final controller = Get.find<CustomerController>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // FIX: sebelumnya StatelessWidget — gak ada initState(), padahal
+    // CustomerController udah punya refreshIfStale() yang komentarnya
+    // sendiri bilang "Panggil dari CustomerPage.initState()" — cuma emang
+    // gak pernah beneran dipanggil dari sini. fetchCustomers() gak pakai
+    // CacheService (murni network call), jadi aman dipanggil langsung
+    // tanpa addPostFrameCallback (beda sama Banner/Category yang punya
+    // jalur cache-hit sinkron).
+    controller.refreshIfStale();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Nutup celah: user minimize app lama (mis. ada transaksi baru yang
+    // ngubah total_spend pelanggan), balik lagi — data mungkin udah basi.
+    if (state == AppLifecycleState.resumed) {
+      controller.refreshIfStale();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
