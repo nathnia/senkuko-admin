@@ -38,8 +38,6 @@ class _VoucherPageState extends State<VoucherPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Nutup celah: user minimize app lama (misal ada voucher yang habis
-    // dipakai kasir lain), balik lagi ke app — data mungkin udah basi.
     if (state == AppLifecycleState.resumed) {
       controller.refreshIfStale();
     }
