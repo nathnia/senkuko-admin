@@ -200,6 +200,18 @@ class BannerController extends GetxController {
     return 'Semua';
   }
 
+  /// Reset search & filter ke kondisi default ("Semua") — dipanggil dari
+  /// BannerPage.initState(). Controller bersifat permanent, jadi tanpa
+  /// ini searchText/statusFilter bertahan dari kunjungan sebelumnya,
+  /// sementara AppSearchBar (StatefulWidget baru tiap buka halaman)
+  /// keliatan kosong — bikin search text/filter terkesan "nyangkut"
+  /// padahal sebenarnya cuma gak sinkron sama tampilan.
+  void resetFilters() {
+    searchText.value = '';
+    statusFilter.value = null;
+    _applyFilter();
+  }
+
   // ===================== FETCH =====================
   // CHANGED: dari staleness-only (in-memory) jadi full CacheService
   // (Pola A, sama kayak CategoryController/UnitController). Banner masuk

@@ -23,6 +23,12 @@ class _BannerPageState extends State<BannerPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // resetFilters() dulu — controller permanent bikin searchText/
+    // statusFilter bertahan antar kunjungan, sementara AppSearchBar-nya
+    // sendiri statenya baru tiap halaman ini dibuka (keliatan kosong).
+    // Tanpa reset, search text lama tetap dipakai buat filter walau
+    // kotaknya keliatan kosong.
+    controller.resetFilters();
     controller.fetchBanners();
   }
 

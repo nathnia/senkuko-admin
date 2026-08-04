@@ -263,6 +263,19 @@ class CustomerController extends GetxController {
     return 'Semua';
   }
 
+  /// Reset search & filter ke kondisi default ("Aktif") — dipanggil dari
+  /// CustomerPage.initState(). Controller bersifat permanent, jadi tanpa
+  /// ini searchText/statusFilter/groupFilter bertahan dari kunjungan
+  /// sebelumnya, sementara AppSearchBar (StatefulWidget baru tiap buka
+  /// halaman) keliatan kosong — bikin search text/filter terkesan
+  /// "nyangkut" padahal sebenarnya cuma gak sinkron sama tampilan.
+  void resetFilters() {
+    searchText.value = '';
+    statusFilter.value = CustomerStatus.active;
+    groupFilter.value = null;
+    _applyFilter();
+  }
+
   // ===================== FETCH =====================
   Future<void> fetchCustomers() async {
     if (isLoading.value) return;

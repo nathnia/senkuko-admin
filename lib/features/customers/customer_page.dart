@@ -31,6 +31,13 @@ class _CustomerPageState extends State<CustomerPage>
     // CacheService (murni network call), jadi aman dipanggil langsung
     // tanpa addPostFrameCallback (beda sama Banner/Category yang punya
     // jalur cache-hit sinkron).
+    //
+    // resetFilters() juga dipanggil di sini — controller permanent bikin
+    // searchText/statusFilter/groupFilter bertahan antar kunjungan,
+    // sementara AppSearchBar-nya sendiri statenya baru tiap halaman ini
+    // dibuka (keliatan kosong). Tanpa reset, search text lama tetap
+    // dipakai buat filter walau kotaknya keliatan kosong.
+    controller.resetFilters();
     controller.refreshIfStale();
   }
 

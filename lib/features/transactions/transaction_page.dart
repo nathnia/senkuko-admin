@@ -27,21 +27,15 @@ class _TransactionPageState extends State<TransactionPage>
     super.initState();
     _c = Get.find<TransactionController>();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = Get.arguments;
-      if (args is Map && args['statusFilter'] != null) {
-        _c.updateStatus(args['statusFilter'] as String);
-      } else {
-        _c.updateStatus(null);
-      }
-    });
-    // FIX: TransactionController permanent, onInit() cuma jalan sekali
-    // seumur app. refreshIfStale() udah ada di controller (staleness 15
-    // detik, komentarnya sendiri minta dipanggil dari sini) tapi gak
-    // pernah beneran dipanggil — jadi transaksi bisa basi tiap halaman
-    // ini dibuka ulang. fetchTransactions() gak pakai CacheService,
-    // murni network call, jadi aman dipanggil langsung tanpa perlu
-    // dibungkus addPostFrameCallback lagi.
+
+    _c.resetFilters();
+    final args = Get.arguments;
+    if (args is Map && args['statusFilter'] != null) {
+      _c.updateStatus(args['statusFilter'] as String);
+    }
+
+    // fetchTransactions() gak pakai CacheService, murni network call,
+    // aman dipanggil langsung.
     _c.refreshIfStale();
   }
 
