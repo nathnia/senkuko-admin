@@ -141,11 +141,11 @@ class _PromotionConditionFormPageState
                       items: const [
                         DropdownMenuItem(
                           value: 'min_transaction_amount',
-                          child: Text('Minimal Total Belanja'),
+                          child: Text('Total Belanja'),
                         ),
                         DropdownMenuItem(
                           value: 'min_qty',
-                          child: Text('Minimal Jumlah Item Dibeli'),
+                          child: Text('Jumlah Item Dibeli'),
                         ),
                         DropdownMenuItem(
                           value: 'specific_product',

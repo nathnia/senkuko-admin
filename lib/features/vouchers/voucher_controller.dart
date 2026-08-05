@@ -21,8 +21,6 @@ class VoucherController extends GetxController {
   final filteredVouchers = <VoucherData>[].obs;
 
   // ===================== PROMOTION DETAIL PREVIEW =====================
-  /// Isolated slice for the inline voucher preview inside PromotionDetailPage.
-  /// Never shared with or mutated by VoucherPage's filter/search session.
   final promotionVouchers = <VoucherData>[].obs;
   String? _previewPromotionId;
 
@@ -37,8 +35,6 @@ class VoucherController extends GetxController {
   final usageLimitC = TextEditingController(text: '0');
   final status = 'active'.obs;
 
-  /// Holds the full [PromotionData] selected via the promotion picker sheet.
-  /// Only used in standalone create mode (no pre-filled promotionId).
   final selectedPromotionObs = Rxn<PromotionData>();
 
   // ===================== DIRTY TRACKING =====================
@@ -76,7 +72,6 @@ class VoucherController extends GetxController {
     usageLimitC.removeListener(_checkDirty);
     promotionIdC.removeListener(_checkDirtyCreate);
 
-    // create mode — dirty only when both code and promotionId are filled
     codeC.addListener(_checkDirtyCreate);
     promotionIdC.addListener(_checkDirtyCreate);
   }
@@ -86,10 +81,6 @@ class VoucherController extends GetxController {
     promotionIdC.text = v.promotionId;
     usageLimitC.text = v.usageLimit.toString();
 
-    // Backend bisa aja ngirim value gak terduga ("Active", "used", "expired",
-    // ada spasi, dll). Normalize + clamp ke cuma 2 value yang dikenal dropdown,
-    // biar DropdownButtonFormField gak pernah nerima value yang gak match
-    // item manapun (itu penyebab assertion crash-nya).
     final normalized = v.status.trim().toLowerCase();
     status.value = (normalized == 'active' || normalized == 'inactive')
         ? normalized
@@ -127,16 +118,13 @@ class VoucherController extends GetxController {
 
   bool _initialized = false;
 
-  /// Dipanggil dari VoucherPage.initState(). Reset filter/search session
-  /// (perlu tiap buka halaman — misal pindah dari konteks promo A ke promo
-  /// B), TAPI data fetch-nya sekarang ngikutin staleness check, BUKAN
-  /// unconditional fetch. Controller udah permanent (CoreBinding), jadi
-  /// data yang udah ada di memori tetap valid selama belum "basi".
   void initPage(PromotionData? promotion) {
     if (_initialized) return;
     _initialized = true;
-    resetPageState(promotion: promotion);
-    refreshIfStale();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      resetPageState(promotion: promotion);
+      refreshIfStale();
+    });
   }
 
   void resetInit() => _initialized = false;
@@ -193,10 +181,6 @@ class VoucherController extends GetxController {
   }
 
   // ===================== STALENESS (TTL) =====================
-  // Sama pattern kayak PromotionController. TTL agak lebih pendek karena
-  // usage_count voucher bisa berubah kapan aja pas dipakai di transaksi
-  // (dari kasir/device lain) — jadi lebih worth di-refresh lebih sering
-  // dibanding data promosi murni.
   DateTime? _lastFetchedAt;
   static const _staleAfter = Duration(seconds: 20);
 
@@ -204,24 +188,20 @@ class VoucherController extends GetxController {
       _lastFetchedAt == null ||
       DateTime.now().difference(_lastFetchedAt!) > _staleAfter;
 
-  /// Panggil dari initState()/didChangeAppLifecycleState() halaman Voucher
-  /// — BUKAN dari onInit controller.
   void refreshIfStale() {
     if (_isStale) fetchVouchers();
   }
 
   // ===================== PROMOTION PREVIEW =====================
-
-  /// Called by PromotionDetailPage in initState.
-  /// Derives from already-loaded voucherList kalau masih fresh, kalau
-  /// belum ada data ATAU udah basi baru fetch ulang.
-  Future<void> fetchVouchersForPromotion(String promotionId) async {
+  void fetchVouchersForPromotion(String promotionId) {
     _previewPromotionId = promotionId;
-    if (voucherList.isEmpty || _isStale) {
-      await fetchVouchers();
-    } else {
-      _refreshPromotionVouchers();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (voucherList.isEmpty || _isStale) {
+        await fetchVouchers();
+      } else {
+        _refreshPromotionVouchers();
+      }
+    });
   }
 
   /// Called by PromotionDetailPage in dispose. Clears preview slice.
@@ -230,7 +210,6 @@ class VoucherController extends GetxController {
     promotionVouchers.clear();
   }
 
-  /// Derives promotionVouchers from voucherList. Called after every mutation.
   void _refreshPromotionVouchers() {
     if (_previewPromotionId == null) return;
     promotionVouchers.assignAll(
@@ -371,7 +350,6 @@ class VoucherController extends GetxController {
 
     final newStatus = voucher.isActive ? 'inactive' : 'active';
 
-    // optimistic update
     voucherList[idx] = voucher.copyWith(status: newStatus);
     _applyFilter();
     _refreshPromotionVouchers();
@@ -389,14 +367,12 @@ class VoucherController extends GetxController {
               : 'Voucher dinonaktifkan',
         );
       } else {
-        // rollback
         voucherList[idx] = voucher;
         _applyFilter();
         _refreshPromotionVouchers();
         AppToast.show(_parseError(res.body));
       }
     } catch (e) {
-      // rollback
       voucherList[idx] = voucher;
       _applyFilter();
       _refreshPromotionVouchers();
