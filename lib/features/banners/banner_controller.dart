@@ -309,7 +309,6 @@ class BannerController extends GetxController {
         return false;
       }
     } catch (e) {
-      debugPrint('Error createBanner: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {
@@ -370,7 +369,6 @@ class BannerController extends GetxController {
       AppToast.show('Banner berhasil diperbarui');
       return true;
     } catch (e) {
-      debugPrint('Error updateBanner: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {
@@ -406,7 +404,6 @@ class BannerController extends GetxController {
       AppToast.show('Gagal mengubah status');
       return false;
     } catch (e) {
-      debugPrint('Error toggleBannerStatus: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {
@@ -438,7 +435,6 @@ class BannerController extends GetxController {
       AppToast.show(ApiHelper.parseError(res.body, 'Gagal menghapus banner'));
       return false;
     } catch (e) {
-      debugPrint('Error deleteBanner: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {

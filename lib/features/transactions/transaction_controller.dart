@@ -248,8 +248,7 @@ class TransactionController extends GetxController {
             ? ApiHelper.parseError(res.body)
             : 'Gagal memuat daftar transaksi. (${res.statusCode})';
       }
-    } catch (e, st) {
-      debugPrint('fetchTransactions error: $e\n$st');
+    } catch (e) {
       hasError.value = true;
       errorMessage.value = 'Gagal memuat data: $e';
     } finally {
@@ -314,9 +313,6 @@ class TransactionController extends GetxController {
         fetchTransactions();
         return true;
       } else {
-        debugPrint(
-          'updateTransactionStatus failed: ${res.statusCode} ${res.body}',
-        );
         final msg = _extractErrorMessage(
           res,
           'Gagal mengubah status transaksi.',
@@ -333,7 +329,6 @@ class TransactionController extends GetxController {
         return false;
       }
     } catch (e) {
-      debugPrint('updateTransactionStatus error: $e');
       Get.snackbar(
         'Gagal',
         'Terjadi kesalahan. Coba lagi.',
@@ -358,7 +353,6 @@ class TransactionController extends GetxController {
         fetchTransactions();
         return true;
       } else {
-        debugPrint('cancelTransaction failed: ${res.statusCode} ${res.body}');
         final msg = _extractErrorMessage(res, 'Gagal membatalkan transaksi.');
         Get.snackbar(
           'Gagal',
@@ -372,7 +366,6 @@ class TransactionController extends GetxController {
         return false;
       }
     } catch (e) {
-      debugPrint('cancelTransaction error: $e');
       Get.snackbar(
         'Gagal',
         'Terjadi kesalahan. Coba lagi.',

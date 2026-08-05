@@ -580,7 +580,6 @@ class ProductVariantController extends GetxController {
   }
 
   // ===================== PRODUCT SUMMARY =====================
-  // CHANGED: uses cache, stores price as double, removed debugPrint
   ProductSummary getSummaryForProduct(String productId) {
     return _summaryCache.putIfAbsent(
       productId,

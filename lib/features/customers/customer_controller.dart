@@ -310,8 +310,7 @@ class CustomerController extends GetxController {
         final json = jsonDecode(res.body);
         selectedCustomer.value = CustomerData.fromJson(json['data']);
       }
-    } catch (e) {
-      debugPrint('Error fetchCustomerById: $e');
+    } catch (_) {
     } finally {
       isLoading.value = false;
     }
@@ -363,7 +362,6 @@ class CustomerController extends GetxController {
         return false;
       }
     } catch (e) {
-      debugPrint('Error createCustomer: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {
@@ -405,7 +403,6 @@ class CustomerController extends GetxController {
         return false;
       }
     } catch (e) {
-      debugPrint('Error updateCustomer: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {
@@ -457,7 +454,6 @@ class CustomerController extends GetxController {
       AppToast.show('Gagal mengubah status');
       return false;
     } catch (e) {
-      debugPrint('Error toggleStatus: $e');
       AppToast.show('Terjadi kesalahan');
       return false;
     } finally {

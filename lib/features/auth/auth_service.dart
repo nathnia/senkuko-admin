@@ -15,10 +15,6 @@ class AuthService {
     final url = Uri.parse('${ApiConstants.baseUrl}/auth/login/admin');
     final body = jsonEncode({'name': name, 'password': password});
 
-    debugPrint('=== LOGIN REQUEST ===');
-    debugPrint('URL: $url');
-    debugPrint('Body: $body');
-
     final res = await http.post(
       url,
       headers: {
@@ -28,10 +24,6 @@ class AuthService {
       },
       body: body,
     );
-
-    debugPrint('=== LOGIN RESPONSE ===');
-    debugPrint('Status: ${res.statusCode}');
-    debugPrint('Body: ${res.body}');
 
     return res;
   }

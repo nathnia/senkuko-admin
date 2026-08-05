@@ -96,7 +96,6 @@ class AuthController extends GetxController {
          AppToast.show(_mapError(res.statusCode));
       }
     } catch (e) {
-      debugPrint('login error: $e');
       AppToast.show('Terjadi kesalahan. Coba lagi.');
     } finally {
       isLoading.value = false;
