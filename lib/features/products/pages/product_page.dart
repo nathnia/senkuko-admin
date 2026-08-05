@@ -5,7 +5,6 @@ import 'package:senkukoadmin/constant/app_error_state.dart';
 import 'package:senkukoadmin/constant/app_filter_chips.dart';
 import 'package:senkukoadmin/constant/app_searchbar.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
-import 'package:senkukoadmin/constant/app_active_filter_chip.dart';
 import 'package:senkukoadmin/constant/app_filter_button.dart';
 import 'package:senkukoadmin/constant/connectivity_service.dart';
 import 'package:senkukoadmin/features/products/controllers/price_controller.dart';
@@ -102,8 +101,11 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.upload_file_rounded,
-                      size: 13, color: AppColors.primary),
+                  Icon(
+                    Icons.upload_file_rounded,
+                    size: 13,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'Import',
@@ -153,7 +155,6 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
               onChipTap: controller.changeTab,
             ),
           ),
-          _ActiveFilterChips(controller: controller),
           Expanded(
             child: Obx(() {
               // CHANGED: spinner cuma muncul kalau loading DAN belum ada data
@@ -168,8 +169,7 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
               // CHANGED: kalau ada cache, tetap tampilin data lama daripada
               // full error screen — silent degrade buat kondisi koneksi
               // jelek toko kecil.
-              if (controller.hasError.value &&
-                  controller.productList.isEmpty) {
+              if (controller.hasError.value && controller.productList.isEmpty) {
                 return AppErrorState(
                   message: controller.errorMessage.value,
                   onRetry: controller.loadInitialData,
@@ -183,8 +183,11 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inventory_2_outlined,
-                          size: 48, color: Colors.grey[300]),
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 48,
+                        color: Colors.grey[300],
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         'Produk tidak ditemukan',
@@ -226,55 +229,8 @@ class _ProductPageState extends State<ProductPage> with WidgetsBindingObserver {
           variantC.initPriceControllers();
           Get.toNamed(AppRoutes.addProduct);
         },
-        child: const Icon(Icons.add_rounded, color: Colors.white)
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
-  }
-}
-
-// ── Active Filter Chips ────────────────────────────────────────────────────────
-
-class _ActiveFilterChips extends StatelessWidget {
-  final ProductController controller;
-  const _ActiveFilterChips({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final chips = <Widget>[
-        if (controller.selectedSort.value.isNotEmpty)
-          AppActiveFilterChip(
-            label: 'Urutan: ${controller.sortLabel}',
-            onRemove: () => controller.selectedSort.value = '',
-          ),
-        if (controller.minPrice.value != null ||
-            controller.maxPrice.value != null)
-          AppActiveFilterChip(
-            label: 'Harga: ${controller.priceRangeLabel}',
-            onRemove: controller.clearPriceRange,
-          ),
-        if (controller.showLowStockOnly.value)
-          AppActiveFilterChip(
-            label: 'Stok Menipis',
-            onRemove: () => controller.showLowStockOnly.value = false,
-          ),
-        if (controller.showOutOfStockOnly.value)
-          AppActiveFilterChip(
-            label: 'Stok Habis',
-            onRemove: () => controller.showOutOfStockOnly.value = false,
-          ),
-      ];
-
-      if (chips.isEmpty) return const SizedBox.shrink();
-
-      return SizedBox(
-        height: 36,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          children: chips,
-        ),
-      );
-    });
   }
 }

@@ -203,22 +203,18 @@ class ProductController extends GetxController {
     // SORT
     switch (selectedSort.value) {
       case 'newest':
-        products.sort((a, b) {
-          final aDate =
-              DateTime.tryParse(a.createdAt.toString()) ?? DateTime(2000);
-          final bDate =
-              DateTime.tryParse(b.createdAt.toString()) ?? DateTime(2000);
-          return bDate.compareTo(aDate);
-        });
+        // FIX: createdAt sudah bertipe DateTime (lihat ProductData.fromJson),
+        // jadi gak perlu lagi round-trip .toString() -> DateTime.tryParse().
+        // Bandingkan langsung.
+        // CATATAN: kalau sort ini kelihatan "gak ngapa-ngapain" di data
+        // sekarang, itu karena beberapa produk di database punya
+        // created_at yang identik (hasil seeding), bukan bug di sini —
+        // cek dengan menambah produk baru lewat form, urutannya akan
+        // langsung benar begitu created_at-nya berbeda.
+        products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case 'oldest':
-        products.sort((a, b) {
-          final aDate =
-              DateTime.tryParse(a.createdAt.toString()) ?? DateTime(2000);
-          final bDate =
-              DateTime.tryParse(b.createdAt.toString()) ?? DateTime(2000);
-          return aDate.compareTo(bDate);
-        });
+        products.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         break;
       case 'az':
         products.sort((a, b) => a.name.compareTo(b.name));

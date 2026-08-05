@@ -15,42 +15,25 @@ class AppFilterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.primary.withAlpha(20) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isActive ? AppColors.primary : Colors.grey.shade200,
-                width: isActive ? 1.5 : 0.5,
-              ),
-            ),
-            child: Icon(
-              Icons.tune_rounded,
-              size: 20,
-              color: isActive ? AppColors.primary : AppColors.subtitle,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withAlpha(20) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? AppColors.primary : Colors.grey.shade200,
+            width: isActive ? 1.5 : 0.5,
           ),
-          if (isActive)
-            Positioned(
-              right: 5,
-              top: 5,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-        ],
+        ),
+        child: Center(
+          child: Icon(
+            Icons.tune_rounded,
+            size: 20,
+            color: isActive ? AppColors.primary : AppColors.subtitle,
+          ),
+        ),
       ),
     );
   }
