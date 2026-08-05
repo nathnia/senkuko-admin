@@ -108,7 +108,7 @@ class VariantFormPage extends StatelessWidget {
                     ),
                     AppTextField(
                       label: 'Stok Kritis',
-                      hint: 'cth: 5 (batas minimal sebelum stok menipis)',
+                      hint: 'cth: 5 (kosongkan jika tidak perlu peringatan stok)',
                       controller: isEditing
                           ? c.dialogCrisisStockC
                           : c.variantCrisisStockC,

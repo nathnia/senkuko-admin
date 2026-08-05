@@ -37,8 +37,6 @@ class DashboardPage extends StatelessWidget {
                 const SizedBox(height: 24),
                 _menuSection(),
                 const SizedBox(height: 24),
-                _addProductButton(),
-                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -595,37 +593,6 @@ class DashboardPage extends StatelessWidget {
       ),
     );
   }
-
-  // ==================== ADD PRODUCT ====================
-  Widget _addProductButton() {
-    return GestureDetector(
-      onTap: () => Get.toNamed(AppRoutes.addProduct),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 6),
-            Text(
-              'Tambah Produk Baru',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ==================== HELPER ====================
   Widget _sectionLabel(String text) {
     return Text(
