@@ -23,7 +23,7 @@ class DashboardPage extends StatelessWidget {
         child: RefreshIndicator(
           color: AppColors.primary,
           backgroundColor: Colors.white,
-          onRefresh: () => txC.fetchTransactions(),
+          onRefresh: () => txC.fetchTransactions(force: true),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -236,9 +236,33 @@ class DashboardPage extends StatelessWidget {
                         24)
                     .reduce((a, b) => a > b ? a : b);
 
+            // Subtitle sekarang nampilin estimasi rupiah SEKALIGUS estimasi
+            // jumlah item dari transaksi pending_payment (COD). Jumlah item
+            // didapat dari `txC.pendingItemEstimate` — diisi
+            // `fetchPendingItemEstimate()` di controller (fetch detail per
+            // transaksi pending, karena endpoint list & summary gak
+            // nyediain data item per status). Ada fallback: kalau jumlah
+            // transaksi pending ngelewatin cap (`pendingEstimateSkipped`),
+            // fetch detail di-skip biar gak numpuk request, dan subtitle-
+            // nya cuma nampilin rupiah tanpa jumlah item. Karena masih di
+            // dalam Obx() yang sama, baca `.value` di sini otomatis
+            // reaktif tanpa Obx tambahan.
+            // Bagian rupiah selalu instan (dihitung dari data lokal yang
+            // udah ke-load), jadi tetap ditampilkan terus. Cuma bagian
+            // jumlah item yang nunggu fetch detail — nampilin "menghitung
+            // item..." sementara `isPendingEstimateLoading`, biar gak
+            // sekilas nongol "0 item" sebelum data asli keisi.
+            final pendingItemPart = txC.isPendingEstimateLoading.value
+                ? 'menghitung item...'
+                : txC.pendingEstimateSkipped.value
+                    ? null
+                    : '${txC.pendingItemEstimate.value} item';
+
             final pendingSubtitle = pendingList.isEmpty
                 ? 'Menunggu konfirmasi admin'
-                : 'Estimasi ${CurrencyFormatter.format(pendingTotalRupiah)}';
+                : pendingItemPart == null
+                    ? 'Estimasi ${CurrencyFormatter.format(pendingTotalRupiah)}'
+                    : 'Estimasi ${CurrencyFormatter.format(pendingTotalRupiah)} • $pendingItemPart';
 
             final pendingWarning = oldestPendingDays >= 1
                 ? 'Sudah $oldestPendingDays hari menunggu konfirmasi'
@@ -256,6 +280,19 @@ class DashboardPage extends StatelessWidget {
                         .inHours ~/
                         24)
                     .reduce((a, b) => a > b ? a : b);
+
+            // Subtitle "Perlu Dikemas" ikut pola yang sama kayak pending —
+            // tapi ada fallback: kalau jumlah transaksi processing
+            // ngelewatin cap di controller (`processingEstimateSkipped`),
+            // fetch detail per transaksi di-skip biar gak numpuk request,
+            // dan subtitle balik ke teks statis biasa.
+            final processingSubtitle = processingList.isEmpty
+                ? 'Menunggu dikemas & dikirim'
+                : txC.isProcessingEstimateLoading.value
+                    ? 'Menghitung estimasi item...'
+                    : txC.processingEstimateSkipped.value
+                        ? 'Menunggu dikemas & dikirim'
+                        : 'Estimasi ${txC.processingItemEstimate.value} item perlu dikemas';
 
             final processingWarning = oldestProcessingDays >= 1
                 ? 'Sudah $oldestProcessingDays hari belum dikemas'
@@ -278,7 +315,7 @@ class DashboardPage extends StatelessWidget {
                 _orderRow(
                   icon: Icons.inbox_rounded,
                   title: 'Perlu Dikemas',
-                  subtitle: 'Menunggu dikemas & dikirim',
+                  subtitle: processingSubtitle,
                   warningText: processingWarning,
                   count: processingList.length,
                   isLast: false,

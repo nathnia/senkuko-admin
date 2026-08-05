@@ -8,6 +8,7 @@ import 'package:senkukoadmin/constant/currency_formatter.dart';
 import 'package:senkukoadmin/features/transactions/transaction_model.dart';
 import 'package:senkukoadmin/features/transactions/transaction_service.dart';
 import 'package:senkukoadmin/features/transactions/transaction_export_service.dart';
+import 'package:senkukoadmin/features/transactions/transaction_summary_model.dart';
 
 class TransactionController extends GetxController {
   final isLoading = false.obs;
@@ -55,14 +56,10 @@ class TransactionController extends GetxController {
       selectedStatus.value = args['statusFilter'] as String;
     }
     fetchTransactions();
+    fetchDashboardSummary(); // <-- baru
   }
 
   // ===================== STALENESS (TTL) =====================
-  // TTL sengaja PENDEK (15 detik) — jauh lebih ketat dari Voucher/Banner.
-  // Transaksi COD butuh konfirmasi admin secepat mungkin, dan status bisa
-  // berubah dari admin lain kapan aja. Ini CUMA buat nyegah spam fetch
-  // kalau user gerak cepat antar halaman (mis. buka-tutup dalam <15 detik),
-  // bukan buat nunda kebaruan data secara signifikan.
   DateTime? _lastFetchedAt;
   static const _staleAfter = Duration(seconds: 15);
 
@@ -70,10 +67,6 @@ class TransactionController extends GetxController {
       _lastFetchedAt == null ||
       DateTime.now().difference(_lastFetchedAt!) > _staleAfter;
 
-  /// Panggil dari TransactionPage.initState() — GANTIKAN fetchTransactions()
-  /// langsung. PENTING: mutations (updateTransactionStatus, cancelTransaction)
-  /// TETAP manggil fetchTransactions() langsung (lihat di bawah), BUKAN
-  /// method ini — abis mutasi harus selalu fresh, gak boleh ke-skip staleness.
   void refreshIfStale() {
     if (_isStale) fetchTransactions();
   }
@@ -226,7 +219,9 @@ class TransactionController extends GetxController {
 
   // ===================== FETCH =====================
 
-  Future<void> fetchTransactions() async {
+  /// [force] = true buat skip TTL item estimate juga — dipakai pas user
+  /// pull-to-refresh manual, karena secara eksplisit minta data terbaru.
+  Future<void> fetchTransactions({bool force = false}) async {
     if (isLoading.value) return;
     isLoading.value = true;
     hasError.value = false;
@@ -242,6 +237,9 @@ class TransactionController extends GetxController {
         );
         _applyFilter();
         _lastFetchedAt = DateTime.now();
+        // Fire-and-forget, gak blocking list utama.
+        fetchPendingItemEstimate(force: force);
+        fetchProcessingItemEstimate(force: force);
       } else {
         hasError.value = true;
         errorMessage.value = ApiHelper.isNetworkError(res)
@@ -283,15 +281,178 @@ class TransactionController extends GetxController {
     }
   }
 
+  // ===================== ITEM ESTIMATE (per status) =====================
+  // Buat subtitle kartu "COD Perlu Konfirmasi" & "Perlu Dikemas" di
+  // DashboardPage. Endpoint list (/transactions) gak balikin item, dan
+  // /transactions/summary cuma teragregasi per rentang tanggal tanpa
+  // filter status — jadi gak ada cara lain selain fetch detail per
+  // transaksi buat dapetin angka spesifik per status.
+  //
+  // Ini beda dari N+1 yang dilaporkan ke Zanadin (yang masalahnya ratusan-
+  // ribuan baris export bulanan). Di sini N secara alami kecil:
+  // - `pending_payment` (COD): transient — begitu dikonfirmasi admin,
+  //   statusnya pindah, jadi biasanya cuma segelintir.
+  // - `processing`: bisa numpuk kalau admin telat proses.
+  // Tapi keduanya TETAP dikasih `_itemEstimateCap` sebagai jaring pengaman
+  // eksplisit di kode — bukan cuma mengandalkan asumsi bisnis. Kalau
+  // jumlah transaksi di status itu ngelewatin cap, fetch detail di-skip
+  // sama sekali dan subtitle-nya balik ke teks statis (jumlah transaksi
+  // tetap kelihatan dari badge count di kartunya).
+
+  static const _itemEstimateCap = 30;
+
+  // TTL khusus buat item estimate — misah dari _staleAfter list utama
+  // karena ini request yang lebih berat (N request detail, bukan 1).
+  // Tanpa TTL sendiri, tiap fetchTransactions() (termasuk pull-to-refresh
+  // berkali-kali) bakal nembak ulang semua request detail padahal
+  // datanya kemungkinan besar belum berubah.
+  static const _itemEstimateStaleAfter = Duration(seconds: 30);
+  DateTime? _pendingEstimateFetchedAt;
+  DateTime? _processingEstimateFetchedAt;
+
+  final pendingItemEstimate = 0.obs;
+  final isPendingEstimateLoading = false.obs;
+  final processingItemEstimate = 0.obs;
+  final isProcessingEstimateLoading = false.obs;
+
+  /// true kalau jumlah transaksi pending/processing ngelewatin cap —
+  /// dipakai DashboardPage buat mutusin tampilin subtitle statis atau
+  /// estimasi.
+  final pendingEstimateSkipped = false.obs;
+  final processingEstimateSkipped = false.obs;
+
+  /// [force] = true buat skip TTL, dipakai pas pull-to-refresh manual.
+  Future<void> fetchPendingItemEstimate({bool force = false}) async {
+    final pending = transactionList
+        .where((t) => t.status == 'pending_payment')
+        .toList();
+
+    if (pending.length > _itemEstimateCap) {
+      pendingEstimateSkipped.value = true;
+      pendingItemEstimate.value = 0;
+      return;
+    }
+    pendingEstimateSkipped.value = false;
+
+    final isStale =
+        _pendingEstimateFetchedAt == null ||
+        DateTime.now().difference(_pendingEstimateFetchedAt!) >
+            _itemEstimateStaleAfter;
+    if (!force && !isStale) return;
+
+    await _fetchItemEstimateForStatus(
+      status: 'pending_payment',
+      target: pendingItemEstimate,
+      loadingFlag: isPendingEstimateLoading,
+    );
+    _pendingEstimateFetchedAt = DateTime.now();
+  }
+
+  /// [force] = true buat skip TTL, dipakai pas pull-to-refresh manual.
+  Future<void> fetchProcessingItemEstimate({bool force = false}) async {
+    final processing = transactionList
+        .where((t) => t.status == 'processing')
+        .toList();
+
+    if (processing.length > _itemEstimateCap) {
+      processingEstimateSkipped.value = true;
+      processingItemEstimate.value = 0;
+      return;
+    }
+    processingEstimateSkipped.value = false;
+
+    final isStale =
+        _processingEstimateFetchedAt == null ||
+        DateTime.now().difference(_processingEstimateFetchedAt!) >
+            _itemEstimateStaleAfter;
+    if (!force && !isStale) return;
+
+    await _fetchItemEstimateForStatus(
+      status: 'processing',
+      target: processingItemEstimate,
+      loadingFlag: isProcessingEstimateLoading,
+    );
+    _processingEstimateFetchedAt = DateTime.now();
+  }
+
+  Future<void> _fetchItemEstimateForStatus({
+    required String status,
+    required RxInt target,
+    required RxBool loadingFlag,
+  }) async {
+    final matching = transactionList.where((t) => t.status == status).toList();
+
+    if (matching.isEmpty) {
+      target.value = 0;
+      return;
+    }
+
+    loadingFlag.value = true;
+    try {
+      final results = await Future.wait(
+        matching.map((t) => TransactionService.getTransactionById(t.id)),
+      );
+
+      int total = 0;
+      for (final res in results) {
+        if (res.statusCode != 200) continue;
+        try {
+          final body = json.decode(res.body) as Map<String, dynamic>;
+          final detail = TransactionDetail.fromJson(
+            body['data'] as Map<String, dynamic>,
+          );
+          total += detail.items.fold(0, (sum, item) => sum + item.qty);
+        } catch (_) {
+          // Skip transaksi ini kalau parsing gagal, jangan gagalin semua.
+        }
+      }
+      target.value = total;
+    } catch (_) {
+      // Diem-diem aja kalau gagal total — sama kayak fetchDashboardSummary,
+      // dashboard tetap bisa dipakai tanpa angka ini.
+    } finally {
+      loadingFlag.value = false;
+    }
+  }
+
+  // ===================== DASHBOARD SUMMARY =====================
+  // Buat card estimasi jumlah barang terjual di DashboardPage. Data
+  // teragregasi dari backend (/transactions/summary), bukan dihitung
+  // manual dari transactionList (yang cuma nyimpen data list biasa,
+  // gak ada info item per transaksi).
+
+  final summary = Rxn<TransactionSummary>();
+  final isSummaryLoading = false.obs;
+
+  DateTime? _summaryFetchedAt;
+  static const _summaryStaleAfter = Duration(minutes: 1);
+
+  Future<void> fetchDashboardSummary({bool force = false}) async {
+    final isStale =
+        _summaryFetchedAt == null ||
+        DateTime.now().difference(_summaryFetchedAt!) > _summaryStaleAfter;
+    if (!force && !isStale) return;
+
+    isSummaryLoading.value = true;
+    try {
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      summary.value = await TransactionService.fetchSummary(
+        start: startOfMonth,
+        end: now,
+      );
+      _summaryFetchedAt = DateTime.now();
+    } catch (e) {
+      // Sengaja diem-diem aja kalau gagal — dashboard tetap bisa dipakai
+      // tanpa card ini, gak perlu snackbar/blocking error kayak fetch utama.
+      summary.value = null;
+    } finally {
+      isSummaryLoading.value = false;
+    }
+  }
+
   // ===================== UPDATE STATUS =====================
 
-  /// Parse pesan error dari response body dengan aman — SENGAJA dipisah
-  /// dari try/catch utama di updateTransactionStatus/cancelTransaction.
-  /// Kalau body-nya bukan JSON valid (mis. error HTML dari proxy/nginx,
-  /// bukan dari handler Express), json.decode bakal throw — dan kalau itu
-  /// kejadian DI DALAM try block utama, dia ketangkep catch(e) generik
-  /// yang nge-print "Terjadi kesalahan. Coba lagi." — pesan error asli
-  /// dari server (mis. "Forbidden: ...") jadi ke-mask dan susah didebug.
   static String _extractErrorMessage(http.Response? res, String fallback) {
     if (res == null) return fallback;
     try {
@@ -308,8 +469,6 @@ class TransactionController extends GetxController {
       final res = await TransactionService.updateTransactionStatus(id, status);
       if (res.statusCode == 200) {
         await fetchTransactionById(id);
-        // Sengaja TIDAK pakai refreshIfStale() — abis mutasi, list HARUS
-        // fresh, gak boleh ke-skip walau baru fetch <15 detik lalu.
         fetchTransactions();
         return true;
       } else {
@@ -381,7 +540,13 @@ class TransactionController extends GetxController {
     }
   }
 
-  // ===================== SUMMARY =====================
+  // ===================== SUMMARY / EXPORT =====================
+  // DIUBAH: dulu exportRecap() cuma ngirim `filteredTransactions` (list
+  // yang lagi ke-load di layar) ke TransactionExportService. Sekarang
+  // narik data LENGKAP dari backend (`/transactions/export`, paginated)
+  // sesuai rentang tanggal yang lagi dipilih user di filter — jadi hasil
+  // export gak kebatas apa yang kebetulan udah ke-fetch/ke-cache di app,
+  // dan gak perlu N+1 fetch per transaksi buat dapetin item-nya.
 
   double get totalRevenue => filteredTransactions
       .where((t) => t.isCountableRevenue)
@@ -391,11 +556,68 @@ class TransactionController extends GetxController {
 
   final isExporting = false.obs;
 
+  /// Terjemahin filter tanggal yang lagi aktif di UI (quick date / custom)
+  /// jadi rentang start–end konkret buat dikirim ke endpoint export.
+  _DateRange _resolveExportRange() {
+    final now = DateTime.now();
+    switch (selectedQuickDate.value) {
+      case 'Hari Ini':
+        return _DateRange(DateTime(now.year, now.month, now.day), now);
+      case '7 Hari':
+        return _DateRange(
+          DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 6)),
+          now,
+        );
+      case '30 Hari':
+        return _DateRange(
+          DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 29)),
+          now,
+        );
+      case 'Custom':
+        final range = selectedDateRange.value;
+        if (range != null) return _DateRange(range.start, range.end);
+        return _DateRange(DateTime(2020), now);
+      default: // 'Semua'
+        return _DateRange(DateTime(2020), now);
+    }
+  }
+
   Future<void> exportRecap() async {
     if (isExporting.value) return;
     isExporting.value = true;
     try {
-      await TransactionExportService.exportRecap(filteredTransactions);
+      final range = _resolveExportRange();
+
+      final rows = await TransactionService.fetchAllExportRows(
+        start: range.start,
+        end: range.end,
+      );
+
+      // Backend export belum support filter status, jadi difilter di sini
+      // kalau user lagi pilih tab status tertentu — konsisten sama
+      // _applyFilter() di atas.
+      final status = selectedStatus.value;
+      final filteredRows = status == null
+          ? rows
+          : rows.where((r) => r.status == status).toList();
+
+      final summary = await TransactionService.fetchSummary(
+        start: range.start,
+        end: range.end,
+      );
+
+      await TransactionExportService.exportRecap(
+        rows: filteredRows,
+        summary: summary,
+      );
     } catch (e) {
       Get.snackbar(
         'Gagal',
@@ -410,4 +632,10 @@ class TransactionController extends GetxController {
       isExporting.value = false;
     }
   }
+}
+
+class _DateRange {
+  final DateTime start;
+  final DateTime end;
+  const _DateRange(this.start, this.end);
 }

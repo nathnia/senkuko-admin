@@ -247,7 +247,7 @@ class _TransactionPageState extends State<TransactionPage>
       if (list.isEmpty) {
         return RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: _c.fetchTransactions,
+          onRefresh: () => _c.fetchTransactions(force: true),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: SizedBox(
@@ -287,7 +287,7 @@ class _TransactionPageState extends State<TransactionPage>
 
       return RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: _c.fetchTransactions,
+        onRefresh: () => _c.fetchTransactions(force: true),
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           itemCount: list.length,
