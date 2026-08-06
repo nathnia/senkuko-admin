@@ -35,6 +35,7 @@ class ImportRow {
   final String variantName;
   final String unitName;
   final int stockQty;
+  final int crisisStock;
   final Map<String, double> prices; // key: price list name (e.g. "Normal")
   final List<String> errors;
   ImportRowStatus status;
@@ -47,6 +48,7 @@ class ImportRow {
     required this.variantName,
     required this.unitName,
     required this.stockQty,
+    this.crisisStock = 0,
     required this.prices,
     required this.errors,
     this.status = ImportRowStatus.valid,
@@ -54,7 +56,8 @@ class ImportRow {
 
   bool get isValid => errors.isEmpty;
   String get displayTitle => '$productName — $variantName';
-  String get displaySubtitle => 'SKU: $skuCode · Stok: $stockQty · $unitName';
+  String get displaySubtitle =>
+      'SKU: $skuCode · Stok: $stockQty · Kritis: $crisisStock · $unitName';
 }
 
 // ── Payload untuk isolate (plain Dart) ───────────────────────────────────────
@@ -260,6 +263,7 @@ class ImportController extends GetxController {
             unitId: unitId,
             name: row.variantName,
             stock: row.stockQty,
+            crisisStock: row.crisisStock,
             isBaseUnit: variantOk == 0,
           );
 
@@ -419,6 +423,7 @@ List<int> _buildTemplateBytes(List<String> priceListNames) {
     'Nama Varian *',
     'Satuan *',
     'Stok',
+    'Stok Kritis',
   ];
 
   int col = 0;
@@ -466,19 +471,19 @@ List<int> _buildTemplateBytes(List<String> priceListNames) {
 
   writeRow(
     1,
-    ['Aqua', 'PRD-001', 'Minuman', 'Aqua 600ml', 'Pieces', 100],
+    ['Aqua', 'PRD-001', 'Minuman', 'Aqua 600ml', 'Pieces', 100, 10],
     priceListNames.map((n) => n.toLowerCase().contains('normal') ? 4000.0 : 3500.0).toList(),
   );
 
   writeRow(
     2,
-    ['Aqua', 'PRD-001', 'Minuman', 'Aqua 1500ml', 'Pieces', 50],
+    ['Aqua', 'PRD-001', 'Minuman', 'Aqua 1500ml', 'Pieces', 50, 5],
     priceListNames.map((n) => n.toLowerCase().contains('normal') ? 7000.0 : 6000.0).toList(),
   );
 
   writeRow(
     3,
-    ['Sprite', 'PRD-002', 'Minuman', 'Sprite 330ml', 'Pieces', 80],
+    ['Sprite', 'PRD-002', 'Minuman', 'Sprite 330ml', 'Pieces', 80, 8],
     priceListNames.map((n) => n.toLowerCase().contains('normal') ? 5000.0 : 4500.0).toList(),
   );
 
@@ -490,7 +495,8 @@ List<int> _buildTemplateBytes(List<String> priceListNames) {
     '* = wajib diisi  |  '
     'SKU sama = variant satu produk  |  '
     'Hapus baris contoh sebelum upload  |  '
-    'Satuan harus sesuai nama di master data app',
+    'Satuan harus sesuai nama di master data app  |  '
+    'Stok Kritis kosong = dianggap 0',
   );
   noteCell.cellStyle = noteStyle();
 
@@ -501,8 +507,9 @@ List<int> _buildTemplateBytes(List<String> priceListNames) {
   sheet.setColumnWidth(3, 22);
   sheet.setColumnWidth(4, 12);
   sheet.setColumnWidth(5, 10);
+  sheet.setColumnWidth(6, 12);
   for (int i = 0; i < priceListNames.length; i++) {
-    sheet.setColumnWidth(6 + i, 16);
+    sheet.setColumnWidth(7 + i, 16);
   }
 
   excel.delete('Sheet1');
@@ -537,6 +544,7 @@ _ParseResult _parseExcelBytes(_ParsePayload payload) {
   final colVariant = findCol('nama varian');
   final colUnit = findCol('satuan');
   final colStock = findCol('stok');
+  final colCrisisStock = findCol('stok kritis');
 
   // Kolom harga dinamis — cocokkan header LANGSUNG ke nama price list master
   // (bukan strip-prefix-rebuild manual, biar gak mismatch sama nama asli di DB
@@ -598,6 +606,12 @@ _ParseResult _parseExcelBytes(_ParsePayload payload) {
           cellStr(row, colStock).replaceAll(',', '').replaceAll('.', ''),
         ) ??
         0;
+    final crisisStock = colCrisisStock >= 0
+        ? int.tryParse(
+              cellStr(row, colCrisisStock).replaceAll(',', '').replaceAll('.', ''),
+            ) ??
+            0
+        : 0;
 
     final errors = <String>[];
 
@@ -642,6 +656,7 @@ _ParseResult _parseExcelBytes(_ParsePayload payload) {
         variantName: variantName,
         unitName: unitName,
         stockQty: stockQty,
+        crisisStock: crisisStock,
         prices: prices,
         errors: errors,
         status: errors.isEmpty ? ImportRowStatus.valid : ImportRowStatus.error,

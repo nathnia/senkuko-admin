@@ -54,7 +54,12 @@ class ProductService {
         'name': name,
         'sku_code': skuCode,
         'description': description,
-        'barcode': barcode.isEmpty ? null : barcode,
+        // FIX: sebelumnya `barcode.isEmpty ? null : barcode` — backend
+        // menolak barcode bernilai null dengan 400 "Invalid value"
+        // (validator cuma terima string, termasuk string kosong, tapi
+        // bukan null). Produk tanpa barcode jadi selalu gagal disimpan.
+        // Sekarang kirim apa adanya (string, bisa kosong).
+        'barcode': barcode,
         'category_id': categoryId,
         'is_active': true,
       }),
@@ -77,7 +82,12 @@ class ProductService {
         'name': name,
         'sku_code': skuCode,
         'description': description,
-        'barcode': barcode.isEmpty ? null : barcode,
+        // FIX: sama kayak createProduct() — INI FIX UTAMA bug "beberapa
+        // produk gak bisa di-update". barcode.isEmpty ? null : barcode
+        // bikin request ditolak backend (400, path: barcode, value: null)
+        // untuk SEMUA produk yang kolom barcode-nya kosong. Kirim string
+        // apa adanya biar konsisten dengan yang backend harapkan.
+        'barcode': barcode,
         'category_id': categoryId,
         'is_active': isActive,
       }),
@@ -120,6 +130,12 @@ class ProductService {
         'product_id': productId,
         'unit_id': unitId,
         'name': name,
+        // NOTE: pola null-untuk-kosong yang sama juga masih ada di sini.
+        // Belum dikonfirmasi menyebabkan error yang sama (belum ada log
+        // gagal untuk endpoint variant), tapi berpotensi bug serupa kalau
+        // barcode variant dikosongkan. Kalau nanti ketemu kasus "variant
+        // gagal diupdate" dengan pesan validasi barcode yang sama, ganti
+        // baris ini jadi `'barcode': barcode ?? '',` juga.
         'barcode': (barcode == null || barcode.isEmpty) ? null : barcode,
         'stock_qty': stock,
         'min_stock_qty': 1,
@@ -147,6 +163,10 @@ class ProductService {
         'name': name,
         'stock_qty': stock,
         'unit_id': unitId,
+        // NOTE: sama seperti createVariant() di atas — pola null-untuk-
+        // kosong ini belum dikonfirmasi bermasalah, tapi kalau ada laporan
+        // "variant gagal diupdate" dengan error validasi barcode yang
+        // serupa, ganti jadi `'barcode': barcode ?? '',`.
         'barcode': (barcode == null || barcode.isEmpty) ? null : barcode,
         'min_stock_qty': 1,
         'crisis_stock': crisisStock,
