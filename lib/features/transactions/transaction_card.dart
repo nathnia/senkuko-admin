@@ -16,6 +16,7 @@ class TransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusStyle = transaction.statusStyle;
+    final isUrgent = transaction.isUrgent;
 
     return GestureDetector(
       onTap: onTap,
@@ -107,16 +108,29 @@ class TransactionCard extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: statusStyle.background,
+                    color: isUrgent ? AppColors.dangerBg : statusStyle.background,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(
-                    statusStyle.label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: statusStyle.color,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isUrgent) ...[
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 11,
+                          color: AppColors.danger,
+                        ),
+                        const SizedBox(width: 3),
+                      ],
+                      Text(
+                        statusStyle.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: isUrgent ? AppColors.danger : statusStyle.color,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

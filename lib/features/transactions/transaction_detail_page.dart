@@ -94,16 +94,33 @@ class TransactionDetailPage extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: data.statusStyle.background,
+                            color: data.isUrgent
+                                ? AppColors.dangerBg
+                                : data.statusStyle.background,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(
-                            data.statusStyle.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: data.statusStyle.color,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (data.isUrgent) ...[
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 12,
+                                  color: AppColors.danger,
+                                ),
+                                const SizedBox(width: 3),
+                              ],
+                              Text(
+                                data.statusStyle.label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: data.isUrgent
+                                      ? AppColors.danger
+                                      : data.statusStyle.color,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

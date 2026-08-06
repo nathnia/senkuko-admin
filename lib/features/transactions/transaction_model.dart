@@ -240,6 +240,29 @@ class TransactionData {
   bool get isCountableRevenue =>
       status == 'completed' || status == 'processing' || status == 'shipped';
 
+  /// Selisih hari sejak transacted_at — dipakai buat nentuin transaksi
+  /// yang kelamaan "nyangkut" di satu status tanpa ditindaklanjuti.
+  int get daysSinceTransacted =>
+      DateTime.now().difference(transactedAt).inHours ~/ 24;
+
+  /// Sama kayak logika warning di DashboardPage (oldestPendingDays /
+  /// oldestProcessingDays >= 1 hari): transaksi pending_payment atau
+  /// processing yang udah lewat 1 hari dianggap urgent. Dipakai
+  /// TransactionCard buat nandain transaksi ini di list biar konsisten
+  /// sama sinyal yang udah ada di dashboard.
+  bool get isUrgent =>
+      (status == 'pending_payment' || status == 'processing') &&
+      daysSinceTransacted >= 1;
+
+  /// Pesan singkat buat ditampilin di card kalau isUrgent true.
+  String? get urgentLabel {
+    if (!isUrgent) return null;
+    final activity = status == 'pending_payment'
+        ? 'menunggu konfirmasi'
+        : 'belum dikemas';
+    return 'Sudah $daysSinceTransacted hari $activity';
+  }
+
   // ── Formatters ────────────────────────────────────────────────────────────
   String get formattedGrandTotal => CurrencyFormatter.format(grandTotal);
   String get formattedSubtotal => CurrencyFormatter.format(subtotal);
@@ -530,6 +553,13 @@ class TransactionDetail {
   String get paymentMethodLabel => paymentStyle.label;
   bool get isCod => paymentMethod == 'cod' || paymentMethod == 'cash';
   bool get hasAddress => deliveryAddress != null;
+
+  /// Sama kayak TransactionData.isUrgent — transaksi pending_payment atau
+  /// processing yang udah lewat 1 hari sejak transacted_at dianggap urgent.
+  /// Disatuin logikanya biar badge di list & detail page konsisten.
+  bool get isUrgent =>
+      (status == 'pending_payment' || status == 'processing') &&
+      DateTime.now().difference(transactedAt).inHours ~/ 24 >= 1;
 
   /// Apakah transaksi sudah di terminal state (tidak bisa diubah lagi).
   bool get isTerminal =>
