@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
@@ -119,12 +120,56 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                     if (!_isEdit) _promotionPickerField(),
 
                     // ── Kode Voucher ──────────────────────────────────────
-                    AppTextField(
-                      label: 'Kode Voucher',
-                      hint: 'cth: VOUCHER-SPESIAL-001',
-                      controller: controller.codeC,
-                      textCapitalization: TextCapitalization.characters,
-                      isRequired: true,
+                    // Row berisi AppTextField + tombol generate ulang kode
+                    // (VoucherController.regenerateCode()), style tombol
+                    // konsisten dengan Kode Pelanggan & Kode Promo.
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: AppTextField(
+                              label: 'Kode Voucher',
+                              hint: 'cth: VOUCHER-SPESIAL-001',
+                              controller: controller.codeC,
+                              textCapitalization:
+                                  TextCapitalization.characters,
+                              isRequired: true,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.deny(
+                                  RegExp(r'\s'),
+                                ),
+                                UpperCaseTextFormatter(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Tooltip(
+                              message: 'Generate ulang kode',
+                              child: InkWell(
+                                onTap: controller.regenerateCode,
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.successBg,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
                     // ── Batas Pemakaian ───────────────────────────────────
@@ -145,7 +190,6 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                       ),
                     ),
 
-                    // ── Status (edit mode only) ───────────────────────────
                     // ── Status (edit mode only) ───────────────────────────
                     if (_isEdit)
                       Obx(() {

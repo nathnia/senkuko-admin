@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/app_back_button.dart';
 import 'package:senkukoadmin/constant/app_colors.dart';
@@ -99,12 +100,54 @@ class _PromotionFormPageState extends State<PromotionFormPage> {
           controller: controller.nameC,
           isRequired: true,
         ),
-        AppTextField(
-          label: 'Kode Promo',
-          hint: 'cth: LEBARAN25',
-          controller: controller.codeC,
-          textCapitalization: TextCapitalization.characters,
-          isRequired: true,
+        // ── Kode Promo ─────────────────────────────────────────────────────
+        // Row berisi AppTextField + tombol generate ulang kode
+        // (PromotionController.regenerateCode()), style tombol konsisten
+        // dengan Kode Pelanggan & Kode Voucher.
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: AppTextField(
+                  label: 'Kode Promo',
+                  hint: 'cth: LEBARAN25',
+                  controller: controller.codeC,
+                  textCapitalization: TextCapitalization.characters,
+                  isRequired: true,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                    UpperCaseTextFormatter(),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Tooltip(
+                  message: 'Generate ulang kode',
+                  child: InkWell(
+                    onTap: controller.regenerateCode,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.successBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.refresh_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         _typeSelector(),
         AppTextField(

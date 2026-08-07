@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
 import 'package:senkukoadmin/constant/app_dialog.dart';
@@ -58,6 +60,24 @@ class VoucherController extends GetxController {
         codeC.text.trim().isNotEmpty && promotionIdC.text.trim().isNotEmpty;
   }
 
+  // ===================== GENERATE KODE =====================
+  // Karakter dipilih agar mudah dibaca (hindari 0/O dan 1/I yang rancu).
+  String _generateVoucherCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rng = Random.secure();
+    final suffix = List.generate(
+      8,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
+    return 'VC-$suffix';
+  }
+
+  /// Dipanggil dari tombol "Generate Ulang" di UI form voucher.
+  void regenerateCode() {
+    codeC.text = _generateVoucherCode();
+    _checkDirtyCreate();
+  }
+
   void resetForm() {
     codeC.clear();
     promotionIdC.clear();
@@ -71,6 +91,10 @@ class VoucherController extends GetxController {
     codeC.removeListener(_checkDirtyCreate);
     usageLimitC.removeListener(_checkDirty);
     promotionIdC.removeListener(_checkDirtyCreate);
+
+    // Isi kode otomatis saat form dibuka. Admin tetap bisa mengedit
+    // manual atau menekan tombol generate ulang di UI.
+    codeC.text = _generateVoucherCode();
 
     codeC.addListener(_checkDirtyCreate);
     promotionIdC.addListener(_checkDirtyCreate);
@@ -242,8 +266,14 @@ class VoucherController extends GetxController {
 
   // ===================== CREATE =====================
   Future<bool> createVoucher() async {
-    if (codeC.text.trim().isEmpty) {
+    final code = codeC.text.trim();
+
+    if (code.isEmpty) {
       AppToast.show('Kode voucher harus diisi');
+      return false;
+    }
+    if (code.contains(' ')) {
+      AppToast.show('Kode voucher tidak boleh mengandung spasi');
       return false;
     }
     if (promotionIdC.text.trim().isEmpty) {
@@ -255,7 +285,7 @@ class VoucherController extends GetxController {
     try {
       final res = await VoucherService.createVoucher({
         'promotion_id': promotionIdC.text.trim(),
-        'code': codeC.text.trim().toUpperCase(),
+        'code': code.toUpperCase(),
         'usage_limit': int.tryParse(usageLimitC.text) ?? 1,
       });
 
@@ -264,7 +294,18 @@ class VoucherController extends GetxController {
         return false;
       }
       if (res.statusCode != 200 && res.statusCode != 201) {
-        AppToast.show(_parseError(res.body));
+        final errMsg = _parseError(res.body);
+        final isDuplicateCode =
+            errMsg.toLowerCase().contains('code') ||
+            errMsg.toLowerCase().contains('kode') ||
+            res.statusCode == 409;
+
+        if (isDuplicateCode) {
+          codeC.text = _generateVoucherCode();
+          AppToast.show('Kode sudah dipakai, kode baru sudah di-generate');
+        } else {
+          AppToast.show(errMsg);
+        }
         return false;
       }
 
@@ -282,15 +323,21 @@ class VoucherController extends GetxController {
 
   // ===================== UPDATE =====================
   Future<bool> updateVoucher(String id) async {
-    if (codeC.text.trim().isEmpty) {
+    final code = codeC.text.trim();
+
+    if (code.isEmpty) {
       AppToast.show('Kode voucher harus diisi');
+      return false;
+    }
+    if (code.contains(' ')) {
+      AppToast.show('Kode voucher tidak boleh mengandung spasi');
       return false;
     }
 
     isSubmitting.value = true;
     try {
       final res = await VoucherService.updateVoucher(id, {
-        'code': codeC.text.trim().toUpperCase(),
+        'code': code.toUpperCase(),
         'status': status.value,
         'usage_limit': int.tryParse(usageLimitC.text) ?? 1,
       });
@@ -387,5 +434,41 @@ class VoucherController extends GetxController {
     } catch (_) {
       return 'Terjadi kesalahan';
     }
+  }
+}
+
+// ===================== FORM FORMATTER (khusus field kode) =====================
+// Otomatis mengubah teks yang diketik di codeC menjadi huruf besar, karena
+// backend menyimpan kode voucher dalam bentuk uppercase (lihat
+// `.toUpperCase()` pada createVoucher()/updateVoucher() di atas).
+//
+// Pemakaian di UI (VoucherFormPage), pasang di TextField yang controller-nya
+// codeC:
+//
+// TextField(
+//   controller: voucherC.codeC,
+//   inputFormatters: [
+//     FilteringTextInputFormatter.deny(RegExp(r'\s')), // tolak spasi
+//     UpperCaseTextFormatter(),                         // auto uppercase
+//   ],
+//   decoration: InputDecoration(
+//     labelText: 'Kode Voucher',
+//     suffixIcon: IconButton(
+//       icon: const Icon(Icons.refresh),
+//       tooltip: 'Generate ulang kode',
+//       onPressed: voucherC.regenerateCode,
+//     ),
+//   ),
+// )
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
   }
 }

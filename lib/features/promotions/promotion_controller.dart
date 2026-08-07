@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:senkukoadmin/constant/api_helper.dart';
@@ -43,6 +45,24 @@ class PromotionController extends GetxController {
   final isActive = true.obs;
   final stackable = false.obs;
 
+  // ===================== GENERATE KODE =====================
+  // Karakter dipilih agar mudah dibaca (hindari 0/O dan 1/I yang rancu).
+  String _generatePromotionCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rng = Random.secure();
+    final suffix = List.generate(
+      8,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
+    return 'PR-$suffix';
+  }
+
+  /// Dipanggil dari tombol "Generate Ulang" di UI form promosi.
+  void regenerateCode() {
+    codeC.text = _generatePromotionCode();
+    checkDirty();
+  }
+
   // Reset Form
   void resetForm() {
     nameC.clear();
@@ -54,6 +74,11 @@ class PromotionController extends GetxController {
     selectedType.value = '';
     isActive.value = true;
     stackable.value = false;
+
+    // Isi kode otomatis saat form dibuka (sebelum snapshot diambil,
+    // supaya state awal ini tidak langsung terbaca "dirty"). Admin
+    // tetap bisa mengedit manual atau klik generate ulang di UI.
+    codeC.text = _generatePromotionCode();
 
     isDirty.value = false;
     _takeSnapshot();
@@ -338,8 +363,14 @@ class PromotionController extends GetxController {
 
   // ===================== CREATE =====================
   Future<bool> createPromotion() async {
-    if (nameC.text.trim().isEmpty || codeC.text.trim().isEmpty) {
+    final code = codeC.text.trim();
+
+    if (nameC.text.trim().isEmpty || code.isEmpty) {
       AppToast.show('Nama dan Kode Promo harus diisi');
+      return false;
+    }
+    if (code.contains(' ')) {
+      AppToast.show('Kode promosi tidak boleh mengandung spasi');
       return false;
     }
     if (validFrom.value == null || validTo.value == null) {
@@ -362,7 +393,18 @@ class PromotionController extends GetxController {
         return false;
       }
       if (res.statusCode != 200 && res.statusCode != 201) {
-        AppToast.show(_parseError(res.body));
+        final errMsg = _parseError(res.body);
+        final isDuplicateCode =
+            errMsg.toLowerCase().contains('code') ||
+            errMsg.toLowerCase().contains('kode') ||
+            res.statusCode == 409;
+
+        if (isDuplicateCode) {
+          codeC.text = _generatePromotionCode();
+          AppToast.show('Kode sudah dipakai, kode baru sudah di-generate');
+        } else {
+          AppToast.show(errMsg);
+        }
         return false;
       }
       AppToast.show('Promosi berhasil dibuat');
@@ -379,8 +421,14 @@ class PromotionController extends GetxController {
 
   // ===================== UPDATE =====================
   Future<bool> updatePromotion(String id) async {
-    if (nameC.text.trim().isEmpty || codeC.text.trim().isEmpty) {
+    final code = codeC.text.trim();
+
+    if (nameC.text.trim().isEmpty || code.isEmpty) {
       AppToast.show('Nama dan Kode Promo harus diisi');
+      return false;
+    }
+    if (code.contains(' ')) {
+      AppToast.show('Kode promosi tidak boleh mengandung spasi');
       return false;
     }
     if (validFrom.value == null || validTo.value == null) {
@@ -796,5 +844,41 @@ class PromotionController extends GetxController {
       if (categoryC.categoryList.isEmpty) categoryC.fetchCategories(),
       if (variantC.allVariants.isEmpty) variantC.fetchAllVariants(),
     ]);
+  }
+}
+
+// ===================== FORM FORMATTER (khusus field kode) =====================
+// Otomatis mengubah teks yang diketik di codeC menjadi huruf besar, karena
+// backend menyimpan kode promosi dalam bentuk uppercase (lihat
+// `.toUpperCase()` pada _buildPayload() di atas).
+//
+// Pemakaian di UI (PromotionFormPage), pasang di TextField yang
+// controller-nya codeC:
+//
+// TextField(
+//   controller: promoC.codeC,
+//   inputFormatters: [
+//     FilteringTextInputFormatter.deny(RegExp(r'\s')), // tolak spasi
+//     UpperCaseTextFormatter(),                         // auto uppercase
+//   ],
+//   decoration: InputDecoration(
+//     labelText: 'Kode Promo',
+//     suffixIcon: IconButton(
+//       icon: const Icon(Icons.refresh),
+//       tooltip: 'Generate ulang kode',
+//       onPressed: promoC.regenerateCode,
+//     ),
+//   ),
+// )
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
   }
 }
