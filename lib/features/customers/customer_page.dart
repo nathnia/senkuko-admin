@@ -79,7 +79,7 @@ class _CustomerPageState extends State<CustomerPage>
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: AppSearchBar(
-              hintText: 'Cari nama, telepon, atau email...',
+              hintText: 'Cari nama, atau telepon,...',
               onChanged: controller.updateSearch,
             ),
           ),

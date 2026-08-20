@@ -145,28 +145,13 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                         isRequired: true,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
 
-              // ── Kontak ────────────────────────────────────────────
-              AppCard(
-                title: 'KONTAK',
-                child: Column(
-                  children: [
                     AppTextField(
                       controller: _c.phoneC,
                       label: 'No. Telepon',
                       hint: '08xxxxxxxxxx',
                       keyboardType: TextInputType.phone,
                       isRequired: true,
-                    ),
-                    AppTextField(
-                      controller: _c.emailC,
-                      label: 'Email',
-                      hint: 'email@contoh.com',
-                      keyboardType: TextInputType.emailAddress,
                     ),
                   ],
                 ),

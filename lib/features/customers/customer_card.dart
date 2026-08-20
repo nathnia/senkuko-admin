@@ -230,9 +230,6 @@ class _SubInfo extends StatelessWidget {
     if (customer.phone != null && customer.phone!.isNotEmpty) {
       parts.add(customer.phone!);
     }
-    if (customer.email != null && customer.email!.isNotEmpty) {
-      parts.add(customer.email!);
-    }
     if (parts.isEmpty) return const SizedBox.shrink();
     return Text(
       parts.join('  ·  '),

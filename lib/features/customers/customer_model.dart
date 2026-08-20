@@ -90,7 +90,6 @@ class CustomerData {
   String code;
   String name;
   String? phone;
-  String? email;
   String? address;
   String? city;
   String? region;
@@ -106,7 +105,6 @@ class CustomerData {
     required this.code,
     required this.name,
     this.phone,
-    this.email,
     this.address,
     this.city,
     this.region,
@@ -125,7 +123,6 @@ class CustomerData {
     code: json["code"] ?? '',
     name: json["name"],
     phone: json["phone"],
-    email: json["email"],
     address: json["address"],
     city: json["city"],
     region: json["region"],
@@ -144,7 +141,6 @@ class CustomerData {
     "code": code,
     "name": name,
     "phone": phone,
-    "email": email,
     "address": address,
     "city": city,
     "region": region,

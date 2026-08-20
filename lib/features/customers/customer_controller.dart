@@ -26,7 +26,6 @@ class CustomerController extends GetxController {
   final nameC = TextEditingController();
   final codeC = TextEditingController();
   final phoneC = TextEditingController();
-  final emailC = TextEditingController();
   final addressC = TextEditingController();
   final cityC = TextEditingController();
   final regionC = TextEditingController();
@@ -37,7 +36,6 @@ class CustomerController extends GetxController {
   String _snapName = '';
   String _snapCode = '';
   String _snapPhone = '';
-  String _snapEmail = '';
   String _snapAddress = '';
   String _snapCity = '';
   String _snapRegion = '';
@@ -48,7 +46,6 @@ class CustomerController extends GetxController {
     nameC,
     codeC,
     phoneC,
-    emailC,
     addressC,
     cityC,
     regionC,
@@ -140,7 +137,6 @@ class CustomerController extends GetxController {
         nameC.text.trim() != _snapName ||
         codeC.text.trim() != _snapCode ||
         phoneC.text.trim() != _snapPhone ||
-        emailC.text.trim() != _snapEmail ||
         addressC.text.trim() != _snapAddress ||
         cityC.text.trim() != _snapCity ||
         regionC.text.trim() != _snapRegion ||
@@ -183,7 +179,6 @@ class CustomerController extends GetxController {
     _snapName = c.name;
     _snapCode = c.code;
     _snapPhone = c.phone ?? '';
-    _snapEmail = c.email ?? '';
     _snapAddress = c.address ?? '';
     _snapCity = c.city ?? '';
     _snapRegion = c.region ?? '';
@@ -193,7 +188,6 @@ class CustomerController extends GetxController {
     nameC.text = _snapName;
     codeC.text = _snapCode;
     phoneC.text = _snapPhone;
-    emailC.text = _snapEmail;
     addressC.text = _snapAddress;
     cityC.text = _snapCity;
     regionC.text = _snapRegion;
@@ -217,7 +211,6 @@ class CustomerController extends GetxController {
             lower.isEmpty ||
             c.name.toLowerCase().contains(lower) ||
             (c.phone?.toLowerCase().contains(lower) ?? false) ||
-            (c.email?.toLowerCase().contains(lower) ?? false) ||
             c.code.toLowerCase().contains(lower);
         return matchStatus && matchGroup && matchSearch;
       }).toList(),
@@ -327,7 +320,6 @@ class CustomerController extends GetxController {
         'code': codeC.text.trim(),
         'phone': phoneC.text.trim(),
         'customer_group': customerGroup.value.apiValue,
-        if (emailC.text.trim().isNotEmpty) 'email': emailC.text.trim(),
         if (addressC.text.trim().isNotEmpty) 'address': addressC.text.trim(),
         if (cityC.text.trim().isNotEmpty) 'city': cityC.text.trim(),
         if (regionC.text.trim().isNotEmpty) 'region': regionC.text.trim(),
@@ -380,7 +372,6 @@ class CustomerController extends GetxController {
         'code': codeC.text.trim(),
         'phone': phoneC.text.trim(),
         'customer_group': customerGroup.value.apiValue,
-        'email': emailC.text.trim(),
         'address': addressC.text.trim(),
         'city': cityC.text.trim(),
         'region': regionC.text.trim(),
