@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:senkukoadmin/constant/app_dialog.dart';
 import 'package:senkukoadmin/constant/app_toast.dart';
 import 'package:senkukoadmin/constant/cache_service.dart';
@@ -448,6 +449,29 @@ class ProductVariantController extends GetxController {
     if (index >= 0 && index < list.length) list.removeAt(index);
   }
 
+  // ===================== DELETE VARIANT — ERROR MESSAGE MAPPING =====================
+  // Backend nolak delete varian yang masih punya riwayat di stock_ledger
+  // lewat FK constraint (ON DELETE RESTRICT). Daripada nampilin pesan SQL
+  // mentah ke user ("Cannot delete or update a parent row: a foreign key
+  // constraint fails ..."), kita mapping ke pesan yang lebih manusiawi.
+  // Kalau format pesannya berubah di backend / gagal di-parse, fallback ke
+  // pesan generik lama biar gak pernah nampilin JSON mentah ke user.
+  String _parseDeleteVariantError(http.Response res) {
+    try {
+      final body = json.decode(res.body);
+      final message = body['message']?.toString() ?? '';
+
+      if (message.contains('foreign key constraint') ||
+          message.contains('stock_ledger')) {
+        return 'Varian ini sudah memiliki riwayat stok, sehingga tidak bisa dihapus permanen.';
+      }
+      if (message.isNotEmpty) return message;
+    } catch (_) {
+      // body bukan JSON valid atau format tak terduga — pakai fallback di bawah
+    }
+    return 'Gagal menghapus varian';
+  }
+
   Future<void> deleteVariant(int index, {required bool isEditMode}) async {
     final list = isEditMode ? editVariantsTemp : variantsTemp;
     if (index < 0 || index >= list.length) return;
@@ -486,7 +510,10 @@ class ProductVariantController extends GetxController {
 
       AppToast.show('Varian berhasil dihapus');
     } else {
-      AppToast.show('Gagal menghapus varian');
+      // ADDED: log status + body mentah buat debugging, tapi user cuma
+      // lihat pesan yang sudah di-mapping lewat _parseDeleteVariantError().
+      debugPrint('Delete variant failed: ${res.statusCode} - ${res.body}');
+      AppToast.show(_parseDeleteVariantError(res));
     }
   }
 
@@ -539,8 +566,7 @@ class ProductVariantController extends GetxController {
   Future<void> updateExistingVariant(Map<String, dynamic> v) async {
     final variantId = v['id'].toString();
     final unitId = v['unit_id']?.toString() ?? '';
-    final crisisStock =
-        int.tryParse(v['crisis_stock']?.toString() ?? '0') ?? 0;
+    final crisisStock = int.tryParse(v['crisis_stock']?.toString() ?? '0') ?? 0;
     final barcode = v['barcode']?.toString().trim() ?? '';
     final isBaseUnit = v['is_base_unit'] as bool? ?? false;
 
