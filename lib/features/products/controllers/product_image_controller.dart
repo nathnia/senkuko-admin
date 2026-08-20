@@ -27,15 +27,50 @@ class ProductImageController extends GetxController {
     super.onClose();
   }
 
+  // ===================== ORDERING =====================
+  // Endpoint list produk (getProducts) nggak ngirim field created_at/id
+  // per gambar sama sekali — cuma url & is_primary (yang is_primary-nya
+  // sendiri selalu false, nggak kepake). Satu-satunya sinyal urutan
+  // upload yang konsisten ada di URL Cloudinary itu sendiri: segmen
+  // setelah "/upload/v" adalah version number, yang defaultnya = unix
+  // timestamp saat file diupload. Dipakai sebagai pengganti createdAt
+  // buat nentuin urutan "gambar pertama" secara stabil, apapun urutan
+  // mentah yang dibalikin backend (endpoint list vs endpoint detail
+  // gambar bisa beda urutan array-nya).
+  //
+  // "Gambar utama" di UI ditentukan MURNI dari index ke-0 hasil sort
+  // ini — bukan dari field is_primary (yang emang nggak reliable dari
+  // backend saat ini).
+  int _cloudinaryVersion(String url) {
+    final match = RegExp(r'/upload/v(\d+)/').firstMatch(url);
+    if (match == null) return 0;
+    return int.tryParse(match.group(1)!) ?? 0;
+  }
+
+  List<ProductImageData> _sortByUploadOrder(List<ProductImageData> images) {
+    final sorted = List<ProductImageData>.from(images);
+    sorted.sort(
+      (a, b) =>
+          _cloudinaryVersion(a.imageUrl).compareTo(_cloudinaryVersion(b.imageUrl)),
+    );
+    return sorted;
+  }
+
   // ===================== CACHE =====================
   void clearAllCache() {
     allProductImages.clear();
     allProductImages.refresh();
   }
 
-  // Replace semua cache sekaligus — atomic, tidak ada flicker
+  // Replace semua cache sekaligus — atomic, tidak ada flicker.
+  // CHANGED: sort by Cloudinary upload version dulu sebelum masuk
+  // cache, biar konsisten walau sumbernya endpoint list produk (yang
+  // urutan array-nya kadang naruh gambar terbaru di depan).
   void replaceAllCache(Map<String, List<ProductImageData>> newCache) {
-    allProductImages.assignAll(newCache);
+    final sorted = newCache.map(
+      (key, value) => MapEntry(key, _sortByUploadOrder(value)),
+    );
+    allProductImages.assignAll(sorted);
     allProductImages.refresh();
   }
 
@@ -52,9 +87,12 @@ class ProductImageController extends GetxController {
       final jsonData = json.decode(res.body);
       final List raw = jsonData['data'] ?? [];
 
-      allProductImages[productId] = raw
+      final images = raw
           .map((e) => ProductImageData.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      // CHANGED: paksa urutan konsisten sama jalur endpoint list produk.
+      allProductImages[productId] = _sortByUploadOrder(images);
 
       allProductImages.refresh();
     } catch (_) {}
@@ -73,9 +111,12 @@ class ProductImageController extends GetxController {
       final jsonData = json.decode(res.body);
       final List raw = jsonData['data'] ?? [];
 
-      target[productId] = raw
+      final images = raw
           .map((e) => ProductImageData.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      // CHANGED: sort juga di jalur ini biar konsisten.
+      target[productId] = _sortByUploadOrder(images);
     } catch (_) {}
   }
 
@@ -112,6 +153,9 @@ class ProductImageController extends GetxController {
     }
   }
 
+  // Primary di UI otomatis ngikut index 0 setelah item dihapus — nggak
+  // perlu manual re-flag apapun di sini, karena badge "Utama" murni
+  // dari posisi array (lihat ProductImageSection).
   void _removeImageLocally(String productId, int index) {
     final current = allProductImages[productId] ?? [];
     if (index < 0 || index >= current.length) return;
@@ -122,9 +166,6 @@ class ProductImageController extends GetxController {
     if (updated.isEmpty) {
       allProductImages.remove(productId);
     } else {
-      if (!updated[0].isPrimary) {
-        updated[0] = updated[0].copyWith(isPrimary: true);
-      }
       allProductImages[productId] = updated;
     }
 
@@ -142,6 +183,9 @@ class ProductImageController extends GetxController {
     pendingEditImages.removeAt(index);
   }
 
+  // NOTE: isPrimary di sini udah nggak dipakai buat nentuin badge
+  // "Utama" (itu sekarang murni dari index di UI). Field-nya cuma
+  // dipertahankan karena ProductImageData butuh nilai non-null.
   List<ProductImageData> getPendingAsImageData() {
     return pendingImages.asMap().entries.map((entry) {
       return ProductImageData(
@@ -149,7 +193,7 @@ class ProductImageController extends GetxController {
         productId: '',
         imageUrl: entry.value.path,
         publicId: '',
-        isPrimary: entry.key == 0,
+        isPrimary: false,
         createdAt: DateTime.now(),
       );
     }).toList();
@@ -216,7 +260,11 @@ class ProductImageController extends GetxController {
 
     int failCount = 0;
 
-    for (var image in List<XFile>.from(images)) {
+    // Snapshot supaya aman diiterasi walau `images` (list reaktif asli)
+    // berubah di tengah proses (misal user menambah gambar baru).
+    final snapshot = List<XFile>.from(images);
+
+    for (var image in snapshot) {
       try {
         final bytes = await image.readAsBytes();
         final res = await ProductService.uploadProductImage(
@@ -229,14 +277,18 @@ class ProductImageController extends GetxController {
           AppToast.show(ApiHelper.parseError(res.body));
           break;
         } else if (res.statusCode != 200 && res.statusCode != 201) {
+          debugPrint(
+            'Upload gagal — status: ${res.statusCode}, body: ${res.body}',
+          );
           failCount++;
+        } else {
+          // Sukses — hapus item ini saja dari list asli.
+          images.remove(image);
         }
       } catch (e) {
         failCount++;
       }
     }
-
-    isUploadingImage.value = false;
 
     if (failCount > 0) {
       AppToast.show('$failCount gambar gagal diupload');
@@ -246,23 +298,29 @@ class ProductImageController extends GetxController {
   // ===================== PICK — PUBLIC =====================
   Future<void> pickImageForNewProduct({
     ImageSource source = ImageSource.gallery,
-  }) =>
-      _pickImage(source: source, isEditMode: false);
+  }) => _pickImage(source: source, isEditMode: false);
 
   Future<void> pickImageForEditProduct({
     ImageSource source = ImageSource.gallery,
     required String productId,
-  }) =>
-      _pickImage(source: source, isEditMode: true, productId: productId);
+  }) => _pickImage(source: source, isEditMode: true, productId: productId);
 
   // ===================== UPLOAD — PUBLIC =====================
   Future<void> uploadPendingImages(String productId) async {
-    await _uploadImages(pendingImages, productId);
-    pendingImages.clear();
+    isUploadingImage.value = true;
+    try {
+      await _uploadImages(pendingImages, productId);
+    } finally {
+      isUploadingImage.value = false;
+    }
   }
 
   Future<void> uploadPendingEditImages(String productId) async {
-    await _uploadImages(pendingEditImages, productId);
-    pendingEditImages.clear();
+    isUploadingImage.value = true;
+    try {
+      await _uploadImages(pendingEditImages, productId);
+    } finally {
+      isUploadingImage.value = false;
+    }
   }
 }

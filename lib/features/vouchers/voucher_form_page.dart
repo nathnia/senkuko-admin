@@ -120,57 +120,27 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
                     if (!_isEdit) _promotionPickerField(),
 
                     // ── Kode Voucher ──────────────────────────────────────
-                    // Row berisi AppTextField + tombol generate ulang kode
-                    // (VoucherController.regenerateCode()), style tombol
-                    // konsisten dengan Kode Pelanggan & Kode Promo.
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: AppTextField(
-                              label: 'Kode Voucher',
-                              hint: 'cth: VOUCHER-SPESIAL-001',
-                              controller: controller.codeC,
-                              textCapitalization:
-                                  TextCapitalization.characters,
-                              isRequired: true,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.deny(
-                                  RegExp(r'\s'),
-                                ),
-                                UpperCaseTextFormatter(),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Tooltip(
-                              message: 'Generate ulang kode',
-                              child: InkWell(
-                                onTap: controller.regenerateCode,
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.successBg,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.refresh_rounded,
-                                    size: 18,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                    // Edit mode: field polos, tanpa tombol generate ulang —
+                    // voucher yang udah diterbitkan biasanya udah dibagiin
+                    // ke customer (fisik/digital), jadi kodenya jangan
+                    // gampang diacak ulang. Sama pattern-nya kayak Kode
+                    // Pelanggan & Kode Promo.
+                    // Create mode: field + tombol generate ulang, kodenya
+                    // masih draft dan belum dibagikan ke siapa pun.
+                    if (_isEdit)
+                      AppTextField(
+                        label: 'Kode Voucher',
+                        hint: 'cth: VOUCHER-SPESIAL-001',
+                        controller: controller.codeC,
+                        textCapitalization: TextCapitalization.characters,
+                        isRequired: true,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                          UpperCaseTextFormatter(),
                         ],
-                      ),
-                    ),
+                      )
+                    else
+                      _CodeFieldWithRefresh(controller: controller),
 
                     // ── Batas Pemakaian ───────────────────────────────────
                     AppTextField(
@@ -471,4 +441,60 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     ),
     child: child,
   );
+}
+
+// ── Kode field dengan tombol refresh (create mode only) ────────────────────
+
+class _CodeFieldWithRefresh extends StatelessWidget {
+  final VoucherController controller;
+  const _CodeFieldWithRefresh({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: AppTextField(
+              label: 'Kode Voucher',
+              hint: 'cth: VOUCHER-SPESIAL-001',
+              controller: controller.codeC,
+              textCapitalization: TextCapitalization.characters,
+              isRequired: true,
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                UpperCaseTextFormatter(),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Tooltip(
+              message: 'Generate ulang kode',
+              child: InkWell(
+                onTap: controller.regenerateCode,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.successBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.refresh_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -270,7 +270,7 @@ class ProductVariantController extends GetxController {
 
     _editVariantSnapshot = null;
     editVariantsTemp.refresh();
-    AppToast.show('Klik Simpan untuk menyimpan');
+    AppToast.show('Klik Simpan untuk menerapkan perubahan');
     // NOTE: navigation removed from here — this is a controller method,
     // not a UI layer. Popping the variant form is handled by the caller
     // (variant_form_page.dart's onSave), otherwise we get a double-pop

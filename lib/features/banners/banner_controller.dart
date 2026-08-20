@@ -81,9 +81,7 @@ class BannerController extends GetxController {
   }
 
   bool _isDuplicateSortOrder(int order, {String? excludeId}) {
-    return bannerList.any(
-      (b) => b.sortOrder == order && b.id != excludeId,
-    );
+    return bannerList.any((b) => b.sortOrder == order && b.id != excludeId);
   }
 
   // ===================== FORM HELPERS =====================
@@ -303,6 +301,9 @@ class BannerController extends GetxController {
         resetForAdd();
         return true;
       } else {
+        debugPrint(
+          'Create banner gagal — status: ${res.statusCode}, body: ${res.body}',
+        );
         AppToast.show(
           ApiHelper.parseError(res.body, 'Gagal menambahkan banner'),
         );
@@ -415,7 +416,8 @@ class BannerController extends GetxController {
   Future<bool> deleteBanner(BannerData banner) async {
     final confirmed = await AppDialog.confirm(
       title: 'Hapus Banner',
-      content: 'Yakin ingin menghapus banner "${banner.title ?? banner.id}"? '
+      content:
+          'Yakin ingin menghapus banner "${banner.title ?? banner.id}"? '
           'Tindakan ini tidak bisa dibatalkan.',
       confirmLabel: 'Hapus',
       confirmColor: Colors.red,

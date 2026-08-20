@@ -31,8 +31,6 @@ class ProductController extends GetxController {
   final editingProductId = ''.obs;
   final isDirty = false.obs;
 
-  // ADDED: O(1) dirty variant flag — updated only when variants list changes,
-  // not recomputed on every keypress via .any()
   final hasDirtyVariants = false.obs;
 
   // ===================== DATA =====================
@@ -44,14 +42,9 @@ class ProductController extends GetxController {
   final selectedTab = 'Semua'.obs;
   final selectedSort = ''.obs;
 
-  // ADDED: stock status filters for inventory workflows
   final showLowStockOnly = false.obs;
   final showOutOfStockOnly = false.obs;
-  // CHANGED: no more global hardcoded threshold — "low stock" is now
-  // evaluated per-product against ProductSummary.crisisStockThreshold
-  // (from crisis_stock on the base-unit variant), same source of truth
-  // as the warning badge on ProductCard. Kept as a getter only for
-  // any old call sites that might still reference it during migration.
+
   @Deprecated(
     'Gunakan ProductSummary.crisisStockThreshold per produk lewat '
     'variantC.getSummaryForProduct(id) — bukan angka global.',
@@ -64,7 +57,6 @@ class ProductController extends GetxController {
   final minPriceC = TextEditingController();
   final maxPriceC = TextEditingController();
 
-  // ADDED: debounce timer for search — prevents filtering on every keypress
   Timer? _searchDebounce;
 
   // ===================== SORT =====================
@@ -75,7 +67,6 @@ class ProductController extends GetxController {
   void sortAZ() => selectedSort.value = 'az';
   void sortLowStock() => selectedSort.value = 'low_stock';
 
-  // ADDED: human-readable sort label for active filter chip display
   String get sortLabel {
     switch (selectedSort.value) {
       case 'newest':
@@ -95,7 +86,6 @@ class ProductController extends GetxController {
     }
   }
 
-  // ADDED: human-readable price range label for active filter chip
   String get priceRangeLabel {
     final min = minPrice.value;
     final max = maxPrice.value;
@@ -152,7 +142,6 @@ class ProductController extends GetxController {
   List<ProductData> get getFilteredProducts {
     var products = [...productList];
 
-    // SEARCH
     if (searchText.value.isNotEmpty) {
       final q = searchText.value.toLowerCase();
       products = products
@@ -168,7 +157,6 @@ class ProductController extends GetxController {
       }).toList();
     }
 
-    // PRICE FILTER
     if (minPrice.value != null || maxPrice.value != null) {
       products = products.where((product) {
         final price = variantC.getSummaryForProduct(product.id).mainPriceValue;
@@ -178,11 +166,6 @@ class ProductController extends GetxController {
       }).toList();
     }
 
-    // LOW STOCK FILTER
-    // CHANGED: pakai crisis_stock per produk (dari base-unit variant),
-    // bukan angka global hardcode. Produk yang belum di-set crisis_stock-nya
-    // (threshold 0) sengaja gak dianggap "menipis" — sama kayak logic badge
-    // di ProductCard, biar konsisten dan gak nebak-nebak ambang batas sendiri.
     if (showLowStockOnly.value) {
       products = products.where((p) {
         final summary = variantC.getSummaryForProduct(p.id);
@@ -193,24 +176,14 @@ class ProductController extends GetxController {
       }).toList();
     }
 
-    // OUT OF STOCK FILTER
     if (showOutOfStockOnly.value) {
       products = products
           .where((p) => variantC.getSummaryForProduct(p.id).isOutOfStock)
           .toList();
     }
 
-    // SORT
     switch (selectedSort.value) {
       case 'newest':
-        // FIX: createdAt sudah bertipe DateTime (lihat ProductData.fromJson),
-        // jadi gak perlu lagi round-trip .toString() -> DateTime.tryParse().
-        // Bandingkan langsung.
-        // CATATAN: kalau sort ini kelihatan "gak ngapa-ngapain" di data
-        // sekarang, itu karena beberapa produk di database punya
-        // created_at yang identik (hasil seeding), bukan bug di sini —
-        // cek dengan menambah produk baru lewat form, urutannya akan
-        // langsung benar begitu created_at-nya berbeda.
         products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case 'oldest':
@@ -259,16 +232,11 @@ class ProductController extends GetxController {
     searchText.value = '';
     selectedTab.value = 'Semua';
     selectedSort.value = '';
-    showLowStockOnly.value = false; // ADDED
-    showOutOfStockOnly.value = false; // ADDED
+    showLowStockOnly.value = false;
+    showOutOfStockOnly.value = false;
     clearPriceRange();
     _rebuildTabs();
   }
-
-  // List<String> get tabs => [
-  //   'Semua',
-  //   ...categoryC.categoryList.map((c) => c.name),
-  // ];
 
   // ===================== PRODUCT FORM =====================
   final nameC = TextEditingController();
@@ -286,12 +254,12 @@ class ProductController extends GetxController {
 
   @override
   void onClose() {
-    _searchDebounce?.cancel(); // ADDED: cancel any pending debounce
+    _searchDebounce?.cancel();
     _categoryWorker?.dispose();
     _pendingImagesWorker?.dispose();
     _pendingEditImagesWorker?.dispose();
     _variantsTempWorker?.dispose();
-    _editVariantsDirtyWorker?.dispose(); // ADDED
+    _editVariantsDirtyWorker?.dispose();
     minPriceC.dispose();
     maxPriceC.dispose();
     for (final c in [nameC, skuC, descC, barcodeC]) {
@@ -310,7 +278,6 @@ class ProductController extends GetxController {
   Future<void> loadInitialData() async {
     if (isLoading.value) return;
 
-    // Reset error state before the guard matters
     hasError.value = false;
     errorMessage.value = '';
     isLoading.value = true;
@@ -325,15 +292,6 @@ class ProductController extends GetxController {
         variantC.fetchAllVariants(),
       ]);
 
-      // FIX: safety net. fetchProducts() bisa trigger rebuild (via
-      // productList.assignAll) SEBELUM priceC.fetchPrices() atau
-      // variantC.fetchAllVariants() selesai — jadi ProductCard sempat
-      // ngitung ProductSummary dari data yang belum lengkap dan
-      // ke-cache salah (mis. harga jadi 0). invalidateSummaryCache()
-      // sendiri gak nge-trigger rebuild karena bukan Rx, makanya
-      // dipaksa refresh manual di sini SETELAH semua fetch di atas
-      // beneran selesai — supaya user gak perlu pull-to-refresh dulu
-      // buat lihat angka yang benar.
       variantC.invalidateSummaryCache();
       productList.refresh();
 
@@ -358,19 +316,11 @@ class ProductController extends GetxController {
         ttl: CacheKeys.productListTtl,
       );
       if (cached != null) {
-        // FIX: paksa jalur cache-hit gak pernah 100% sinkron — nyegah
-        // crash build-phase kalau dipanggil dari initState() page.
         await Future.microtask(() {});
         final cachedList =
             (cached as List).map((e) => ProductData.fromJson(e)).toList();
         productList.assignAll(cachedList);
         _seedImageCacheFromProducts(cachedList);
-        // CHANGED: downgrade dari Pola B ke Pola A. Nama/SKU/deskripsi/
-        // kategori/gambar cuma berubah lewat form admin (bukan
-        // konsekuensi otomatis dari transaksi kayak stok), jadi aman
-        // skip network sepenuhnya kalau masih dalam TTL — beda sama
-        // fetchAllVariants() (stok) yang TETAP Pola B karena stok bisa
-        // berubah kapan aja dari transaksi device lain.
         return;
       }
     }
@@ -398,6 +348,12 @@ class ProductController extends GetxController {
         cache[product.id] = product.images!;
       }
     }
+
+    if (editingProductId.value.isNotEmpty) {
+      cache[editingProductId.value] =
+          imageC.getImagesForProduct(editingProductId.value);
+    }
+
     if (cache.isNotEmpty) {
       imageC.replaceAllCache(cache);
     }
@@ -406,7 +362,7 @@ class ProductController extends GetxController {
   // ===================== FORM RESET =====================
   void resetForAddProduct() {
     isDirty.value = false;
-    hasDirtyVariants.value = false; // ADDED
+    hasDirtyVariants.value = false;
     editingProductId.value = '';
     selectedProduct.value = null;
 
@@ -469,7 +425,6 @@ class ProductController extends GetxController {
           selectedProduct.value = ProductData.fromJson(jsonData['data']);
         }
       } else {
-        // non-200 juga harus error state, bukan diam
         hasDetailError.value = true;
         detailErrorMessage.value = 'Gagal memuat detail produk. Coba lagi.';
       }
@@ -579,11 +534,6 @@ class ProductController extends GetxController {
 
       await imageC.uploadPendingImages(newProductId);
 
-      // ADDED: invalidate product list cache before refetch — prevents
-      // race condition where stale cached list (still within TTL) gets
-      // returned instead of the freshly created product.
-      // Also invalidate allVariants/priceList — we just wrote new data,
-      // so the next fetch should skip cache-first (Pola B) entirely.
       await CacheService.instance.invalidate(CacheKeys.productList);
       await CacheService.instance.invalidate(CacheKeys.allVariants);
       await CacheService.instance.invalidate(CacheKeys.priceList);
@@ -594,8 +544,6 @@ class ProductController extends GetxController {
         fetchProducts(),
       ]);
 
-      // FIX: same safety net as loadInitialData() — force a rebuild
-      // after all three finish, regardless of completion order.
       variantC.invalidateSummaryCache();
       productList.refresh();
 
@@ -611,8 +559,6 @@ class ProductController extends GetxController {
   }
 
   // ===================== UPDATE PRODUCT =====================
-  // CHANGED: return bool — caller only navigates back on real success,
-  // instead of always closing the page regardless of outcome.
   Future<bool> updateFullProduct() async {
     if (editingProductId.value.isEmpty) {
       AppToast.show('Product ID tidak ditemukan');
@@ -657,26 +603,32 @@ class ProductController extends GetxController {
 
       await imageC.uploadPendingEditImages(editingProductId.value);
 
-      // ADDED: invalidate product list cache before refetch — same reason
-      // as createFullProduct(), avoids stale cache/fresh data race.
-      // Also invalidate allVariants/priceList — we just wrote new data,
-      // so the next fetch should skip cache-first (Pola B) entirely.
+      // ADDED: refresh cache gambar dari server SETELAH upload selesai.
+      // uploadPendingEditImages() cuma upload file & hapus dari pending
+      // list — dia nggak pernah nge-update allProductImages dengan
+      // data gambar baru (URL/ID hasil upload) atau data gambar yang
+      // barusan dihapus di server. Tanpa refresh ini, guard
+      // editingProductId di _seedImageCacheFromProducts() bakal
+      // mempertahankan cache LAMA (state sebelum upload) dan nyegah
+      // fetchProducts() di bawah nimpa dengan data server yang bener —
+      // itu sebabnya detail page kelihatan "nggak berubah" sampai kamu
+      // keluar-masuk halaman lagi (yang baru fetch fresh dari
+      // getProductById).
+      await imageC.fetchProductImages(editingProductId.value);
+
       await CacheService.instance.invalidate(CacheKeys.productList);
       await CacheService.instance.invalidate(CacheKeys.allVariants);
       await CacheService.instance.invalidate(CacheKeys.priceList);
 
       await Future.wait([
-        variantC.fetchAllVariants(forceRefresh: true), // already calls invalidateSummaryCache
+        variantC.fetchAllVariants(forceRefresh: true),
         priceC.fetchPrices(forceRefresh: true),
         fetchProducts(),
       ]);
 
-      // FIX: same safety net as loadInitialData() — force a rebuild
-      // after all three finish, regardless of completion order.
       variantC.invalidateSummaryCache();
       productList.refresh();
 
-      // Reset _dirty flag
       for (var i = 0; i < variantC.editVariantsTemp.length; i++) {
         variantC.editVariantsTemp[i] = {
           ...variantC.editVariantsTemp[i],
@@ -684,7 +636,7 @@ class ProductController extends GetxController {
         };
       }
       variantC.editVariantsTemp.refresh();
-      hasDirtyVariants.value = false; // ADDED
+      hasDirtyVariants.value = false;
 
       AppToast.show('Produk berhasil diupdate');
       return true;
@@ -707,7 +659,7 @@ class ProductController extends GetxController {
   Worker? _pendingImagesWorker;
   Worker? _pendingEditImagesWorker;
   Worker? _variantsTempWorker;
-  Worker? _editVariantsDirtyWorker; // ADDED
+  Worker? _editVariantsDirtyWorker;
 
   void _takeSnapshot() {
     _snapName = nameC.text;
@@ -717,7 +669,6 @@ class ProductController extends GetxController {
     _snapCategoryId = selectedCategoryId.value;
   }
 
-  // CHANGED: uses hasDirtyVariants observable instead of .any() on every call
   void checkDirty() {
     isDirty.value =
         nameC.text != _snapName ||
@@ -728,7 +679,7 @@ class ProductController extends GetxController {
         imageC.pendingEditImages.isNotEmpty ||
         imageC.pendingImages.isNotEmpty ||
         variantC.variantsTemp.isNotEmpty ||
-        hasDirtyVariants.value; // O(1) read instead of O(N) .any()
+        hasDirtyVariants.value;
   }
 
   void _listenFormChanges() {

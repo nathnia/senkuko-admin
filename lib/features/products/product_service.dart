@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:senkukoadmin/constant/api_client.dart';
 import 'package:senkukoadmin/constant/api_constant.dart';
 import 'package:senkukoadmin/features/auth/auth_controller.dart';
@@ -321,6 +322,34 @@ class ProductService {
     ),
   );
 
+  // Menentukan Content-Type multipart berdasarkan ekstensi nama file.
+  // FIX: http.MultipartFile.fromBytes() TIDAK otomatis mendeteksi
+  // Content-Type dari nama file — kalau parameter `contentType` tidak
+  // diisi, defaultnya `application/octet-stream`. Backend menolak ini
+  // dengan 400 "Invalid file type" karena mengharapkan Content-Type
+  // image/* pada bagian multipart-nya (bukan cuma cek ekstensi nama
+  // file). Postman berhasil karena otomatis mengisi Content-Type sesuai
+  // ekstensi file yang dipilih — makanya file yang sama gagal di app
+  // tapi sukses di Postman.
+  static MediaType? _mimeTypeFromFileName(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return MediaType('image', 'jpeg');
+      case 'png':
+        return MediaType('image', 'png');
+      case 'webp':
+        return MediaType('image', 'webp');
+      default:
+        // Ekstensi tak dikenal — biarkan http yang menentukan default.
+        // Seharusnya tidak pernah kejadian karena ProductImageController
+        // sudah membatasi ekstensi ke jpg/jpeg/png/webp sebelum file
+        // masuk ke pendingImages/pendingEditImages.
+        return null;
+    }
+  }
+
   // Upload image perlu handle sendiri karena pakai MultipartRequest
   static Future<http.Response> uploadProductImage({
     required String productId,
@@ -340,7 +369,14 @@ class ProductService {
       });
 
       request.files.add(
-        http.MultipartFile.fromBytes('image', imageBytes, filename: fileName),
+        http.MultipartFile.fromBytes(
+          'image',
+          imageBytes,
+          filename: fileName,
+          // FIX: eksplisit set Content-Type sesuai ekstensi file,
+          // supaya sama seperti perilaku Postman.
+          contentType: _mimeTypeFromFileName(fileName),
+        ),
       );
 
       final streamed = await request.send().timeout(_timeout);

@@ -34,6 +34,7 @@ class ProductImageSection extends StatelessWidget {
             ];
 
       final canAddMore = images.length < ProductImageController.maxImages;
+      final existingCount = _imageC.getImagesForProduct(productId).length;
 
       return AppCard(
         child: Column(
@@ -69,15 +70,21 @@ class ProductImageSection extends StatelessWidget {
                   ...images.asMap().entries.map((entry) {
                     final index = entry.key;
                     final image = entry.value;
-                    final existingCount =
-                        _imageC.getImagesForProduct(productId).length;
-                    final isLocal =
-                        isAddMode || index >= existingCount;
+                    final isLocal = isAddMode || index >= existingCount;
+
+                    // CHANGED: primary sekarang murni index == 0 di
+                    // array gabungan (existing + pending), bukan dari
+                    // image.isPrimary. Ini otomatis konsisten walau
+                    // dilihat dari device lain, karena satu-satunya
+                    // sumber urutan adalah array yang dikembalikan
+                    // backend (+ pending lokal yang selalu nempel di
+                    // belakang existing).
+                    final isPrimary = index == 0;
 
                     return _ImageThumb(
                       key: ValueKey(image.id.isEmpty ? 'local_$index' : image.id),
                       imageUrl: image.imageUrl,
-                      isPrimary: image.isPrimary,
+                      isPrimary: isPrimary,
                       isLocal: isLocal,
                       imageC: _imageC,
                       onDelete: () => _handleDelete(
@@ -89,9 +96,10 @@ class ProductImageSection extends StatelessWidget {
                     );
                   }),
                   if (canAddMore)
-                    _AddImageButton(
-                      onTap: () => _showSourcePicker(context),
-                    ),
+                    Obx(() => _AddImageButton(
+                          isDisabled: _imageC.isUploadingImage.value,
+                          onTap: () => _showSourcePicker(context),
+                        )),
                 ],
               ),
             ),
@@ -292,13 +300,14 @@ class _ImageThumb extends StatelessWidget {
 // ── Add image button ──────────────────────────────────────────────────────────
 class _AddImageButton extends StatelessWidget {
   final VoidCallback onTap;
+  final bool isDisabled;
 
-  const _AddImageButton({required this.onTap});
+  const _AddImageButton({required this.onTap, this.isDisabled = false});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isDisabled ? null : onTap,
       child: Container(
         width: 100,
         height: 100,
@@ -310,14 +319,23 @@ class _AddImageButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.add_photo_alternate_outlined,
-              size: 26,
-              color: Colors.grey.shade400,
-            ),
+            isDisabled
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.grey.shade400,
+                    ),
+                  )
+                : Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 26,
+                    color: Colors.grey.shade400,
+                  ),
             const SizedBox(height: 4),
             Text(
-              'Tambah',
+              isDisabled ? 'Mengupload' : 'Tambah',
               style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
           ],
@@ -350,7 +368,6 @@ class _ImageSourceSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Handle ──
           Container(
             width: 36,
             height: 4,
@@ -361,7 +378,6 @@ class _ImageSourceSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Title — edit mode tampilkan counter ──
           if (isAddMode)
             const Text(
               'Tambah Foto',
@@ -379,7 +395,6 @@ class _ImageSourceSheet extends StatelessWidget {
                 )),
           const SizedBox(height: 16),
 
-          // ── Pilihan source ──
           _sourceTile(
             icon: Icons.photo_library_outlined,
             label: 'Pilih dari Galeri',
